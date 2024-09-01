@@ -1,1 +1,39 @@
 * Go blockchain
+
+- * blockchain state (distributed system data store)
+  - genesis file
+  - transactions txs
+    - from, to, value, accNonce, time, sig
+  - block
+    - hash, parent hash, height, time, // nonce, miner // validator
+    - txs
+  - state
+    - balances, accNonces, storage, lastBlock
+- * block store
+  - data dir
+  - genesis file
+  - blocks DB
+- * network node, peer (distributed system networking)
+  - CLI
+  - API
+    - /bal/list
+    - /tx/add
+    - /node/status
+    - /node/sync
+    - /node/peer
+  - propagate pending txs
+  - sync valid blocks
+  - discover new peers
+  - node
+    - state, pendingTxs, knownPeers, chSyncedBlocks, chPendingTx, mining
+    - go sync()
+    - go mine()
+- * consensus (consensus mechanisms)
+- * wallet, account (cryptography)
+  - digital signature
+
+** Blockchain MVP
+
+- Use case: transfer tokens between accounts
+- Data structures: blocks of transactions
+- Consensus mechanism: PoW, PoS, PoA, PoT
