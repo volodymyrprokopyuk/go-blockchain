@@ -8,30 +8,29 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"math/big"
 
 	"github.com/dustinxie/ecc"
 	"golang.org/x/crypto/argon2"
 )
 
-type P256k1PrivateKey struct {
-  Curve string `json:"curve"`
-  X *big.Int `json:"x"`
-  Y *big.Int `json:"y"`
-  D *big.Int `json:"d"`
-}
+// type p256k1PrivateKey struct {
+//   Curve string `json:"curve"`
+//   X *big.Int `json:"x"`
+//   Y *big.Int `json:"y"`
+//   D *big.Int `json:"d"`
+// }
 
-func NewP256k1PrivateKey(prv *ecdsa.PrivateKey) *P256k1PrivateKey {
-  return &P256k1PrivateKey{Curve: "P-256k1", X: prv.X, Y: prv.Y, D: prv.D}
-}
+// func Newp256k1PrivateKey(prv *ecdsa.PrivateKey) *p256k1PrivateKey {
+//   return &p256k1PrivateKey{Curve: "P-256k1", X: prv.X, Y: prv.Y, D: prv.D}
+// }
 
-func (pk *P256k1PrivateKey) PublicKey() *ecdsa.PublicKey {
-  return &ecdsa.PublicKey{Curve: ecc.P256k1(), X: pk.X, Y: pk.Y}
-}
+// func (pk *p256k1PrivateKey) PublicKey() *ecdsa.PublicKey {
+//   return &ecdsa.PublicKey{Curve: ecc.P256k1(), X: pk.X, Y: pk.Y}
+// }
 
-func (pk *P256k1PrivateKey) PrivateKey() *ecdsa.PrivateKey {
-  return &ecdsa.PrivateKey{PublicKey: *pk.PublicKey(), D: pk.D}
-}
+// func (pk *p256k1PrivateKey) PrivateKey() *ecdsa.PrivateKey {
+//   return &ecdsa.PrivateKey{PublicKey: *pk.PublicKey(), D: pk.D}
+// }
 
 func SignVerify() error {
   // generate
@@ -93,7 +92,7 @@ func SignVerify() error {
   fmt.Printf("%s\n", pln)
 
   // unmarshal
-  var pk P256k1PrivateKey
+  var pk p256k1PrivateKey
   err = json.Unmarshal(jsnPrv, &pk)
   if err != nil {
     return err
