@@ -1,6 +1,8 @@
 package wallet
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
@@ -9,6 +11,7 @@ import (
 	"math/big"
 
 	"github.com/dustinxie/ecc"
+	"golang.org/x/crypto/argon2"
 )
 
 type P256k1PrivateKey struct {
@@ -37,12 +40,59 @@ func SignVerify() error {
     return err
   }
 
-  // marshal, unmarshal
+  // marshal
   jsnPrv, err := json.Marshal(NewP256k1PrivateKey(prv))
   if err != nil {
     return err
   }
-  fmt.Println(string(jsnPrv))
+  fmt.Printf("%s\n", jsnPrv)
+
+  // encrypt
+  keyLen := uint32(32)
+  pwd := "password"
+  salt := make([]byte, keyLen)
+  _, err = rand.Read(salt)
+  if err != nil {
+    return err
+  }
+  key := argon2.IDKey([]byte(pwd), salt, 1, 256, 1, keyLen)
+  blk, err := aes.NewCipher(key)
+  if err != nil {
+    return err
+  }
+  gcm, err := cipher.NewGCM(blk)
+  if err != nil {
+    return err
+  }
+  nonceLen := gcm.NonceSize()
+  nonce := make([]byte, nonceLen)
+  _, err = rand.Read(nonce)
+  if err != nil {
+    return err
+  }
+  ciph := gcm.Seal(nonce, nonce, jsnPrv, nil)
+  ciph = append(salt, ciph...)
+  fmt.Printf("%x\n", ciph)
+
+  // decrypt
+  salt, ciph = ciph[:keyLen], ciph[keyLen:]
+  key = argon2.IDKey([]byte(pwd), salt, 1, 256, 1, keyLen)
+  blk, err = aes.NewCipher(key)
+  if err != nil {
+    return err
+  }
+  gcm, err = cipher.NewGCM(blk)
+  if err != nil {
+    return err
+  }
+  nonce, ciph = ciph[:nonceLen], ciph[nonceLen:]
+  pln, err := gcm.Open(nil, nonce, ciph, nil)
+  if err != nil {
+    return err
+  }
+  fmt.Printf("%s\n", pln)
+
+  // unmarshal
   var pk P256k1PrivateKey
   err = json.Unmarshal(jsnPrv, &pk)
   if err != nil {
