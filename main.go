@@ -8,8 +8,8 @@ import (
 	"github.com/volodymyrprokopyuk/go-blockchain/account"
 )
 
-func account() error {
-  acc, err := wallet.NewAccount()
+func accountUsage() error {
+  acc, err := account.NewAccount()
   if err != nil {
     return err
   }
@@ -21,7 +21,7 @@ func account() error {
     return err
   }
   path := filepath.Join(dir, string(acc.Address()))
-  acc, err = wallet.ReadAccount(path, pwd)
+  acc, err = account.ReadAccount(path, pwd)
   if err != nil {
     return err
   }
@@ -30,7 +30,7 @@ func account() error {
   if err != nil {
     return err
   }
-  valid, err := wallet.VerifySig(sig, msg, acc.Address())
+  valid, err := account.VerifySig(sig, msg, acc.Address())
   if err != nil {
     return err
   }
@@ -39,7 +39,7 @@ func account() error {
 }
 
 func main() {
-  err := account()
+  err := accountUsage()
   if err != nil {
     fmt.Println(err)
     os.Exit(1)
