@@ -5,42 +5,29 @@ import (
 	"crypto/cipher"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"math/big"
 	"os"
 	"path/filepath"
 
 	"github.com/dustinxie/ecc"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"golang.org/x/crypto/argon2"
-	"golang.org/x/crypto/sha3"
 )
 
-
 const (
-  curveName = "P-256k1"
   encKeyLen = uint32(32)
 )
 
-type p256k1PublicKey struct { // for Address hash
-  Curve string `json:"curve"`
-  X *big.Int `json:"x"`
-  Y *big.Int `json:"y"`
-}
-
-func newP256k1PublicKey(pub *ecdsa.PublicKey) *p256k1PublicKey {
-  return &p256k1PublicKey{Curve: curveName, X: pub.X, Y: pub.Y}
-}
-
 type p256k1PrivateKey struct { // for Account encoding
-  Curve string `json:"curve"`
-  X *big.Int `json:"x"`
-  Y *big.Int `json:"y"`
+  chain.P256k1PublicKey
   D *big.Int `json:"d"`
 }
 
-func newP256k1PrivateKey(prv *ecdsa.PrivateKey) *p256k1PrivateKey {
-  return &p256k1PrivateKey{Curve: curveName, X: prv.X, Y: prv.Y, D: prv.D}
+func newP256k1PrivateKey(prv *ecdsa.PrivateKey) p256k1PrivateKey {
+  return p256k1PrivateKey{
+    P256k1PublicKey: chain.NewP256k1PublicKey(&prv.PublicKey), D: prv.D,
+  }
 }
 
 func (pk *p256k1PrivateKey) publicKey() *ecdsa.PublicKey {
@@ -51,24 +38,12 @@ func (pk *p256k1PrivateKey) privateKey() *ecdsa.PrivateKey {
   return &ecdsa.PrivateKey{PublicKey: *pk.publicKey(), D: pk.D}
 }
 
-type Address string
-
-func NewAddress(pub *ecdsa.PublicKey) (Address, error) {
-  jsnPub, err := json.Marshal(newP256k1PublicKey(pub))
-  if err != nil {
-    return Address(""), err
-  }
-  hashPub := make([]byte, 64)
-  sha3.ShakeSum256(hashPub, jsnPub)
-  return Address(hex.EncodeToString(hashPub[:32])), nil
-}
-
 type Account struct {
   privateKey *ecdsa.PrivateKey
-  address Address
+  address chain.Address // derived
 }
 
-func (a *Account) Address() Address {
+func (a *Account) Address() chain.Address {
   return a.address
 }
 
@@ -77,7 +52,7 @@ func NewAccount() (*Account, error) {
   if err != nil {
     return nil, err
   }
-  addr, err := NewAddress(&prv.PublicKey)
+  addr, err := chain.NewAddress(&prv.PublicKey)
   if err != nil {
     return nil, err
   }
@@ -101,7 +76,7 @@ func (a *Account) Write(dir string, pwd []byte) error {
   return os.WriteFile(path, ciphPrv, 0600)
 }
 
-func ReadAccount(path string, pwd []byte) (*Account, error) {
+func Read(path string, pwd []byte) (*Account, error) {
   ciphPrv, err := os.ReadFile(path)
   if err != nil {
     return nil, err
@@ -113,28 +88,32 @@ func ReadAccount(path string, pwd []byte) (*Account, error) {
   return decodePrivateKey(jsnPrv)
 }
 
-func (a *Account) Sign(msg []byte) ([]byte, error) {
-  hash := make([]byte, 64)
-  sha3.ShakeSum256(hash, msg)
-  sig, err := ecc.SignBytes(a.privateKey, hash, ecc.LowerS | ecc.RecID)
+func (a *Account) Sign(tx chain.Tx) (chain.SigTx, error) {
+  hash, err := tx.Hash()
   if err != nil {
-    return nil, err
+    return chain.SigTx{}, err
   }
-  return sig, nil
+  sig, err := ecc.SignBytes(a.privateKey, hash[:], ecc.LowerS | ecc.RecID)
+  if err != nil {
+    return chain.SigTx{}, err
+  }
+  return chain.SigTx{Tx: tx, Sig: sig}, nil
 }
 
-func VerifySig(sig, msg []byte, addr Address) (bool, error) {
-  hash := make([]byte, 64)
-  sha3.ShakeSum256(hash, msg)
-  pub, err := ecc.RecoverPubkey(curveName, hash, sig)
+func Verify(stx chain.SigTx) (bool, error) {
+  hash, err := stx.Tx.Hash()
   if err != nil {
     return false, err
   }
-  pubAddr, err := NewAddress(pub)
+  pub, err := ecc.RecoverPubkey("P-256k1", hash[:], stx.Sig)
   if err != nil {
     return false, err
   }
-  return addr == pubAddr, nil
+  addr, err := chain.NewAddress(pub)
+  if err != nil {
+    return false, err
+  }
+  return addr == stx.From, nil
 }
 
 func (a *Account) encodePrivateKey() ([]byte, error) {
@@ -148,7 +127,7 @@ func decodePrivateKey(jsnPrv []byte) (*Account, error) {
     return nil, err
   }
   prv := pk.privateKey()
-  addr, err := NewAddress(&prv.PublicKey)
+  addr, err := chain.NewAddress(&prv.PublicKey)
   if err != nil {
     return nil, err
   }

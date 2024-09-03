@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/account"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/state"
+	"github.com/volodymyrprokopyuk/go-blockchain/store"
 )
 
 const (
@@ -26,16 +29,19 @@ func useAccount() error {
     return err
   }
   path := filepath.Join(keystoreDir, string(acc.Address()))
-  acc, err = account.ReadAccount(path, pwd)
+  acc, err = account.Read(path, pwd)
   if err != nil {
     return err
   }
-  msg := []byte("abc")
-  sig, err := acc.Sign(msg)
+  tx := chain.Tx{
+    From: acc.Address(), To: chain.Address("to"),
+    Value: 12, Nonce: 0, Time: time.Now(),
+  }
+  stx, err := acc.Sign(tx)
   if err != nil {
     return err
   }
-  valid, err := account.VerifySig(sig, msg, acc.Address())
+  valid, err := account.Verify(stx)
   if err != nil {
     return err
   }
@@ -44,9 +50,22 @@ func useAccount() error {
 }
 
 func useState() error {
-  addr := account.Address("daf5c55e75fc98b19e9cc790c99d0d631ba8fcc026dc36a2bca1944bc5abd236")
-  gen := state.NewGenesis("Blockchain", addr, 1000)
-  return gen.Write(blockstoreDir)
+  gen := store.NewGenesis(
+    "Blockchain",
+    chain.Address("9338ccb4ac74594f1f84ce6b46403350a55fc0340cd1c4814af7b6aea765ab4b"),
+    1000,
+  )
+  err := gen.Write(blockstoreDir)
+  if err != nil {
+    return err
+  }
+  gen, err = store.ReadGenesis(blockstoreDir)
+  if err != nil {
+    return err
+  }
+  sta := state.NewState(gen)
+  fmt.Printf("%+v\n", sta)
+  return nil
 }
 
 func main() {
