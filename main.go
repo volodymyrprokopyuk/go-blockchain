@@ -17,13 +17,14 @@ const (
   blockstoreDir = ".blockstore"
 )
 
+var pwd = []byte("password")
+
 func useAccount() error {
   acc, err := account.NewAccount()
   if err != nil {
     return err
   }
   fmt.Printf("%v\n", acc.Address())
-  pwd := []byte("password")
   err = acc.Write(keystoreDir, pwd)
   if err != nil {
     return err
@@ -50,11 +51,8 @@ func useAccount() error {
 }
 
 func useState() error {
-  gen := store.NewGenesis(
-    "Blockchain",
-    chain.Address("9338ccb4ac74594f1f84ce6b46403350a55fc0340cd1c4814af7b6aea765ab4b"),
-    1000,
-  )
+  addr := chain.Address("9338ccb4ac74594f1f84ce6b46403350a55fc0340cd1c4814af7b6aea765ab4b")
+  gen := store.NewGenesis("Blockchain", addr, 1000)
   err := gen.Write(blockstoreDir)
   if err != nil {
     return err
@@ -64,6 +62,19 @@ func useState() error {
     return err
   }
   sta := state.NewState(gen)
+  path := filepath.Join(keystoreDir, string(addr))
+  acc, err := account.Read(path, pwd)
+  if err != nil {
+    return err
+  }
+  err = sta.Send(acc, chain.Address("to"), 123)
+  if err != nil {
+    return err
+  }
+  err = sta.Send(acc, chain.Address("to"), 456)
+  if err != nil {
+    return err
+  }
   fmt.Printf("%+v\n", sta)
   return nil
 }

@@ -43,23 +43,23 @@ type Account struct {
   address chain.Address // derived
 }
 
-func (a *Account) Address() chain.Address {
+func (a Account) Address() chain.Address {
   return a.address
 }
 
-func NewAccount() (*Account, error) {
+func NewAccount() (Account, error) {
   prv, err := ecdsa.GenerateKey(ecc.P256k1(), rand.Reader)
   if err != nil {
-    return nil, err
+    return Account{}, err
   }
   addr, err := chain.NewAddress(&prv.PublicKey)
   if err != nil {
-    return nil, err
+    return Account{}, err
   }
-  return &Account{privateKey: prv, address: addr}, nil
+  return Account{privateKey: prv, address: addr}, nil
 }
 
-func (a *Account) Write(dir string, pwd []byte) error {
+func (a Account) Write(dir string, pwd []byte) error {
   jsnPrv, err := a.encodePrivateKey()
   if err != nil {
     return err
@@ -76,19 +76,19 @@ func (a *Account) Write(dir string, pwd []byte) error {
   return os.WriteFile(path, ciphPrv, 0600)
 }
 
-func Read(path string, pwd []byte) (*Account, error) {
+func Read(path string, pwd []byte) (Account, error) {
   ciphPrv, err := os.ReadFile(path)
   if err != nil {
-    return nil, err
+    return Account{}, err
   }
   jsnPrv, err := decryptWithPassword(ciphPrv, pwd)
   if err != nil {
-    return nil, err
+    return Account{}, err
   }
   return decodePrivateKey(jsnPrv)
 }
 
-func (a *Account) Sign(tx chain.Tx) (chain.SigTx, error) {
+func (a Account) Sign(tx chain.Tx) (chain.SigTx, error) {
   hash, err := tx.Hash()
   if err != nil {
     return chain.SigTx{}, err
@@ -116,22 +116,22 @@ func Verify(stx chain.SigTx) (bool, error) {
   return addr == stx.From, nil
 }
 
-func (a *Account) encodePrivateKey() ([]byte, error) {
+func (a Account) encodePrivateKey() ([]byte, error) {
   return json.Marshal(newP256k1PrivateKey(a.privateKey))
 }
 
-func decodePrivateKey(jsnPrv []byte) (*Account, error) {
+func decodePrivateKey(jsnPrv []byte) (Account, error) {
   var pk p256k1PrivateKey
   err := json.Unmarshal(jsnPrv, &pk)
   if err != nil {
-    return nil, err
+    return Account{}, err
   }
   prv := pk.privateKey()
   addr, err := chain.NewAddress(&prv.PublicKey)
   if err != nil {
-    return nil, err
+    return Account{}, err
   }
-  return &Account{privateKey: prv, address: addr}, nil
+  return Account{privateKey: prv, address: addr}, nil
 }
 
 func encryptWithPassword(msg, pwd []byte) ([]byte, error) {

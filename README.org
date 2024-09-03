@@ -29,11 +29,5 @@
     - go sync()
     - go mine()
 - * consensus (consensus mechanisms)
-- * wallet, account (cryptography)
+- * DONE wallet, account (cryptography)
   - digital signature
-
-** Blockchain MVP
-
-- Use case: transfer tokens between accounts
-- Data structures: blocks of transactions
-- Consensus mechanism: PoW, PoS, PoA, PoT
