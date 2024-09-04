@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -40,6 +41,10 @@ type Tx struct {
   Value uint `json:"value"`
   Nonce uint `json:"nonce"`
   Time time.Time `json:"time"`
+}
+
+func (t Tx) String() string {
+  return fmt.Sprintf("%.7s -> %.7s %10d %5d", t.From, t.To, t.Value, t.Nonce)
 }
 
 func (t Tx) Hash() (Hash, error) {

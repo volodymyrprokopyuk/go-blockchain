@@ -2,11 +2,14 @@ package store
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
+	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -51,7 +54,27 @@ func ReadGenesis(dir string) (Genesis, error) {
 
 type Block struct {
   Number uint `json:"number"`
-  Parent []byte `json:"parent"`
+  Parent chain.Hash `json:"parent"`
   Time time.Time `json:"time"`
   Txs []chain.Tx `json:"txs"`
+}
+
+func (b Block) String() string {
+  hash, _ := b.Hash()
+  var bld strings.Builder
+  bld.WriteString(fmt.Sprintf("%d %.5x -> %.5x\n", b.Number, hash, b.Parent))
+  for _, tx := range b.Txs {
+    bld.WriteString(fmt.Sprintf("  %s\n", tx))
+  }
+  return bld.String()
+}
+
+func (b Block) Hash() (chain.Hash, error) {
+  jsnBlk, err := json.Marshal(b)
+  if err != nil {
+    return chain.Hash{}, err
+  }
+  hash := make([]byte, 64)
+  sha3.ShakeSum256(hash, jsnBlk)
+  return chain.Hash(hash[:32]), nil
 }

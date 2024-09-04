@@ -67,15 +67,15 @@ func useState() error {
   if err != nil {
     return err
   }
-  err = sta.Send(acc, chain.Address("to"), 123)
+  err = sta.Send(acc, chain.Address("recipient"), 123)
   if err != nil {
     return err
   }
-  err = sta.Send(acc, chain.Address("to"), 456)
+  err = sta.Send(acc, chain.Address("recipient"), 456)
   if err != nil {
     return err
   }
-  fmt.Printf("%+v\n", sta)
+  fmt.Printf("* State\n%v\n", sta)
   return nil
 }
 
