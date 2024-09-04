@@ -35,6 +35,10 @@ func NewAddress(pub *ecdsa.PublicKey) (Address, error) {
 
 type Hash [32]byte
 
+func (h Hash) String() string {
+  return hex.EncodeToString(h[:])
+}
+
 type Tx struct {
   From Address `json:"from"`
   To Address `json:"to"`

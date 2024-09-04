@@ -67,6 +67,7 @@ func useState() error {
   if err != nil {
     return err
   }
+
   err = sta.Send(acc, chain.Address("recipient"), 123)
   if err != nil {
     return err
@@ -76,6 +77,14 @@ func useState() error {
     return err
   }
   fmt.Printf("* State\n%v\n", sta)
+
+  cloSta := sta.Clone()
+  blk, err := cloSta.CreateBlock()
+  if err != nil {
+    return err
+  }
+  fmt.Printf("* Clone State\n%v\n", cloSta)
+  fmt.Printf("* Block\n%v\n", blk)
   return nil
 }
 

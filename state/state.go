@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -34,6 +35,15 @@ func NewState(gen store.Genesis) *State {
     sta.pndBals[addr] = amount
   }
   return sta
+}
+
+func (s *State) Clone() *State {
+  return &State{
+    balances: maps.Clone(s.balances),
+    nonces: maps.Clone(s.nonces),
+    lastBlock: s.lastBlock,
+    pndTxs: maps.Clone(s.pndTxs),
+  }
 }
 
 func (s *State) String() string {
@@ -69,18 +79,10 @@ func (s *State) String() string {
   return bld.String()
 }
 
-func (s *State) clone() *State {
-  return &State{
-    balances: maps.Clone(s.balances),
-    nonces: maps.Clone(s.nonces),
-    lastBlock: s.lastBlock,
-  }
-}
-
 func (s *State) Send(from account.Account, to chain.Address, value uint) error {
   addr := from.Address()
   if s.pndBals[addr] < value {
-    return fmt.Errorf("%v insufficient funds", addr)
+    return fmt.Errorf("insufficient funds %.7s", addr)
   }
   nonce := s.pndNces[addr] + 1
   tx := chain.Tx{
@@ -99,4 +101,58 @@ func (s *State) Send(from account.Account, to chain.Address, value uint) error {
   s.pndBals[to] += value
   s.pndNces[addr] = nonce
   return nil
+}
+
+func (s *State) applyTx(tx chain.SigTx) error {
+  hash, err := tx.Hash()
+  if err != nil {
+    return err
+  }
+  valid, err := account.Verify(tx)
+  if err != nil {
+    return err
+  }
+  if !valid {
+    return fmt.Errorf("invalid signature %.5x", hash)
+  }
+  if s.balances[tx.From] < tx.Value {
+    return fmt.Errorf("insufficient funds %.5x", hash)
+  }
+  if tx.Nonce != s.nonces[tx.From] + 1 {
+    return fmt.Errorf("invalid nonce %.5x", hash)
+  }
+  s.balances[tx.From] -= tx.Value
+  s.balances[tx.To] += tx.Value
+  s.nonces[tx.From]++
+  return nil
+}
+
+func (s *State) CreateBlock() (store.Block, error) {
+  pndTxs := make([]chain.SigTx, 0, len(s.pndTxs))
+  for _, tx := range s.pndTxs {
+    pndTxs = append(pndTxs, tx)
+  }
+  slices.SortFunc(pndTxs, func(a, b chain.SigTx) int {
+    cmp := strings.Compare(string(a.From), string(b.From))
+    if cmp != 0 {
+      return cmp
+    }
+    return int(a.Nonce) - int(b.Nonce)
+  })
+  vldTxs := make([]chain.SigTx, 0, len(s.pndTxs))
+  for _, tx := range pndTxs {
+    err := s.applyTx(tx)
+    if err != nil {
+      fmt.Printf("REJECTED %s\n", err)
+      continue
+    }
+    vldTxs = append(vldTxs, tx)
+  }
+  if len(vldTxs) == 0 {
+    return store.Block{}, fmt.Errorf("none of txs is valid")
+  }
+  blk := store.Block{
+    Number: s.lastBlock.Number + 1, Parent: s.lastBlock.Parent, Txs: vldTxs,
+  }
+  return blk, nil
 }

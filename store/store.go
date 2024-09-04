@@ -56,7 +56,7 @@ type Block struct {
   Number uint `json:"number"`
   Parent chain.Hash `json:"parent"`
   Time time.Time `json:"time"`
-  Txs []chain.Tx `json:"txs"`
+  Txs []chain.SigTx `json:"txs"`
 }
 
 func (b Block) String() string {
