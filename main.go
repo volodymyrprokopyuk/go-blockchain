@@ -52,46 +52,60 @@ func useAccount() error {
 
 func useState() error {
   // init state
-  addr := chain.Address("9338ccb4ac74594f1f84ce6b46403350a55fc0340cd1c4814af7b6aea765ab4b")
-  gen := store.NewGenesis("Blockchain", addr, 1000)
-  err := gen.Write(blockstoreDir)
-  if err != nil {
-    return err
-  }
-  gen, err = store.ReadGenesis(blockstoreDir)
+  // addr := chain.Address("9338ccb4ac74594f1f84ce6b46403350a55fc0340cd1c4814af7b6aea765ab4b")
+  // gen := store.NewGenesis("Blockchain", addr, 1000)
+  // err := gen.Write(blockstoreDir)
+  // if err != nil {
+  //   return err
+  // }
+  gen, err := store.ReadGenesis(blockstoreDir)
   if err != nil {
     return err
   }
   sta := state.NewState(gen)
-  path := filepath.Join(keystoreDir, string(addr))
-  acc, err := account.Read(path, pwd)
-  if err != nil {
-    return err
-  }
+
+  // read account
+  // path := filepath.Join(keystoreDir, string(addr))
+  // acc, err := account.Read(path, pwd)
+  // if err != nil {
+  //   return err
+  // }
 
   // send txs
-  err = sta.Send(acc, chain.Address("recipient"), 123)
-  if err != nil {
-    return err
-  }
-  err = sta.Send(acc, chain.Address("recipient"), 456)
-  if err != nil {
-    return err
-  }
-  fmt.Printf("* State\n%v\n", sta)
+  // err = sta.Send(acc, chain.Address("recipient"), 123)
+  // if err != nil {
+  //   return err
+  // }
+  // err = sta.Send(acc, chain.Address("recipient"), 456)
+  // if err != nil {
+  //   return err
+  // }
+  // fmt.Printf("* State\n%v\n", sta)
 
   // create block
-  cloSta := sta.Clone()
-  blk, err := cloSta.CreateBlock()
-  if err != nil {
-    return err
-  }
-  fmt.Printf("* Clone State\n%v\n", cloSta)
-  fmt.Printf("* Block\n%v\n", blk)
+  // cloSta := sta.Clone()
+  // blk, err := cloSta.CreateBlock()
+  // if err != nil {
+  //   return err
+  // }
+  // fmt.Printf("* Clone State\n%v\n", cloSta)
+  // fmt.Printf("* Block\n%v\n", blk)
 
   // apply block
-  cloSta = sta.Clone()
-  err = cloSta.ApplyBlock(blk)
+  // cloSta = sta.Clone()
+  // err = cloSta.ApplyBlock(blk)
+  // if err != nil {
+  //   return err
+  // }
+  // sta.Apply(cloSta)
+  // fmt.Printf("* State\n%v\n", sta)
+
+  // write block
+  // return blk.Write(blockstoreDir)
+
+  // read block store
+  cloSta := sta.Clone()
+  err = cloSta.ReadStore(blockstoreDir)
   if err != nil {
     return err
   }

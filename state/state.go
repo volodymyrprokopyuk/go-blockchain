@@ -1,8 +1,11 @@
 package state
 
 import (
+	"bufio"
 	"fmt"
 	"maps"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -10,6 +13,10 @@ import (
 	"github.com/volodymyrprokopyuk/go-blockchain/account"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/store"
+)
+
+const (
+  blocksFile = "blocks.store"
 )
 
 type State struct {
@@ -162,7 +169,8 @@ func (s *State) CreateBlock() (store.Block, error) {
     return store.Block{}, fmt.Errorf("none of txs is valid")
   }
   blk := store.Block{
-    Number: s.lastBlock.Number + 1, Parent: s.lastBlock.Parent, Txs: vldTxs,
+    Number: s.lastBlock.Number + 1, Parent: s.lastBlock.Parent,
+    Time: time.Now(), Txs: vldTxs,
   }
   return blk, nil
 }
@@ -175,13 +183,13 @@ func (s *State) ApplyBlock(blk store.Block) error {
   if blk.Number != s.lastBlock.Number + 1 {
     return fmt.Errorf("invalid block number %.7s", hash)
   }
-  // lstHash, err := s.lastBlock.Hash()
-  // if err != nil {
-  //   return err
-  // }
-  // if blk.Parent != lstHash {
-  //   return fmt.Errorf("invalid parent hash %.7s", hash)
-  // }
+  lstHash, err := s.lastBlock.Hash()
+  if err != nil {
+    return err
+  }
+  if blk.Parent != lstHash {
+    return fmt.Errorf("invalid parent hash %.7s", hash)
+  }
   for _, tx := range blk.Txs {
     err := s.applyTx(tx)
     if err != nil {
@@ -190,4 +198,29 @@ func (s *State) ApplyBlock(blk store.Block) error {
   }
   s.lastBlock = blk
   return nil
+}
+
+func (s *State) ReadStore(dir string) error {
+  path := filepath.Join(dir, blocksFile)
+  file, err := os.Open(path)
+  if err != nil {
+    return err
+  }
+  defer file.Close()
+  sca := bufio.NewScanner(file)
+  for sca.Scan() {
+    jsnBlk := sca.Bytes()
+    if len(jsnBlk) == 0 {
+      break
+    }
+    blk, err := store.ReadBlock(jsnBlk)
+    if err != nil {
+      return err
+    }
+    err = s.ApplyBlock(blk)
+    if err != nil {
+      return err
+    }
+  }
+  return sca.Err()
 }

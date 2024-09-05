@@ -14,6 +14,7 @@ import (
 
 const (
   genesisFile = "genesis.json"
+  blocksFile = "blocks.store"
 )
 
 type Genesis struct {
@@ -70,6 +71,9 @@ func (b Block) String() string {
 }
 
 func (b Block) Hash() (chain.Hash, error) {
+  if b.Number == 0 && (b.Parent == chain.Hash{}) && len(b.Txs) == 0 {
+    return chain.Hash{}, nil
+  }
   jsnBlk, err := json.Marshal(b)
   if err != nil {
     return chain.Hash{}, err
@@ -77,4 +81,39 @@ func (b Block) Hash() (chain.Hash, error) {
   hash := make([]byte, 64)
   sha3.ShakeSum256(hash, jsnBlk)
   return chain.Hash(hash[:32]), nil
+}
+
+type storeBlock struct {
+  Hash chain.Hash `json:"hash"`
+  Block Block `json:"block"`
+}
+
+func (b Block) Write(dir string) error {
+  hash, err := b.Hash()
+  if err != nil {
+    return err
+  }
+  blk := storeBlock{Hash: hash, Block: b}
+  path := filepath.Join(dir, blocksFile)
+  file, err := os.OpenFile(path, os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0600)
+  if err != nil {
+    return err
+  }
+  defer file.Close()
+  err = json.NewEncoder(file).Encode(blk)
+  if err != nil {
+    return err
+  }
+  _, err = file.WriteString("\n")
+  return err
+}
+
+func ReadBlock(jsnBlk []byte) (Block, error) {
+  fmt.Println("=>", string(jsnBlk))
+  var stoBlk storeBlock
+  err := json.Unmarshal(jsnBlk, &stoBlk)
+  if err != nil {
+    return Block{}, err
+  }
+  return stoBlk.Block, nil
 }

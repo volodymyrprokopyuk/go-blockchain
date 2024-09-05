@@ -39,6 +39,15 @@ func (h Hash) String() string {
   return hex.EncodeToString(h[:])
 }
 
+func (h Hash) MarshalText() ([]byte, error) {
+  return []byte(hex.EncodeToString(h[:])), nil
+}
+
+func (h *Hash) UnmarshalText(hash []byte) error {
+  _, err := hex.Decode(h[:], hash)
+  return err
+}
+
 type Tx struct {
   From Address `json:"from"`
   To Address `json:"to"`
