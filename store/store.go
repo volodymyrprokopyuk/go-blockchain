@@ -62,7 +62,7 @@ type Block struct {
 func (b Block) String() string {
   hash, _ := b.Hash()
   var bld strings.Builder
-  bld.WriteString(fmt.Sprintf("%d %.5x -> %.5x\n", b.Number, hash, b.Parent))
+  bld.WriteString(fmt.Sprintf("%d %.7s -> %.7s\n", b.Number, hash, b.Parent))
   for _, tx := range b.Txs {
     bld.WriteString(fmt.Sprintf("  %s\n", tx))
   }

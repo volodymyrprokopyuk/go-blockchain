@@ -46,6 +46,16 @@ func (s *State) Clone() *State {
   }
 }
 
+func (s *State) Apply(sta *State) {
+  n := 100
+  s.balances = sta.balances
+  s.nonces = sta.nonces
+  s.lastBlock = sta.lastBlock
+  s.pndTxs = make(map[chain.Hash]chain.SigTx, n)
+  s.pndBals = maps.Clone(s.balances)
+  s.pndNces = maps.Clone(s.nonces)
+}
+
 func (s *State) String() string {
   var bld strings.Builder
   bld.WriteString("Balances\n")
@@ -53,11 +63,11 @@ func (s *State) String() string {
     bld.WriteString(fmt.Sprintf("  %.7s: %20d\n", addr, amount))
   }
   bld.WriteString("Nonces\n")
+  for addr, nonce := range s.nonces {
+    bld.WriteString(fmt.Sprintf("  %.7s: %26d\n", addr, nonce))
+  }
   bld.WriteString("Last block\n")
   bld.WriteString(fmt.Sprintf("  %s\n", s.lastBlock))
-  for addr, nonce := range s.nonces {
-    bld.WriteString(fmt.Sprintf("  %.7s: %5d\n", addr, nonce))
-  }
   if len(s.pndTxs) > 0 {
     bld.WriteString("Pending txs\n")
     for _, tx := range s.pndTxs {
@@ -113,13 +123,13 @@ func (s *State) applyTx(tx chain.SigTx) error {
     return err
   }
   if !valid {
-    return fmt.Errorf("invalid signature %.5x", hash)
+    return fmt.Errorf("invalid signature %.7s", hash)
   }
   if s.balances[tx.From] < tx.Value {
-    return fmt.Errorf("insufficient funds %.5x", hash)
+    return fmt.Errorf("insufficient funds %.7s", hash)
   }
   if tx.Nonce != s.nonces[tx.From] + 1 {
-    return fmt.Errorf("invalid nonce %.5x", hash)
+    return fmt.Errorf("invalid nonce %.7s", hash)
   }
   s.balances[tx.From] -= tx.Value
   s.balances[tx.To] += tx.Value
@@ -155,4 +165,29 @@ func (s *State) CreateBlock() (store.Block, error) {
     Number: s.lastBlock.Number + 1, Parent: s.lastBlock.Parent, Txs: vldTxs,
   }
   return blk, nil
+}
+
+func (s *State) ApplyBlock(blk store.Block) error {
+  hash, err := blk.Hash()
+  if err != nil {
+    return err
+  }
+  if blk.Number != s.lastBlock.Number + 1 {
+    return fmt.Errorf("invalid block number %.7s", hash)
+  }
+  // lstHash, err := s.lastBlock.Hash()
+  // if err != nil {
+  //   return err
+  // }
+  // if blk.Parent != lstHash {
+  //   return fmt.Errorf("invalid parent hash %.7s", hash)
+  // }
+  for _, tx := range blk.Txs {
+    err := s.applyTx(tx)
+    if err != nil {
+      return err
+    }
+  }
+  s.lastBlock = blk
+  return nil
 }

@@ -51,6 +51,7 @@ func useAccount() error {
 }
 
 func useState() error {
+  // init state
   addr := chain.Address("9338ccb4ac74594f1f84ce6b46403350a55fc0340cd1c4814af7b6aea765ab4b")
   gen := store.NewGenesis("Blockchain", addr, 1000)
   err := gen.Write(blockstoreDir)
@@ -68,6 +69,7 @@ func useState() error {
     return err
   }
 
+  // send txs
   err = sta.Send(acc, chain.Address("recipient"), 123)
   if err != nil {
     return err
@@ -78,6 +80,7 @@ func useState() error {
   }
   fmt.Printf("* State\n%v\n", sta)
 
+  // create block
   cloSta := sta.Clone()
   blk, err := cloSta.CreateBlock()
   if err != nil {
@@ -85,6 +88,15 @@ func useState() error {
   }
   fmt.Printf("* Clone State\n%v\n", cloSta)
   fmt.Printf("* Block\n%v\n", blk)
+
+  // apply block
+  cloSta = sta.Clone()
+  err = cloSta.ApplyBlock(blk)
+  if err != nil {
+    return err
+  }
+  sta.Apply(cloSta)
+  fmt.Printf("* State\n%v\n", sta)
   return nil
 }
 
