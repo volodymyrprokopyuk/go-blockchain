@@ -1,11 +1,8 @@
 package state
 
 import (
-	"bufio"
 	"fmt"
 	"maps"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -13,10 +10,6 @@ import (
 	"github.com/volodymyrprokopyuk/go-blockchain/account"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/store"
-)
-
-const (
-  blocksFile = "blocks.store"
 )
 
 type State struct {
@@ -29,13 +22,12 @@ type State struct {
 }
 
 func NewState(gen store.Genesis) *State {
-  n := 100
   sta := &State{
-    balances: make(map[chain.Address]uint, n),
-    nonces: make(map[chain.Address]uint, n),
-    pndTxs: make(map[chain.Hash]chain.SigTx, n),
-    pndBals: make(map[chain.Address]uint, n),
-    pndNces: make(map[chain.Address]uint, n),
+    balances: make(map[chain.Address]uint, 10),
+    nonces: make(map[chain.Address]uint, 10),
+    pndTxs: make(map[chain.Hash]chain.SigTx, 10),
+    pndBals: make(map[chain.Address]uint, 10),
+    pndNces: make(map[chain.Address]uint, 10),
   }
   for addr, amount := range gen.Balances {
     sta.balances[addr] = amount
@@ -54,11 +46,10 @@ func (s *State) Clone() *State {
 }
 
 func (s *State) Apply(sta *State) {
-  n := 100
   s.balances = sta.balances
   s.nonces = sta.nonces
   s.lastBlock = sta.lastBlock
-  s.pndTxs = make(map[chain.Hash]chain.SigTx, n)
+  s.pndTxs = make(map[chain.Hash]chain.SigTx, 10)
   s.pndBals = maps.Clone(s.balances)
   s.pndNces = maps.Clone(s.nonces)
 }
@@ -198,29 +189,4 @@ func (s *State) ApplyBlock(blk store.Block) error {
   }
   s.lastBlock = blk
   return nil
-}
-
-func (s *State) ReadStore(dir string) error {
-  path := filepath.Join(dir, blocksFile)
-  file, err := os.Open(path)
-  if err != nil {
-    return err
-  }
-  defer file.Close()
-  sca := bufio.NewScanner(file)
-  for sca.Scan() {
-    jsnBlk := sca.Bytes()
-    if len(jsnBlk) == 0 {
-      break
-    }
-    blk, err := store.ReadBlock(jsnBlk)
-    if err != nil {
-      return err
-    }
-    err = s.ApplyBlock(blk)
-    if err != nil {
-      return err
-    }
-  }
-  return sca.Err()
 }

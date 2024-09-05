@@ -1,6 +1,6 @@
 * Go blockchain
 
-- * blockchain state (distributed system data store)
+- * DONE blockchain state (distributed system data store)
   - genesis file
   - transactions txs
     - from, to, value, accNonce, time, sig
@@ -9,7 +9,7 @@
     - txs
   - state
     - balances, accNonces, storage, lastBlock
-- * block store
+- * DONE block store
   - data dir
   - genesis file
   - blocks DB

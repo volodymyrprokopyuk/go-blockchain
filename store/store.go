@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -108,12 +109,33 @@ func (b Block) Write(dir string) error {
   return err
 }
 
-func ReadBlock(jsnBlk []byte) (Block, error) {
-  fmt.Println("=>", string(jsnBlk))
-  var stoBlk storeBlock
-  err := json.Unmarshal(jsnBlk, &stoBlk)
+func ReadBlocks(dir string) (
+  func(yield func(err error, blk Block) bool), func(), error,
+) {
+  path := filepath.Join(dir, blocksFile)
+  file, err := os.Open(path)
   if err != nil {
-    return Block{}, err
+    return nil, nil, err
   }
-  return stoBlk.Block, nil
+  sca := bufio.NewScanner(file)
+  blocks := func(yield func(err error, blk Block) bool) {
+    more := true
+    for sca.Scan() && more {
+      jsnBlk := sca.Bytes()
+      if len(jsnBlk) == 0 {
+        break
+      }
+      var stoBlk storeBlock
+      err := json.Unmarshal(jsnBlk, &stoBlk)
+      if err != nil {
+        more = yield(err, Block{})
+        continue
+      }
+      more = yield(nil, stoBlk.Block)
+    }
+  }
+  close := func() {
+    file.Close()
+  }
+  return blocks, close, nil
 }

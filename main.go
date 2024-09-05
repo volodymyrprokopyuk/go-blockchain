@@ -105,9 +105,19 @@ func useState() error {
 
   // read block store
   cloSta := sta.Clone()
-  err = cloSta.ReadStore(blockstoreDir)
+  blocks, closeStore, err := store.ReadBlocks(blockstoreDir)
   if err != nil {
     return err
+  }
+  defer closeStore()
+  for err, blk := range blocks {
+    if err != nil {
+      return err
+    }
+    err = cloSta.ApplyBlock(blk)
+    if err != nil {
+      return err
+    }
   }
   sta.Apply(cloSta)
   fmt.Printf("* State\n%v\n", sta)
