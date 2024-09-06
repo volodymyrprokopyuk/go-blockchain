@@ -25,23 +25,19 @@ func (s *State) Nonce(addr chain.Address) uint {
 }
 
 func NewState(gen store.Genesis) *State {
-  sta := &State{
-    balances: make(map[chain.Address]uint),
+  return &State{
+    balances: maps.Clone(gen.Balances),
     nonces: make(map[chain.Address]uint),
     txs: make(map[chain.Hash]chain.SigTx),
+    Pending: &State{
+      balances: maps.Clone(gen.Balances),
+      nonces: make(map[chain.Address]uint),
+      txs: make(map[chain.Hash]chain.SigTx),
+    },
   }
-  for addr, amount := range gen.Balances {
-    sta.balances[addr] = amount
-  }
-  sta.Pending = &State{
-    balances: maps.Clone(sta.balances),
-    nonces: make(map[chain.Address]uint),
-    txs: make(map[chain.Hash]chain.SigTx),
-  }
-  return sta
 }
 
-func (s *State) Clone() *State {
+func (s *State) Clone2() *State {
   sta := &State{
     balances: maps.Clone(s.balances),
     nonces: maps.Clone(s.nonces),
@@ -50,6 +46,26 @@ func (s *State) Clone() *State {
   }
   sta.Pending = &State{txs: maps.Clone(s.Pending.txs)}
   return sta
+}
+
+func (s *State) Clone() *State {
+  return &State{
+    balances: maps.Clone(s.balances),
+    nonces: maps.Clone(s.nonces),
+    lastBlock: s.lastBlock,
+    txs: maps.Clone(s.txs),
+    Pending: &State{
+      txs: maps.Clone(s.Pending.txs),
+    },
+  }
+}
+
+func (s *State) ResetPending() {
+  s.Pending = &State{
+    balances: maps.Clone(s.balances),
+    nonces: maps.Clone(s.nonces),
+    txs: make(map[chain.Hash]chain.SigTx),
+  }
 }
 
 func (s *State) Apply(sta *State) {
