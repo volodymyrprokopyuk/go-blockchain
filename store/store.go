@@ -121,12 +121,17 @@ func ReadBlocks(dir string) (
   blocks := func(yield func(err error, blk Block) bool) {
     more := true
     for sca.Scan() && more {
+      err := sca.Err()
+      if err != nil {
+        more = yield(err, Block{})
+        return
+      }
       jsnBlk := sca.Bytes()
       if len(jsnBlk) == 0 {
-        break
+        continue
       }
       var stoBlk storeBlock
-      err := json.Unmarshal(jsnBlk, &stoBlk)
+      err = json.Unmarshal(jsnBlk, &stoBlk)
       if err != nil {
         more = yield(err, Block{})
         continue
