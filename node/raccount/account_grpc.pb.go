@@ -4,7 +4,7 @@
 // - protoc             v5.27.3
 // source: account.proto
 
-package account
+package raccount
 
 import (
 	context "context"
@@ -19,14 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Account_Create_FullMethodName = "/Account/Create"
+	Account_AccountCreate_FullMethodName = "/Account/AccountCreate"
 )
 
 // AccountClient is the client API for Account service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AccountClient interface {
-	Create(ctx context.Context, in *AccountCreateReq, opts ...grpc.CallOption) (*AccountCreateRes, error)
+	AccountCreate(ctx context.Context, in *AccountCreateReq, opts ...grpc.CallOption) (*AccountCreateRes, error)
 }
 
 type accountClient struct {
@@ -37,10 +37,10 @@ func NewAccountClient(cc grpc.ClientConnInterface) AccountClient {
 	return &accountClient{cc}
 }
 
-func (c *accountClient) Create(ctx context.Context, in *AccountCreateReq, opts ...grpc.CallOption) (*AccountCreateRes, error) {
+func (c *accountClient) AccountCreate(ctx context.Context, in *AccountCreateReq, opts ...grpc.CallOption) (*AccountCreateRes, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AccountCreateRes)
-	err := c.cc.Invoke(ctx, Account_Create_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Account_AccountCreate_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (c *accountClient) Create(ctx context.Context, in *AccountCreateReq, opts .
 // All implementations must embed UnimplementedAccountServer
 // for forward compatibility.
 type AccountServer interface {
-	Create(context.Context, *AccountCreateReq) (*AccountCreateRes, error)
+	AccountCreate(context.Context, *AccountCreateReq) (*AccountCreateRes, error)
 	mustEmbedUnimplementedAccountServer()
 }
 
@@ -62,8 +62,8 @@ type AccountServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAccountServer struct{}
 
-func (UnimplementedAccountServer) Create(context.Context, *AccountCreateReq) (*AccountCreateRes, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
+func (UnimplementedAccountServer) AccountCreate(context.Context, *AccountCreateReq) (*AccountCreateRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AccountCreate not implemented")
 }
 func (UnimplementedAccountServer) mustEmbedUnimplementedAccountServer() {}
 func (UnimplementedAccountServer) testEmbeddedByValue()                 {}
@@ -86,20 +86,20 @@ func RegisterAccountServer(s grpc.ServiceRegistrar, srv AccountServer) {
 	s.RegisterService(&Account_ServiceDesc, srv)
 }
 
-func _Account_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Account_AccountCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AccountCreateReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AccountServer).Create(ctx, in)
+		return srv.(AccountServer).AccountCreate(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Account_Create_FullMethodName,
+		FullMethod: Account_AccountCreate_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccountServer).Create(ctx, req.(*AccountCreateReq))
+		return srv.(AccountServer).AccountCreate(ctx, req.(*AccountCreateReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -112,8 +112,8 @@ var Account_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*AccountServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Create",
-			Handler:    _Account_Create_Handler,
+			MethodName: "AccountCreate",
+			Handler:    _Account_AccountCreate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

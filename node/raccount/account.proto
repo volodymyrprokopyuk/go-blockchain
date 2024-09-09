@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "./account";
+option go_package = "./raccount";
 
 message AccountCreateReq {
   string Password = 1;
@@ -11,5 +11,5 @@ message AccountCreateRes {
 }
 
 service Account {
-  rpc Create(AccountCreateReq) returns (AccountCreateRes);
+  rpc AccountCreate(AccountCreateReq) returns (AccountCreateRes);
 }

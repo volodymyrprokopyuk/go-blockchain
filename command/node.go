@@ -10,15 +10,6 @@ func nodeCmd() *cobra.Command {
     Use: "node",
     Short: "Manages the blockchain node",
   }
-  cmd.PersistentFlags().StringP(
-    "keystore", "k", ".keystore", "key store directory",
-  )
-  cmd.PersistentFlags().StringP(
-    "blockstore", "b", ".blockstore", "block store directory",
-  )
-  cmd.PersistentFlags().StringP(
-    "node", "n", "localhost:1122", "node address host:port",
-  )
   cmd.AddCommand(nodeStartCmd())
   return cmd
 }

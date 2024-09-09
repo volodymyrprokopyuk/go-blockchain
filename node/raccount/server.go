@@ -1,4 +1,4 @@
-package account
+package raccount
 
 import (
 	"context"
@@ -8,15 +8,15 @@ import (
 )
 
 type AccountSrv struct {
-  keyStoreDir string
   UnimplementedAccountServer
+  keyStoreDir string
 }
 
 func NewAccountSrv(keyStoreDir string) *AccountSrv {
   return &AccountSrv{keyStoreDir: keyStoreDir}
 }
 
-func (s *AccountSrv) Create(
+func (s *AccountSrv) AccountCreate(
   _ context.Context, req *AccountCreateReq,
 ) (*AccountCreateRes, error) {
   pwd := []byte(req.Password)

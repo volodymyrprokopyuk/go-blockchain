@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/node/account"
+	"github.com/volodymyrprokopyuk/go-blockchain/node/raccount"
+	"github.com/volodymyrprokopyuk/go-blockchain/node/rstore"
 	"google.golang.org/grpc"
 )
 
@@ -32,7 +33,9 @@ func (n *Node) serve() error {
   defer lis.Close()
   fmt.Printf("* gRPC listening on %v\n", n.nodeAddr)
   grpcSrv := grpc.NewServer()
-  accSrv := account.NewAccountSrv(n.keyStoreDir)
-  account.RegisterAccountServer(grpcSrv, accSrv)
+  accSrv := raccount.NewAccountSrv(n.keyStoreDir)
+  raccount.RegisterAccountServer(grpcSrv, accSrv)
+  stoSrv := rstore.NewStoreSrv(n.keyStoreDir, n.blockStoreDir)
+  rstore.RegisterStoreServer(grpcSrv, stoSrv)
   return grpcSrv.Serve(lis)
 }

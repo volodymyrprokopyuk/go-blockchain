@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/volodymyrprokopyuk/go-blockchain/node/account"
+	"github.com/volodymyrprokopyuk/go-blockchain/node/raccount"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -15,9 +15,6 @@ func accountCmd() *cobra.Command {
     Use: "account",
     Short: "Manages accounts on the blockchain",
   }
-  cmd.PersistentFlags().StringP(
-    "node", "n", "localhost:1122", "node address host:port",
-  )
   cmd.AddCommand(accountCreateCmd())
   return cmd
 }
@@ -30,9 +27,9 @@ func accountCreate(addr, pwd string) (string, error) {
     return "", err
   }
   defer conn.Close()
-  cln := account.NewAccountClient(conn)
-  req := &account.AccountCreateReq{Password: pwd}
-  res, err := cln.Create(context.Background(), req)
+  cln := raccount.NewAccountClient(conn)
+  req := &raccount.AccountCreateReq{Password: pwd}
+  res, err := cln.AccountCreate(context.Background(), req)
   if err != nil {
     return "", err
   }

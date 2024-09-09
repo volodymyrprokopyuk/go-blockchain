@@ -12,6 +12,15 @@ func ChainCmd() *cobra.Command {
     SilenceUsage: true,
     SilenceErrors: true,
   }
-  cmd.AddCommand(nodeCmd(), accountCmd())
+  cmd.PersistentFlags().StringP(
+    "keystore", "k", ".keystore", "key store directory",
+  )
+  cmd.PersistentFlags().StringP(
+    "blockstore", "b", ".blockstore", "block store directory",
+  )
+  cmd.PersistentFlags().StringP(
+    "node", "n", "localhost:1122", "node address host:port",
+  )
+  cmd.AddCommand(nodeCmd(), storeCmd(), accountCmd())
   return cmd
 }

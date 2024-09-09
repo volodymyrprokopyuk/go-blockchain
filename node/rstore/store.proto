@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option go_package = "./rstore";
+
+message StoreInitReq {
+  string Chain = 1;
+  string Password = 2;
+  uint64 Balance = 3;
+}
+
+message StoreInitRes {
+  string Address = 1;
+}
+
+service Store {
+  rpc StoreInit(StoreInitReq) returns (StoreInitRes);
+}

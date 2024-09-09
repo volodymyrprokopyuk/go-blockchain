@@ -24,9 +24,9 @@ type Genesis struct {
   Balances map[chain.Address]uint `json:"balances"`
 }
 
-func NewGenesis(name string, addr chain.Address, amount uint) Genesis {
+func NewGenesis(name string, addr chain.Address, balance uint) Genesis {
   bals := make(map[chain.Address]uint, 1)
-  bals[addr] = amount
+  bals[addr] = balance
   return Genesis{Chain: name, Time: time.Now(), Balances: bals}
 }
 
