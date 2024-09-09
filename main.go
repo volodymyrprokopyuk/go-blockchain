@@ -8,6 +8,7 @@ import (
 
 	"github.com/volodymyrprokopyuk/go-blockchain/account"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
+	"github.com/volodymyrprokopyuk/go-blockchain/command"
 	"github.com/volodymyrprokopyuk/go-blockchain/state"
 	"github.com/volodymyrprokopyuk/go-blockchain/store"
 )
@@ -156,7 +157,9 @@ func readState() error {
 func main() {
   // err := useAccount()
   // err := writeState()
-  err := readState()
+  // err := readState()
+  cmd := command.ChainCmd()
+  err := cmd.Execute()
   if err != nil {
     fmt.Println(err)
     os.Exit(1)
