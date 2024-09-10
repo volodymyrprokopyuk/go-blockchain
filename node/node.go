@@ -8,6 +8,7 @@ import (
 	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/store"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/raccount"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rstore"
+	"github.com/volodymyrprokopyuk/go-blockchain/node/rtx"
 	"google.golang.org/grpc"
 )
 
@@ -62,5 +63,7 @@ func (n *Node) servegRPC() error {
   raccount.RegisterAccountServer(grpcSrv, accSrv)
   stoSrv := rstore.NewStoreSrv(n.keyStoreDir, n.blockStoreDir)
   rstore.RegisterStoreServer(grpcSrv, stoSrv)
+  txSrv := rtx.NewTxSrv(n.keyStoreDir, n.state)
+  rtx.RegisterTxServer(grpcSrv, txSrv)
   return grpcSrv.Serve(lis)
 }
