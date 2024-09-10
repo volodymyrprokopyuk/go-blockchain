@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/chain"
+	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/chain"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -123,7 +123,7 @@ func ReadBlocks(dir string) (
     for sca.Scan() && more {
       err := sca.Err()
       if err != nil {
-        more = yield(err, Block{})
+        yield(err, Block{})
         return
       }
       jsnBlk := sca.Bytes()

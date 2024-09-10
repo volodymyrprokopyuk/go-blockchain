@@ -12,6 +12,8 @@ end
 
 set -l account node/raccount/account.proto
 set -l store node/rstore/store.proto
+set -l tx node/rtx/tx.proto
 
 compile $account
 compile $store
+compile $tx

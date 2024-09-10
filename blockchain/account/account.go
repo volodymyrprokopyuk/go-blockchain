@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/dustinxie/ecc"
-	"github.com/volodymyrprokopyuk/go-blockchain/chain"
+	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/chain"
 	"golang.org/x/crypto/argon2"
 )
 

@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/account"
-	"github.com/volodymyrprokopyuk/go-blockchain/chain"
+	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/account"
+	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/chain"
+	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/state"
+	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/store"
 	"github.com/volodymyrprokopyuk/go-blockchain/command"
-	"github.com/volodymyrprokopyuk/go-blockchain/state"
-	"github.com/volodymyrprokopyuk/go-blockchain/store"
 )
 
 const (

@@ -31,3 +31,7 @@
 - * consensus (consensus mechanisms)
 - * DONE wallet, account (cryptography)
   - digital signature
+
+- TODO
+  - Concurrent access to State e.g. from gRPC
+    - Use channels with a RWMutex

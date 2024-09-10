@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/account"
-	"github.com/volodymyrprokopyuk/go-blockchain/store"
+	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/account"
+	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/store"
 )
 
 type StoreSrv struct {

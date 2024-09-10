@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+option go_package = "./rtx";
+
+import "google/protobuf/timestamp.proto";
+
+message TxSignReq {
+  string From = 1;
+  string To = 2;
+  uint64 Value = 3;
+  string Password = 4;
+}
+
+message TxSignRes {
+  string From = 1;
+  string To = 2;
+  uint64 Value = 3;
+  uint64 Nonce = 4;
+  google.protobuf.Timestamp Time = 5;
+  bytes Sig = 6;
+}
+
+message TxSendReq {
+  string From = 1;
+  string To = 2;
+  uint64 Value = 3;
+  uint64 Nonce = 4;
+  google.protobuf.Timestamp Time = 5;
+  bytes Sig = 6;
+}
+
+message TxSendRes {
+  bytes Hash = 1;
+}
+
+service Tx {
+  rpc TxSign(TxSignReq) returns (TxSignRes);
+  rpc TxSend(TxSendReq) returns (TxSendRes);
+}

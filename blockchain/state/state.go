@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/account"
-	"github.com/volodymyrprokopyuk/go-blockchain/chain"
-	"github.com/volodymyrprokopyuk/go-blockchain/store"
+	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/account"
+	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/chain"
+	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/store"
 )
 
 type State struct {
@@ -35,17 +35,6 @@ func NewState(gen store.Genesis) *State {
       txs: make(map[chain.Hash]chain.SigTx),
     },
   }
-}
-
-func (s *State) Clone2() *State {
-  sta := &State{
-    balances: maps.Clone(s.balances),
-    nonces: maps.Clone(s.nonces),
-    lastBlock: s.lastBlock,
-    txs: maps.Clone(s.txs),
-  }
-  sta.Pending = &State{txs: maps.Clone(s.Pending.txs)}
-  return sta
 }
 
 func (s *State) Clone() *State {

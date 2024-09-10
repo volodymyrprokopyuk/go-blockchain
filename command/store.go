@@ -59,10 +59,10 @@ func storeInitCmd() *cobra.Command {
   cmd.Flags().StringP(
     "password", "p", "", "password to encrypt the account private key",
   )
-  cmd.MarkFlagRequired("password")
+  _ = cmd.MarkFlagRequired("password")
   cmd.Flags().Uint64P(
     "balance", "", 0, "initial balance for the genesis account",
   )
-  cmd.MarkFlagRequired("balance")
+  _ = cmd.MarkFlagRequired("balance")
   return cmd
 }
