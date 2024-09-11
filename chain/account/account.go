@@ -11,13 +11,11 @@ import (
 	"path/filepath"
 
 	"github.com/dustinxie/ecc"
-	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/chain"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"golang.org/x/crypto/argon2"
 )
 
-const (
-  encKeyLen = uint32(32)
-)
+const encKeyLen = uint32(32)
 
 type p256k1PrivateKey struct { // for Account encoding
   chain.P256k1PublicKey

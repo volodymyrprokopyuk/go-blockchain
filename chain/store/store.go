@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/chain"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"golang.org/x/crypto/sha3"
 )
 

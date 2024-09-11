@@ -6,11 +6,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/account"
-	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/chain"
-	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/state"
-	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/store"
-	"github.com/volodymyrprokopyuk/go-blockchain/command"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain/account"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain/state"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain/store"
 )
 
 const (
@@ -36,7 +35,7 @@ func useAccount() error {
     return err
   }
   tx := chain.Tx{
-    From: acc.Address(), To: chain.Address("to"),
+    From: acc.Address(), To: chain.Address("ben"),
     Value: 12, Nonce: 0, Time: time.Now(),
   }
   stx, err := acc.Sign(tx)
@@ -155,11 +154,13 @@ func readState() error {
 }
 
 func main() {
-  // err := useAccount()
+  err := useAccount()
   // err := writeState()
   // err := readState()
-  cmd := command.ChainCmd()
-  err := cmd.Execute()
+
+  // cmd := command.ChainCmd()
+  // err := cmd.Execute()
+
   if err != nil {
     fmt.Println(err)
     os.Exit(1)

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/account"
-	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/chain"
-	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/store"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain/account"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain/store"
 )
 
 type State struct {
