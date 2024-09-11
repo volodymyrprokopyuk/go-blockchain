@@ -5,7 +5,6 @@ import (
 	"maps"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain/account"
@@ -49,6 +48,12 @@ func (s *State) Clone() *State {
   }
 }
 
+func (s *State) Apply(sta *State) {
+  s.balances = sta.balances
+  s.nonces = sta.nonces
+  s.lastBlock = sta.lastBlock
+}
+
 func (s *State) ResetPending() {
   s.Pending = &State{
     balances: maps.Clone(s.balances),
@@ -57,63 +62,57 @@ func (s *State) ResetPending() {
   }
 }
 
-func (s *State) Apply(sta *State) {
-  s.balances = sta.balances
-  s.nonces = sta.nonces
-  s.lastBlock = sta.lastBlock
-}
-
 func (s *State) String() string {
   var bld strings.Builder
   bld.WriteString("Balances\n")
-  for addr, amount := range s.balances {
-    bld.WriteString(fmt.Sprintf("  %.7s: %20d\n", addr, amount))
+  for acc, bal := range s.balances {
+    bld.WriteString(fmt.Sprintf("  %.7s: %29d\n", acc, bal))
   }
   bld.WriteString("Nonces\n")
-  for addr, nonce := range s.nonces {
-    bld.WriteString(fmt.Sprintf("  %.7s: %26d\n", addr, nonce))
+  for acc, nonce := range s.nonces {
+    bld.WriteString(fmt.Sprintf("  %.7s: %35d\n", acc, nonce))
   }
   bld.WriteString("Last block\n")
-  bld.WriteString(fmt.Sprintf("  %s\n", s.lastBlock))
+  bld.WriteString(fmt.Sprintf("  %v", s.lastBlock))
   if s.Pending != nil && len(s.Pending.txs) > 0 {
     bld.WriteString("Pending txs\n")
     for _, tx := range s.Pending.txs {
-      bld.WriteString(fmt.Sprintf("  %s\n", tx))
+      bld.WriteString(fmt.Sprintf("  %v\n", tx))
     }
   }
   if s.Pending != nil && len(s.Pending.balances) > 0 {
     bld.WriteString("Pending balances\n")
-    for addr, amount := range s.Pending.balances {
-      bld.WriteString(fmt.Sprintf("  %.7s: %20d\n", addr, amount))
+    for acc, bal := range s.Pending.balances {
+      bld.WriteString(fmt.Sprintf("  %.7s: %29d\n", acc, bal))
     }
   }
   if s.Pending != nil && len(s.Pending.nonces) > 0 {
     bld.WriteString("Pending nonces\n")
-    for addr, nonce := range s.Pending.nonces {
-      bld.WriteString(fmt.Sprintf("  %.7s: %26d\n", addr, nonce))
+    for acc, nonce := range s.Pending.nonces {
+      bld.WriteString(fmt.Sprintf("  %.7s: %35d\n", acc, nonce))
     }
   }
   return bld.String()
 }
 
-func (s *State) ApplyTx(tx chain.SigTx) error {
-  valid, err := account.Verify(tx)
+func (s *State) ApplyTx(stx chain.SigTx) error {
+  valid, err := account.Verify(stx)
   if err != nil {
     return err
   }
   if !valid {
-    return fmt.Errorf("invalid signature %.7s", tx.Hash())
+    return fmt.Errorf("%.7s: invalid signature", stx.Hash())
   }
-  if tx.Nonce != s.nonces[tx.From] + 1 {
-    return fmt.Errorf("invalid nonce %.7s", tx.Hash())
+  if stx.Nonce != s.nonces[stx.From] + 1 {
+    return fmt.Errorf("%.7s: invalid nonce", stx.Hash())
   }
-  if s.balances[tx.From] < tx.Value {
-    return fmt.Errorf("insufficient funds %.7s", tx.Hash())
+  if s.balances[stx.From] < stx.Value {
+    return fmt.Errorf("%.7s: insufficient funds", stx.Hash())
   }
-  s.balances[tx.From] -= tx.Value
-  s.balances[tx.To] += tx.Value
-  s.nonces[tx.From]++
-  s.txs[tx.Hash()] = tx
+  s.balances[stx.From] -= stx.Value
+  s.balances[stx.To] += stx.Value
+  s.nonces[stx.From]++
+  s.txs[stx.Hash()] = stx
   return nil
 }
 
@@ -129,42 +128,28 @@ func (s *State) CreateBlock() (store.Block, error) {
     }
     return int(a.Nonce) - int(b.Nonce)
   })
-  vldTxs := make([]chain.SigTx, 0, len(pndTxs))
+  txs := make([]chain.SigTx, 0, len(pndTxs))
   for _, tx := range pndTxs {
     err := s.ApplyTx(tx)
     if err != nil {
-      fmt.Printf("REJECTED %s\n", err)
+      fmt.Printf("REJECTED %v\n", err)
       continue
     }
-    vldTxs = append(vldTxs, tx)
+    txs = append(txs, tx)
   }
-  if len(vldTxs) == 0 {
-    return store.Block{}, fmt.Errorf("none of txs is valid")
+  if len(txs) == 0 {
+    return store.Block{}, fmt.Errorf("none of pending txs is valid")
   }
-  hash, err := s.lastBlock.Hash()
-  if err != nil {
-    return store.Block{}, err
-  }
-  blk := store.Block{
-    Number: s.lastBlock.Number + 1, Parent: hash, Time: time.Now(), Txs: vldTxs,
-  }
+  blk := store.NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
   return blk, nil
 }
 
 func (s *State) ApplyBlock(blk store.Block) error {
-  hash, err := blk.Hash()
-  if err != nil {
-    return err
-  }
   if blk.Number != s.lastBlock.Number + 1 {
-    return fmt.Errorf("invalid block number %.7s", hash)
+    return fmt.Errorf("%.7s: invalid block number", blk.Hash())
   }
-  lstHash, err := s.lastBlock.Hash()
-  if err != nil {
-    return err
-  }
-  if blk.Parent != lstHash {
-    return fmt.Errorf("invalid parent hash %.7s", hash)
+  if blk.Parent != s.lastBlock.Hash() {
+    return fmt.Errorf("%.7s: invalid parent hash", blk.Hash())
   }
   for _, tx := range blk.Txs {
     err := s.ApplyTx(tx)

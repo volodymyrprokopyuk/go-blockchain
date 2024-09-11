@@ -24,14 +24,14 @@ type Genesis struct {
   Balances map[chain.Address]uint64 `json:"balances"`
 }
 
-func NewGenesis(name string, addr chain.Address, balance uint64) Genesis {
+func NewGenesis(name string, acc chain.Address, balance uint64) Genesis {
   bals := make(map[chain.Address]uint64, 1)
-  bals[addr] = balance
+  bals[acc] = balance
   return Genesis{Chain: name, Time: time.Now(), Balances: bals}
 }
 
 func (g Genesis) Write(dir string) error {
-  jsnGen, err := json.Marshal(g)
+  jgen, err := json.Marshal(g)
   if err != nil {
     return err
   }
@@ -40,48 +40,50 @@ func (g Genesis) Write(dir string) error {
     return err
   }
   path := filepath.Join(dir, genesisFile)
-  return os.WriteFile(path, jsnGen, 0600)
+  return os.WriteFile(path, jgen, 0600)
 }
 
 func ReadGenesis(dir string) (Genesis, error) {
   path := filepath.Join(dir, genesisFile)
-  jsnGen, err := os.ReadFile(path)
+  jgen, err := os.ReadFile(path)
   if err != nil {
     return Genesis{}, err
   }
   var gen Genesis
-  err = json.Unmarshal(jsnGen, &gen)
+  err = json.Unmarshal(jgen, &gen)
   return gen, err
 }
 
 type Block struct {
-  Number uint `json:"number"`
+  Number uint64 `json:"number"`
   Parent chain.Hash `json:"parent"`
   Time time.Time `json:"time"`
   Txs []chain.SigTx `json:"txs"`
 }
 
+func NewBlock(number uint64, parent chain.Hash, txs []chain.SigTx) Block {
+  return Block{Number: number, Parent: parent, Time: time.Now(), Txs: txs}
+}
+
 func (b Block) String() string {
-  hash, _ := b.Hash()
   var bld strings.Builder
-  bld.WriteString(fmt.Sprintf("%d %.7s -> %.7s\n", b.Number, hash, b.Parent))
+  bld.WriteString(
+    fmt.Sprintf("%2d: %.7s -> %.7s\n", b.Number, b.Hash(), b.Parent),
+  )
   for _, tx := range b.Txs {
-    bld.WriteString(fmt.Sprintf("  %s\n", tx))
+    bld.WriteString(fmt.Sprintf("  %v\n", tx))
   }
   return bld.String()
 }
 
-func (b Block) Hash() (chain.Hash, error) {
+func (b Block) Hash() chain.Hash {
   if b.Number == 0 && (b.Parent == chain.Hash{}) && len(b.Txs) == 0 {
-    return chain.Hash{}, nil
+    return chain.Hash{}
   }
-  jsnBlk, err := json.Marshal(b)
-  if err != nil {
-    return chain.Hash{}, err
-  }
+  jblk, _ := json.Marshal(b)
   hash := make([]byte, 64)
-  sha3.ShakeSum256(hash, jsnBlk)
-  return chain.Hash(hash[:32]), nil
+  sha3.ShakeSum256(hash, jblk)
+  return chain.Hash(hash[:32])
 }
 
 type storeBlock struct {
@@ -90,11 +92,7 @@ type storeBlock struct {
 }
 
 func (b Block) Write(dir string) error {
-  hash, err := b.Hash()
-  if err != nil {
-    return err
-  }
-  blk := storeBlock{Hash: hash, Block: b}
+  blk := storeBlock{Hash: b.Hash(), Block: b}
   path := filepath.Join(dir, blocksFile)
   file, err := os.OpenFile(path, os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0600)
   if err != nil {
@@ -117,6 +115,9 @@ func ReadBlocks(dir string) (
   if err != nil {
     return nil, nil, err
   }
+  close := func() {
+    file.Close()
+  }
   sca := bufio.NewScanner(file)
   blocks := func(yield func(err error, blk Block) bool) {
     more := true
@@ -126,21 +127,18 @@ func ReadBlocks(dir string) (
         yield(err, Block{})
         return
       }
-      jsnBlk := sca.Bytes()
-      if len(jsnBlk) == 0 {
+      jblk := sca.Bytes()
+      if len(jblk) == 0 {
         continue
       }
-      var stoBlk storeBlock
-      err = json.Unmarshal(jsnBlk, &stoBlk)
+      var sblk storeBlock
+      err = json.Unmarshal(jblk, &sblk)
       if err != nil {
         more = yield(err, Block{})
         continue
       }
-      more = yield(nil, stoBlk.Block)
+      more = yield(nil, sblk.Block)
     }
-  }
-  close := func() {
-    file.Close()
   }
   return blocks, close, nil
 }
