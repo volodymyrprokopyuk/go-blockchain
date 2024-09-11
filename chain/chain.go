@@ -62,17 +62,17 @@ type Tx struct {
   Value uint64 `json:"value"`
   Nonce uint64 `json:"nonce"`
   Time time.Time `json:"time"`
-  thash Hash // derived
-}
-
-func (h Tx) Hash() Hash {
-  return h.thash
 }
 
 func NewTx(from, to Address, value, nonce uint64) Tx {
-  tx := Tx{From: from, To: to, Value: value, Nonce: nonce, Time: time.Now()}
-  tx.thash = tx.hash()
-  return tx
+  return Tx{From: from, To: to, Value: value, Nonce: nonce, Time: time.Now()}
+}
+
+func (t Tx) Hash() Hash {
+  jtx, _ := json.Marshal(t)
+  hash := make([]byte, 64)
+  sha3.ShakeSum256(hash, jtx)
+  return Hash(hash[:32])
 }
 
 func (t Tx) String() string {
@@ -81,30 +81,16 @@ func (t Tx) String() string {
   )
 }
 
-func (t Tx) hash() Hash {
-  jtx, _ := json.Marshal(t)
-  hash := make([]byte, 64)
-  sha3.ShakeSum256(hash, jtx)
-  return Hash(hash[:32])
-}
-
 type SigTx struct {
   Tx
   Sig []byte `json:"sig"`
-  sthash Hash // derived
 }
 
 func NewSigTx(tx Tx, sig []byte) SigTx {
-  stx := SigTx{Tx: tx, Sig: sig}
-  stx.sthash = stx.hash()
-  return stx
+  return SigTx{Tx: tx, Sig: sig}
 }
 
 func (t SigTx) Hash() Hash {
-  return t.sthash
-}
-
-func (t SigTx) hash() Hash {
   jstx, _ := json.Marshal(t)
   hash := make([]byte, 64)
   sha3.ShakeSum256(hash, jstx)

@@ -100,20 +100,20 @@ func writeState() error {
     fmt.Printf("* Pending state (ApplyTx)\n%v\n", sta)
 
     // create block
-    csta := sta.Clone()
-    blk, err := csta.CreateBlock()
+    clo := sta.Clone()
+    blk, err := clo.CreateBlock()
     if err != nil {
       return err
     }
     fmt.Printf("* Block\n%v\n", blk)
 
     // apply block
-    csta = sta.Clone()
-    err = csta.ApplyBlock(blk)
+    clo = sta.Clone()
+    err = clo.ApplyBlock(blk)
     if err != nil {
       return err
     }
-    sta.Apply(csta)
+    sta.Apply(clo)
     sta.ResetPending()
     fmt.Printf("* Block state (ApplyBlock)\n%v\n", sta)
 
@@ -136,31 +136,31 @@ func readState() error {
   fmt.Printf("* Initial state (ReadGenesis)\n%v\n", sta)
 
   // read blocks
-  cloSta := sta.Clone()
-  blocks, close, err := store.ReadBlocks(blockStoreDir)
+  blocks, closeBlocks, err := store.ReadBlocks(blockStoreDir)
   if err != nil {
     return err
   }
-  defer close()
+  defer closeBlocks()
   for err, blk := range blocks {
+    clo := sta.Clone()
     if err != nil {
       return err
     }
-    err = cloSta.ApplyBlock(blk)
+    err = clo.ApplyBlock(blk)
     if err != nil {
       return err
     }
+    sta.Apply(clo)
+    sta.ResetPending()
   }
-  sta.Apply(cloSta)
-  sta.ResetPending()
   fmt.Printf("* Read state (ReadBlocks)\n%v\n", sta)
   return nil
 }
 
 func main() {
   // err := newAccountSignVerify()
-  err := writeState()
-  // err := readState()
+  // err := writeState()
+  err := readState()
 
   // cmd := command.ChainCmd()
   // err := cmd.Execute()

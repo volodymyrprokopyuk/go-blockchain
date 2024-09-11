@@ -96,23 +96,24 @@ func (s *State) String() string {
 }
 
 func (s *State) ApplyTx(stx chain.SigTx) error {
+  hash := stx.Hash()
   valid, err := account.Verify(stx)
   if err != nil {
     return err
   }
   if !valid {
-    return fmt.Errorf("%.7s: invalid signature", stx.Hash())
+    return fmt.Errorf("%.7s: invalid signature", hash)
   }
   if stx.Nonce != s.nonces[stx.From] + 1 {
-    return fmt.Errorf("%.7s: invalid nonce", stx.Hash())
+    return fmt.Errorf("%.7s: invalid nonce", hash)
   }
   if s.balances[stx.From] < stx.Value {
-    return fmt.Errorf("%.7s: insufficient funds", stx.Hash())
+    return fmt.Errorf("%.7s: insufficient funds", hash)
   }
   s.balances[stx.From] -= stx.Value
   s.balances[stx.To] += stx.Value
   s.nonces[stx.From]++
-  s.txs[stx.Hash()] = stx
+  s.txs[hash] = stx
   return nil
 }
 

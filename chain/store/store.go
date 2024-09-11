@@ -65,6 +65,16 @@ func NewBlock(number uint64, parent chain.Hash, txs []chain.SigTx) Block {
   return Block{Number: number, Parent: parent, Time: time.Now(), Txs: txs}
 }
 
+func (b Block) Hash() chain.Hash {
+  if b.Number == 0 && (b.Parent == chain.Hash{}) && len(b.Txs) == 0 {
+    return chain.Hash{}
+  }
+  jblk, _ := json.Marshal(b)
+  hash := make([]byte, 64)
+  sha3.ShakeSum256(hash, jblk)
+  return chain.Hash(hash[:32])
+}
+
 func (b Block) String() string {
   var bld strings.Builder
   bld.WriteString(
@@ -74,16 +84,6 @@ func (b Block) String() string {
     bld.WriteString(fmt.Sprintf("  %v\n", tx))
   }
   return bld.String()
-}
-
-func (b Block) Hash() chain.Hash {
-  if b.Number == 0 && (b.Parent == chain.Hash{}) && len(b.Txs) == 0 {
-    return chain.Hash{}
-  }
-  jblk, _ := json.Marshal(b)
-  hash := make([]byte, 64)
-  sha3.ShakeSum256(hash, jblk)
-  return chain.Hash(hash[:32])
 }
 
 type storeBlock struct {
@@ -118,8 +118,8 @@ func ReadBlocks(dir string) (
   close := func() {
     file.Close()
   }
-  sca := bufio.NewScanner(file)
   blocks := func(yield func(err error, blk Block) bool) {
+    sca := bufio.NewScanner(file)
     more := true
     for sca.Scan() && more {
       err := sca.Err()
