@@ -19,12 +19,12 @@ const (
 
 var pwd = []byte("password")
 
-func useAccount() error {
+func newAccountSignVerify() error {
   acc, err := account.NewAccount()
   if err != nil {
     return err
   }
-  fmt.Printf("%v\n", acc.Address())
+  fmt.Printf("account: %v\n", acc.Address())
   err = acc.Write(keystoreDir, pwd)
   if err != nil {
     return err
@@ -34,11 +34,9 @@ func useAccount() error {
   if err != nil {
     return err
   }
-  tx := chain.Tx{
-    From: acc.Address(), To: chain.Address("ben"),
-    Value: 12, Nonce: 0, Time: time.Now(),
-  }
+  tx := chain.NewTx(acc.Address(), chain.Address("ben"), 12, 1)
   stx, err := acc.Sign(tx)
+  fmt.Printf("%v\n", stx)
   if err != nil {
     return err
   }
@@ -154,7 +152,7 @@ func readState() error {
 }
 
 func main() {
-  err := useAccount()
+  err := newAccountSignVerify()
   // err := writeState()
   // err := readState()
 

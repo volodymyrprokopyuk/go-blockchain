@@ -17,7 +17,7 @@ import (
 
 const encKeyLen = uint32(32)
 
-type p256k1PrivateKey struct { // for Account encoding
+type p256k1PrivateKey struct {
   chain.P256k1PublicKey
   D *big.Int `json:"d"`
 }
@@ -28,21 +28,21 @@ func newP256k1PrivateKey(prv *ecdsa.PrivateKey) p256k1PrivateKey {
   }
 }
 
-func (pk *p256k1PrivateKey) publicKey() *ecdsa.PublicKey {
-  return &ecdsa.PublicKey{Curve: ecc.P256k1(), X: pk.X, Y: pk.Y}
+func (k *p256k1PrivateKey) publicKey() *ecdsa.PublicKey {
+  return &ecdsa.PublicKey{Curve: ecc.P256k1(), X: k.X, Y: k.Y}
 }
 
-func (pk *p256k1PrivateKey) privateKey() *ecdsa.PrivateKey {
-  return &ecdsa.PrivateKey{PublicKey: *pk.publicKey(), D: pk.D}
+func (k *p256k1PrivateKey) privateKey() *ecdsa.PrivateKey {
+  return &ecdsa.PrivateKey{PublicKey: *k.publicKey(), D: k.D}
 }
 
 type Account struct {
-  privateKey *ecdsa.PrivateKey
-  address chain.Address // derived
+  prv *ecdsa.PrivateKey
+  addr chain.Address // derived
 }
 
 func (a Account) Address() chain.Address {
-  return a.address
+  return a.addr
 }
 
 func NewAccount() (Account, error) {
@@ -50,19 +50,16 @@ func NewAccount() (Account, error) {
   if err != nil {
     return Account{}, err
   }
-  addr, err := chain.NewAddress(&prv.PublicKey)
-  if err != nil {
-    return Account{}, err
-  }
-  return Account{privateKey: prv, address: addr}, nil
+  addr := chain.NewAddress(&prv.PublicKey)
+  return Account{prv: prv, addr: addr}, nil
 }
 
 func (a Account) Write(dir string, pwd []byte) error {
-  jsnPrv, err := a.encodePrivateKey()
+  jprv, err := a.encodePrivateKey()
   if err != nil {
     return err
   }
-  ciphPrv, err := encryptWithPassword(jsnPrv, pwd)
+  cprv, err := encryptWithPassword(jprv, pwd)
   if err != nil {
     return err
   }
@@ -71,65 +68,52 @@ func (a Account) Write(dir string, pwd []byte) error {
     return err
   }
   path := filepath.Join(dir, string(a.Address()))
-  return os.WriteFile(path, ciphPrv, 0600)
+  return os.WriteFile(path, cprv, 0600)
 }
 
 func Read(path string, pwd []byte) (Account, error) {
-  ciphPrv, err := os.ReadFile(path)
+  cprv, err := os.ReadFile(path)
   if err != nil {
     return Account{}, err
   }
-  jsnPrv, err := decryptWithPassword(ciphPrv, pwd)
+  jprv, err := decryptWithPassword(cprv, pwd)
   if err != nil {
     return Account{}, err
   }
-  return decodePrivateKey(jsnPrv)
+  return decodePrivateKey(jprv)
 }
 
 func (a Account) Sign(tx chain.Tx) (chain.SigTx, error) {
-  hash, err := tx.Hash()
+  sig, err := ecc.SignBytes(a.prv, tx.Hash().Bytes(), ecc.LowerS | ecc.RecID)
   if err != nil {
     return chain.SigTx{}, err
   }
-  sig, err := ecc.SignBytes(a.privateKey, hash[:], ecc.LowerS | ecc.RecID)
-  if err != nil {
-    return chain.SigTx{}, err
-  }
-  return chain.SigTx{Tx: tx, Sig: sig}, nil
+  stx := chain.NewSigTx(tx, sig)
+  return stx, nil
 }
 
 func Verify(stx chain.SigTx) (bool, error) {
-  hash, err := stx.Tx.Hash()
+  pub, err := ecc.RecoverPubkey("P-256k1", stx.Tx.Hash().Bytes(), stx.Sig)
   if err != nil {
     return false, err
   }
-  pub, err := ecc.RecoverPubkey("P-256k1", hash[:], stx.Sig)
-  if err != nil {
-    return false, err
-  }
-  addr, err := chain.NewAddress(pub)
-  if err != nil {
-    return false, err
-  }
+  addr := chain.NewAddress(pub)
   return addr == stx.From, nil
 }
 
 func (a Account) encodePrivateKey() ([]byte, error) {
-  return json.Marshal(newP256k1PrivateKey(a.privateKey))
+  return json.Marshal(newP256k1PrivateKey(a.prv))
 }
 
-func decodePrivateKey(jsnPrv []byte) (Account, error) {
+func decodePrivateKey(jprv []byte) (Account, error) {
   var pk p256k1PrivateKey
-  err := json.Unmarshal(jsnPrv, &pk)
+  err := json.Unmarshal(jprv, &pk)
   if err != nil {
     return Account{}, err
   }
   prv := pk.privateKey()
-  addr, err := chain.NewAddress(&prv.PublicKey)
-  if err != nil {
-    return Account{}, err
-  }
-  return Account{privateKey: prv, address: addr}, nil
+  addr := chain.NewAddress(&prv.PublicKey)
+  return Account{prv: prv, addr: addr}, nil
 }
 
 func encryptWithPassword(msg, pwd []byte) ([]byte, error) {

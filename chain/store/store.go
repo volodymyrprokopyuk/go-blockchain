@@ -21,11 +21,11 @@ const (
 type Genesis struct {
   Chain string `json:"chain"`
   Time time.Time `json:"time"`
-  Balances map[chain.Address]uint `json:"balances"`
+  Balances map[chain.Address]uint64 `json:"balances"`
 }
 
-func NewGenesis(name string, addr chain.Address, balance uint) Genesis {
-  bals := make(map[chain.Address]uint, 1)
+func NewGenesis(name string, addr chain.Address, balance uint64) Genesis {
+  bals := make(map[chain.Address]uint64, 1)
   bals[addr] = balance
   return Genesis{Chain: name, Time: time.Now(), Balances: bals}
 }

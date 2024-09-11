@@ -13,25 +13,25 @@ import (
 )
 
 type State struct {
-  balances map[chain.Address]uint
-  nonces map[chain.Address]uint
+  balances map[chain.Address]uint64
+  nonces map[chain.Address]uint64
   lastBlock store.Block
   txs map[chain.Hash]chain.SigTx
   Pending *State
 }
 
-func (s *State) Nonce(addr chain.Address) uint {
+func (s *State) Nonce(addr chain.Address) uint64 {
   return s.nonces[addr]
 }
 
 func NewState(gen store.Genesis) *State {
   return &State{
     balances: maps.Clone(gen.Balances),
-    nonces: make(map[chain.Address]uint),
+    nonces: make(map[chain.Address]uint64),
     txs: make(map[chain.Hash]chain.SigTx),
     Pending: &State{
       balances: maps.Clone(gen.Balances),
-      nonces: make(map[chain.Address]uint),
+      nonces: make(map[chain.Address]uint64),
       txs: make(map[chain.Hash]chain.SigTx),
     },
   }
@@ -97,27 +97,23 @@ func (s *State) String() string {
 }
 
 func (s *State) ApplyTx(tx chain.SigTx) error {
-  hash, err := tx.Hash()
-  if err != nil {
-    return err
-  }
   valid, err := account.Verify(tx)
   if err != nil {
     return err
   }
   if !valid {
-    return fmt.Errorf("invalid signature %.7s", hash)
+    return fmt.Errorf("invalid signature %.7s", tx.Hash())
   }
   if tx.Nonce != s.nonces[tx.From] + 1 {
-    return fmt.Errorf("invalid nonce %.7s", hash)
+    return fmt.Errorf("invalid nonce %.7s", tx.Hash())
   }
   if s.balances[tx.From] < tx.Value {
-    return fmt.Errorf("insufficient funds %.7s", hash)
+    return fmt.Errorf("insufficient funds %.7s", tx.Hash())
   }
   s.balances[tx.From] -= tx.Value
   s.balances[tx.To] += tx.Value
   s.nonces[tx.From]++
-  s.txs[hash] = tx
+  s.txs[tx.Hash()] = tx
   return nil
 }
 
