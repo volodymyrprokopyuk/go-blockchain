@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/state"
-	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/store"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain/state"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain/store"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/raccount"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rstore"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rtx"
@@ -38,16 +38,16 @@ func (n *Node) readState() error {
   if err != nil {
     fmt.Printf(
       `warning: genesis not found
-  > chain store init
-  > chain node start
+  > bcn store init, C-c
+  > bcn node start
 `)
-  } else {
-    n.state = state.NewState(gen)
-    if err != nil {
-      return err
-    }
-    fmt.Printf("* Initial state (ReadGenesis)\n%v\n", n.state)
+    return nil
   }
+  n.state = state.NewState(gen)
+  if err != nil {
+    return err
+  }
+  fmt.Printf("* Initial state (ReadGenesis)\n%v\n", n.state)
   return nil
 }
 
@@ -58,12 +58,12 @@ func (n *Node) servegRPC() error {
   }
   defer lis.Close()
   fmt.Printf("* gRPC listening on %v\n", n.nodeAddr)
-  grpcSrv := grpc.NewServer()
-  accSrv := raccount.NewAccountSrv(n.keyStoreDir)
-  raccount.RegisterAccountServer(grpcSrv, accSrv)
-  stoSrv := rstore.NewStoreSrv(n.keyStoreDir, n.blockStoreDir)
-  rstore.RegisterStoreServer(grpcSrv, stoSrv)
-  txSrv := rtx.NewTxSrv(n.keyStoreDir, n.state)
-  rtx.RegisterTxServer(grpcSrv, txSrv)
-  return grpcSrv.Serve(lis)
+  srv := grpc.NewServer()
+  acc := raccount.NewAccountSrv(n.keyStoreDir)
+  raccount.RegisterAccountServer(srv, acc)
+  sto := rstore.NewStoreSrv(n.keyStoreDir, n.blockStoreDir)
+  rstore.RegisterStoreServer(srv, sto)
+  tx := rtx.NewTxSrv(n.keyStoreDir, n.state)
+  rtx.RegisterTxServer(srv, tx)
+  return srv.Serve(lis)
 }

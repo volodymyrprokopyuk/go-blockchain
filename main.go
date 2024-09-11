@@ -9,6 +9,7 @@ import (
 	"github.com/volodymyrprokopyuk/go-blockchain/chain/account"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain/state"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain/store"
+	"github.com/volodymyrprokopyuk/go-blockchain/command"
 )
 
 const (
@@ -160,11 +161,9 @@ func readState() error {
 func main() {
   // err := newAccountSignVerify()
   // err := writeState()
-  err := readState()
-
-  // cmd := command.ChainCmd()
-  // err := cmd.Execute()
-
+  // err := readState()
+  cmd := command.BcnCmd()
+  err := cmd.Execute()
   if err != nil {
     fmt.Println(err)
     os.Exit(1)

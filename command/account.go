@@ -47,13 +47,11 @@ func accountCreateCmd() *cobra.Command {
       if err != nil {
         return err
       }
-      fmt.Println(acc)
+      fmt.Printf("%v\n", acc)
       return nil
     },
   }
-  cmd.Flags().StringP(
-    "password", "p", "", "password to encrypt the account private key",
-  )
+  cmd.Flags().String("password", "", "password to encrypt the account private key")
   _ = cmd.MarkFlagRequired("password")
   return cmd
 }

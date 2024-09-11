@@ -1,0 +1,125 @@
+This is METAFONT, Version 2.71828182 (preloaded base=mf 2024.5.30)  11 SEP 2024 22:24
+**chain.fish bcn.fish
+(chain.fish
+>> #!
+>> usr
+! Not implemented: (unknown numeric)/(unknown numeric).
+<to be read again> 
+                   /
+l.1 #!/usr/
+           bin/env fish
+? q
+OK, entering batchmode...
+
+! Interruption.
+l.1 #!/usr/
+           bin/env fish
+? q
+OK, entering batchmode...
+>> usr
+>> bin
+! Not implemented: (unknown numeric)/(unknown numeric).
+<to be read again> 
+                   /
+l.1 #!/usr/bin/
+               env fish
+I'm afraid I don't know how to apply that operation to that
+combination of types. Continue, and I'll return the second
+argument (see above) as the result of the operation.
+
+>> bin
+>> env.fish.set
+! Not implemented: (unknown numeric)/(unknown numeric).
+<to be read again> 
+                   -
+l.3 set -
+         l pass password
+I'm afraid I don't know how to apply that operation to that
+combination of types. Continue, and I'll return the second
+argument (see above) as the result of the operation.
+
+>> rf.blockstore
+>> keystore
+! Not implemented: (unknown numeric)/(unknown numeric).
+<to be read again> 
+                   /
+l.5 # rm -rf .blockstore/ .keystore/
+                                    
+I'm afraid I don't know how to apply that operation to that
+combination of types. Continue, and I'll return the second
+argument (see above) as the result of the operation.
+
+>> keystore
+>> #set
+! Not implemented: (unknown numeric)/(unknown numeric).
+<to be read again> 
+                   -
+l.6 # set -
+           l own (./chain store init -p $pass --balance 1000)
+I'm afraid I don't know how to apply that operation to that
+combination of types. Continue, and I'll return the second
+argument (see above) as the result of the operation.
+
+>> -l.own-#set-l.pass.password#rm+env.fish.set
+! Isolated expression.
+<to be read again> 
+                   (
+l.6 # set -l own (
+                  ./chain store init -p $pass --balance 1000)
+I couldn't find an `=' or `:=' after the
+expression that is shown above this error message,
+so I guess I'll just ignore it and carry on.
+
+! Extra tokens will be flushed.
+<to be read again> 
+                   (
+l.6 # set -l own (
+                  ./chain store init -p $pass --balance 1000)
+I've just read as much of that statement as I could fathom,
+so a semicolon should have been next. It's very puzzling...
+but I'll try to get myself back together, by ignoring
+everything up to the next `;'. Please insert a semicolon
+now in front of anything that you don't want me to delete.
+(See Chapter 27 of The METAFONTbook for an example.)
+
+! Enormous number has been reduced.
+l.11 set -l own 86dcda3939811
+                             bda77aa2dd21e4ea255489ed49fd89c8142b18d5f09eb90...
+I can't handle numbers bigger than about 4095.99998;
+so I've changed your constant to that maximum amount.
+
+! Enormous number has been reduced.
+l.11 ...-l own 86dcda3939811bda77aa2dd21e4ea255489
+                                                  ed49fd89c8142b18d5f09eb9095dd
+I can't handle numbers bigger than about 4095.99998;
+so I've changed your constant to that maximum amount.
+
+! Enormous number has been reduced.
+l.11 ...3939811bda77aa2dd21e4ea255489ed49fd89c8142
+                                                  b18d5f09eb9095dd
+I can't handle numbers bigger than about 4095.99998;
+so I've changed your constant to that maximum amount.
+
+! Enormous number has been reduced.
+l.11 ...2dd21e4ea255489ed49fd89c8142b18d5f09eb9095
+                                                  dd
+I can't handle numbers bigger than about 4095.99998;
+so I've changed your constant to that maximum amount.
+
+)
+! File ended while scanning to the end of the statement.
+<inserted text> 
+                ;
+<*> chain.fish
+               bcn.fish
+A previous error seems to have propagated,
+causing me to read past where you wanted me to stop.
+I'll try to recover; but if the error is serious,
+you'd better type `E' or `X' now and fix your file.
+
+! Emergency stop.
+<*> chain.fish bcn.fish
+                       
+*** (job aborted, no legal end found)
+
+

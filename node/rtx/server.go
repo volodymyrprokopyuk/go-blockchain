@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/account"
-	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/chain"
-	"github.com/volodymyrprokopyuk/go-blockchain/blockchain/state"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain/account"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain/state"
 )
 
 type TxSrv struct {
@@ -31,7 +31,7 @@ func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq,) (*TxSignRes, error) {
   tx := chain.Tx{
     From: chain.Address(req.From),
     To: chain.Address(req.To),
-    Value: uint(req.Value),
+    Value: req.Value,
     Nonce: s.state.Pending.Nonce(chain.Address(req.From)) + 1,
     Time: time.Now(),
   }
@@ -58,10 +58,6 @@ func (s *TxSrv) TxSend(_ context.Context, req *TxSendReq) (*TxSendRes, error) {
     return nil, err
   }
   fmt.Printf("* Pending state (ApplyTx)\n%v\n", s.state)
-  hash, err := stx.Hash()
-  if err != nil {
-    return nil, err
-  }
-  res := &TxSendRes{Hash: hash[:]}
+  res := &TxSendRes{Hash: stx.Hash().Bytes()}
   return res, nil
 }
