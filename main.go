@@ -102,9 +102,10 @@ func writeState() error {
 
     // create block
     clo := sta.Clone()
-    blk, err := clo.CreateBlock()
-    if err != nil {
-      return err
+    blk := clo.CreateBlock()
+    if len(blk.Txs) == 0 {
+      fmt.Println("warning: empty block")
+      continue
     }
     fmt.Printf("* Block\n%v\n", blk)
 

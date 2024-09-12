@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"time"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain/account"
@@ -28,22 +27,19 @@ func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq,) (*TxSignRes, error) {
   if err != nil {
     return nil, err
   }
-  tx := chain.Tx{
-    From: chain.Address(req.From),
-    To: chain.Address(req.To),
-    Value: req.Value,
-    Nonce: s.state.Pending.Nonce(chain.Address(req.From)) + 1,
-    Time: time.Now(),
-  }
+  tx := chain.NewTx(
+    chain.Address(req.From), chain.Address(req.To), req.Value,
+    s.state.Pending.Nonce(chain.Address(req.From)) + 1,
+  )
   stx, err := acc.Sign(tx)
   if err != nil {
     return nil, err
   }
-  jsnSTx, err := json.Marshal(stx)
+  jstx, err := json.Marshal(stx)
   if err != nil {
     return nil, err
   }
-  res := &TxSignRes{SigTx: jsnSTx}
+  res := &TxSignRes{SigTx: jstx}
   return res, nil
 }
 
@@ -53,11 +49,11 @@ func (s *TxSrv) TxSend(_ context.Context, req *TxSendReq) (*TxSendRes, error) {
   if err != nil {
     return nil, err
   }
-  err = s.state.ApplyTx(stx)
+  err = s.state.Pending.ApplyTx(stx)
   if err != nil {
     return nil, err
   }
   fmt.Printf("* Pending state (ApplyTx)\n%v\n", s.state)
-  res := &TxSendRes{Hash: stx.Hash().Bytes()}
+  res := &TxSendRes{Hash: stx.Hash().String()}
   return res, nil
 }

@@ -117,7 +117,7 @@ func (s *State) ApplyTx(stx chain.SigTx) error {
   return nil
 }
 
-func (s *State) CreateBlock() (store.Block, error) {
+func (s *State) CreateBlock() store.Block {
   pndTxs := make([]chain.SigTx, 0, len(s.Pending.txs))
   for _, tx := range s.Pending.txs {
     pndTxs = append(pndTxs, tx)
@@ -138,11 +138,8 @@ func (s *State) CreateBlock() (store.Block, error) {
     }
     txs = append(txs, tx)
   }
-  if len(txs) == 0 {
-    return store.Block{}, fmt.Errorf("none of pending txs is valid")
-  }
   blk := store.NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
-  return blk, nil
+  return blk
 }
 
 func (s *State) ApplyBlock(blk store.Block) error {

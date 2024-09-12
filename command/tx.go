@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -20,7 +19,7 @@ func txCmd() *cobra.Command {
   return cmd
 }
 
-func txSign(addr, from, to string, value uint, pwd string) ([]byte, error) {
+func txSign(addr, from, to string, value uint64, pwd string) ([]byte, error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -29,7 +28,7 @@ func txSign(addr, from, to string, value uint, pwd string) ([]byte, error) {
   }
   defer conn.Close()
   cln := rtx.NewTxClient(conn)
-  req := &rtx.TxSignReq{From: from, To: to, Value: uint64(value), Password: pwd}
+  req := &rtx.TxSignReq{From: from, To: to, Value: value, Password: pwd}
   res, err := cln.TxSign(context.Background(), req)
   if err != nil {
     return nil, err
@@ -40,47 +39,45 @@ func txSign(addr, from, to string, value uint, pwd string) ([]byte, error) {
 func txSignCmd() *cobra.Command {
   cmd := &cobra.Command{
     Use: "sign",
-    Short: "Signs a transaction with the private key of the account",
+    Short: "Signs a transaction",
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
       from, _ := cmd.Flags().GetString("from")
       to, _ := cmd.Flags().GetString("to")
-      value, _ := cmd.Flags().GetUint("value")
+      value, _ := cmd.Flags().GetUint64("value")
       pwd, _ := cmd.Flags().GetString("password")
-      jsnSTx, err := txSign(addr, from, to, value, pwd)
+      jstx, err := txSign(addr, from, to, value, pwd)
       if err != nil {
         return err
       }
-      fmt.Printf("%s\n", jsnSTx)
+      fmt.Printf("%s\n", jstx)
       return nil
     },
   }
-  cmd.Flags().StringP("from", "", "", "debtor address")
-  cmd.MarkFlagRequired("from")
-  cmd.Flags().StringP("to", "", "", "creditor address")
-  cmd.MarkFlagRequired("to")
-  cmd.Flags().UintP("value", "", 0, "transfer amount")
-  cmd.MarkFlagRequired("value")
-  cmd.Flags().StringP(
-    "password", "p", "", "password to encrypt the account private key",
-  )
-  cmd.MarkFlagRequired("password")
+  cmd.Flags().String("from", "", "debtor address")
+  _ = cmd.MarkFlagRequired("from")
+  cmd.Flags().String("to", "", "creditor address")
+  _ = cmd.MarkFlagRequired("to")
+  cmd.Flags().Uint64("value", 0, "transfer amount")
+  _ = cmd.MarkFlagRequired("value")
+  cmd.Flags().String("password", "", "password to encrypt the account private key")
+  _ = cmd.MarkFlagRequired("password")
   return cmd
 }
 
-func txSend(addr, sigtx string) ([]byte, error) {
+func txSend(addr, sigtx string) (string, error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
   if err != nil {
-    return nil, err
+    return "", err
   }
   defer conn.Close()
   cln := rtx.NewTxClient(conn)
   req := &rtx.TxSendReq{SigTx: []byte(sigtx)}
   res, err := cln.TxSend(context.Background(), req)
   if err != nil {
-    return nil, err
+    return "", err
   }
   return res.Hash, nil
 }
@@ -88,7 +85,7 @@ func txSend(addr, sigtx string) ([]byte, error) {
 func txSendCmd() *cobra.Command {
   cmd := &cobra.Command{
     Use: "send",
-    Short: "send a signed transaction",
+    Short: "Sends a signed transaction",
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
       stx, _ := cmd.Flags().GetString("sigtx")
@@ -96,11 +93,11 @@ func txSendCmd() *cobra.Command {
       if err != nil {
         return err
       }
-      fmt.Printf("%s\n", hex.EncodeToString(hash))
+      fmt.Printf("%s\n", hash)
       return nil
     },
   }
-  cmd.Flags().StringP("sigtx", "", "", "signed transaction")
-  cmd.MarkFlagRequired("sigtx")
+  cmd.Flags().String("sigtx", "", "signed transaction")
+  _ = cmd.MarkFlagRequired("sigtx")
   return cmd
 }

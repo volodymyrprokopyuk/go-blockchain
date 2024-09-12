@@ -2,16 +2,23 @@
 
 set -l pass password
 
-rm -rf .blockstore/ .keystore/
-set -l own (./bcn store init --password $pass --balance 1000)
-echo owner: $own
-set -l ben (./bcn account create --password $pass)
-echo benef: $ben
+function chainInit
+  rm -rf .blockstore/ .keystore/
+  set -l own (./bcn store init --password $pass --balance 1000)
+  echo owner: $own
+  set -l ben (./bcn account create --password $pass)
+  echo benef: $ben
+end
 
-# set -l own 86dcda3939811bda77aa2dd21e4ea255489ed49fd89c8142b18d5f09eb9095dd
-# set -l ben 6aaee726c378c47e668e91d33a0722a18b6c1afbd3b3dc750f2d67e5c2ecc6a3
+function txSignAndSend -a pass from to value
+  set -l stx (./bcn tx sign --password $pass --from $from --to $to --value $value)
+  echo $stx
+  set -l hash (./bcn tx send --sigtx $stx)
+  echo $hash
+end
 
-# set -l stx (./bcn tx sign -p $pass --from $own --to $ben --value 12)
-# echo $stx
-# set -l hash (./bcn tx send --sigtx $stx)
-# echo $hash
+set -l own 3351fcb0bdc66f3e53d0a2f8e768b9351849b64a60c43589f3dcab0807af363f
+set -l ben f34ec96f232e6d3f0ba0a998a7e81cea3b01463cfd772c9774e980e8f771e70f
+
+txSignAndSend $pass $own $ben 12
+txSignAndSend $pass $own $ben 34

@@ -18,7 +18,7 @@ message TxSendReq {
 }
 
 message TxSendRes {
-  bytes Hash = 1;
+  string Hash = 1;
 }
 
 service Tx {
