@@ -137,22 +137,9 @@ func readState() error {
   fmt.Printf("* Initial state (ReadGenesis)\n%v\n", sta)
 
   // read blocks
-  blocks, closeBlocks, err := store.ReadBlocks(blockStoreDir)
+  err = sta.ReadBlocks(blockStoreDir)
   if err != nil {
     return err
-  }
-  defer closeBlocks()
-  for err, blk := range blocks {
-    clo := sta.Clone()
-    if err != nil {
-      return err
-    }
-    err = clo.ApplyBlock(blk)
-    if err != nil {
-      return err
-    }
-    sta.Apply(clo)
-    sta.ResetPending()
   }
   fmt.Printf("* Read state (ReadBlocks)\n%v\n", sta)
   return nil

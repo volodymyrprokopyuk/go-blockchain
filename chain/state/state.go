@@ -161,3 +161,24 @@ func (s *State) ApplyBlock(blk store.Block) error {
   s.lastBlock = blk
   return nil
 }
+
+func (s *State) ReadBlocks(blockStoreDir string) error {
+  blocks, closeBlocks, err := store.ReadBlocks(blockStoreDir)
+  if err != nil {
+    return err
+  }
+  defer closeBlocks()
+  for err, blk := range blocks {
+    if err != nil {
+      return err
+    }
+    clo := s.Clone()
+    err = clo.ApplyBlock(blk)
+    if err != nil {
+      return err
+    }
+    s.Apply(clo)
+    s.ResetPending()
+  }
+  return nil
+}

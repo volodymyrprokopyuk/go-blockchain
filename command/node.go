@@ -19,10 +19,10 @@ func nodeStartCmd() *cobra.Command {
     Use: "start",
     Short: "Starts the blockchain node",
     RunE: func(cmd *cobra.Command, _ []string) error {
-      keyStore, _ := cmd.Flags().GetString("keystore")
-      blockStore, _ := cmd.Flags().GetString("blockstore")
+      keyStoreDir, _ := cmd.Flags().GetString("keystore")
+      blockStoreDir, _ := cmd.Flags().GetString("blockstore")
       addr, _ := cmd.Flags().GetString("node")
-      nd := node.NewNode(keyStore, blockStore, addr)
+      nd := node.NewNode(keyStoreDir, blockStoreDir, addr)
       return nd.Start()
     },
   }

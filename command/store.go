@@ -19,7 +19,7 @@ func storeCmd() *cobra.Command {
   return cmd
 }
 
-func storeInit(addr, chain, pwd string, bal uint) (string, error) {
+func storeInit(addr, chain, pwd string, bal uint64) (string, error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -28,7 +28,7 @@ func storeInit(addr, chain, pwd string, bal uint) (string, error) {
   }
   defer conn.Close()
   cln := rstore.NewStoreClient(conn)
-  req := &rstore.StoreInitReq{Chain: chain, Password: pwd, Balance: uint64(bal)}
+  req := &rstore.StoreInitReq{Chain: chain, Password: pwd, Balance: bal}
   res, err := cln.StoreInit(context.Background(), req)
   if err != nil {
     return "", err
@@ -44,7 +44,7 @@ func storeInitCmd() *cobra.Command {
       addr, _ := cmd.Flags().GetString("node")
       chain, _ := cmd.Flags().GetString("chain")
       pwd, _ := cmd.Flags().GetString("password")
-      bal, _ := cmd.Flags().GetUint("balance")
+      bal, _ := cmd.Flags().GetUint64("balance")
       acc, err := storeInit(addr, chain, pwd, bal)
       if err != nil {
         return err
@@ -53,16 +53,10 @@ func storeInitCmd() *cobra.Command {
       return nil
     },
   }
-  cmd.Flags().StringP(
-    "chain", "", "blockchain", "name of the blockchain",
-  )
-  cmd.Flags().StringP(
-    "password", "p", "", "password to encrypt the account private key",
-  )
+  cmd.Flags().String("chain", "blockchain", "name of the blockchain")
+  cmd.Flags().String("password", "", "password to encrypt the account private key")
   _ = cmd.MarkFlagRequired("password")
-  cmd.Flags().UintP(
-    "balance", "", 0, "initial balance for the genesis account",
-  )
+  cmd.Flags().Uint64("balance", 0, "initial balance for the genesis account")
   _ = cmd.MarkFlagRequired("balance")
   return cmd
 }
