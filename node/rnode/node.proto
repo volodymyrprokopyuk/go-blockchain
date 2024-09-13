@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option go_package = "./rnode";
+
+message PeerDiscoverReq {
+  string Peer = 1;
+}
+
+message PeerDiscoverRes {
+  repeated string Peers = 1;
+}
+
+service Node {
+  rpc PeerDiscover(PeerDiscoverReq) returns (PeerDiscoverRes);
+}

@@ -13,9 +13,11 @@ import (
 	"github.com/volodymyrprokopyuk/go-blockchain/chain/state"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain/store"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/raccount"
+	"github.com/volodymyrprokopyuk/go-blockchain/node/rnode"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rstore"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rtx"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type NodeCfg struct {
@@ -27,6 +29,7 @@ type NodeCfg struct {
 }
 
 type Node struct {
+  // configure
   cfg NodeCfg
   // context
   ctx context.Context
@@ -36,17 +39,45 @@ type Node struct {
   // components
   state *state.State
   grpcSrv *grpc.Server
+  peers map[string]struct{}
 }
 
 func NewNode(cfg NodeCfg) *Node {
+  // configure
   nd := &Node{cfg: cfg}
   ctx, cancel := signal.NotifyContext(
     context.Background(), syscall.SIGINT, syscall.SIGINT, syscall.SIGKILL,
   )
+  // context
   nd.ctx = ctx
   nd.ctxCancel = cancel
   nd.chErr = make(chan error, 1)
+  // components
+  nd.peers = make(map[string]struct{})
+  if !cfg.Bootstrap {
+    nd.AddPeers(cfg.SeedAddr)
+  }
   return nd
+}
+
+func (n *Node) Bootstrap() bool {
+  return n.cfg.Bootstrap
+}
+
+func (n *Node) AddPeers(peers ...string) {
+  for _, peer := range peers {
+    if peer != n.cfg.NodeAddr {
+      n.peers[peer] = struct{}{}
+    }
+  }
+}
+
+func (n *Node) Peers() []string {
+  peers := make([]string, 0, len(n.peers))
+  for peer := range n.peers {
+    peers = append(peers, peer)
+  }
+  return peers
 }
 
 func (n *Node) Start() error {
@@ -56,7 +87,8 @@ func (n *Node) Start() error {
     return err
   }
   go n.servegRPC()
-  go n.mine()
+  go n.discoverPeers(5 * time.Second)
+  // go n.mine(5 * time.Second)
   select {
   case err = <- n.chErr:
   case <- n.ctx.Done():
@@ -96,10 +128,12 @@ func (n *Node) servegRPC() {
   defer lis.Close()
   fmt.Printf("* gRPC listening on %v\n", n.cfg.NodeAddr)
   n.grpcSrv = grpc.NewServer()
-  acc := raccount.NewAccountSrv(n.cfg.KeyStoreDir)
-  raccount.RegisterAccountServer(n.grpcSrv, acc)
+  nd := rnode.NewNodeSrv(n)
+  rnode.RegisterNodeServer(n.grpcSrv, nd)
   sto := rstore.NewStoreSrv(n.cfg.KeyStoreDir, n.cfg.BlockStoreDir)
   rstore.RegisterStoreServer(n.grpcSrv, sto)
+  acc := raccount.NewAccountSrv(n.cfg.KeyStoreDir)
+  raccount.RegisterAccountServer(n.grpcSrv, acc)
   tx := rtx.NewTxSrv(n.cfg.KeyStoreDir, n.state)
   rtx.RegisterTxServer(n.grpcSrv, tx)
   err = n.grpcSrv.Serve(lis)
@@ -108,10 +142,50 @@ func (n *Node) servegRPC() {
   }
 }
 
-func (n *Node) mine() {
+func (n *Node) grpcPeerDiscover(peer string) ([]string, error) {
+  conn, err := grpc.NewClient(
+    peer, grpc.WithTransportCredentials(insecure.NewCredentials()),
+  )
+  if err != nil {
+    return nil, err
+  }
+  defer conn.Close()
+  cln := rnode.NewNodeClient(conn)
+  req := &rnode.PeerDiscoverReq{Peer: n.cfg.NodeAddr}
+  res, err := cln.PeerDiscover(n.ctx, req)
+  if err != nil {
+    return nil, err
+  }
+  return res.Peers, nil
+}
+
+func (n *Node) discoverPeers(interval time.Duration) {
   n.wg.Add(1)
   defer n.wg.Done()
-  tick := time.NewTicker(5 * time.Second)
+  tick := time.NewTicker(interval)
+  defer tick.Stop()
+  for {
+    select {
+    case <- n.ctx.Done():
+      return
+    case <- tick.C:
+      for _, peer := range n.Peers() {
+        peers, err := n.grpcPeerDiscover(peer)
+        if err != nil {
+          fmt.Println(err)
+          continue
+        }
+        n.AddPeers(peers...)
+      }
+      fmt.Printf("%v peers: %v\n", n.cfg.NodeAddr, n.Peers())
+    }
+  }
+}
+
+func (n *Node) mine(interval time.Duration) {
+  n.wg.Add(1)
+  defer n.wg.Done()
+  tick := time.NewTicker(interval)
   defer tick.Stop()
   for {
     select {

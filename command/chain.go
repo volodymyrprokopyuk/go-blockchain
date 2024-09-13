@@ -2,7 +2,7 @@ package command
 
 import "github.com/spf13/cobra"
 
-func BcnCmd() *cobra.Command {
+func ChainCmd() *cobra.Command {
   cmd := &cobra.Command{
     Use: "bcn",
     Short: "Manages the blockchain",

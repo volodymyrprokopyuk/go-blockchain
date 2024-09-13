@@ -1,6 +1,8 @@
 package command
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/volodymyrprokopyuk/go-blockchain/node"
 )
@@ -26,6 +28,9 @@ func nodeStartCmd() *cobra.Command {
       nodeAddr, _ := cmd.Flags().GetString("node")
       bootstrap, _ := cmd.Flags().GetBool("bootstrap")
       seedAddr, _ := cmd.Flags().GetString("seed")
+      if !bootstrap && len(seedAddr) == 0 {
+        return fmt.Errorf("either --bootstrap or --seed must be provided")
+      }
       cfg := node.NodeCfg{
         KeyStoreDir: keyStoreDir, BlockStoreDir: blockStoreDir,
         NodeAddr: nodeAddr, Bootstrap: bootstrap, SeedAddr: seedAddr,

@@ -150,7 +150,7 @@ func main() {
   // err := newAccountSignVerify()
   // err := writeState()
   // err := readState()
-  cmd := command.BcnCmd()
+  cmd := command.ChainCmd()
   err := cmd.Execute()
   if err != nil {
     fmt.Println(err)
