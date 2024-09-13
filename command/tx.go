@@ -60,7 +60,7 @@ func txSignCmd() *cobra.Command {
   _ = cmd.MarkFlagRequired("to")
   cmd.Flags().Uint64("value", 0, "transfer amount")
   _ = cmd.MarkFlagRequired("value")
-  cmd.Flags().String("password", "", "password to encrypt the account private key")
+  cmd.Flags().String("password", "", "password of debtor account")
   _ = cmd.MarkFlagRequired("password")
   return cmd
 }

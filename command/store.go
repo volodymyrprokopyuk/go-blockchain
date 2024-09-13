@@ -54,7 +54,7 @@ func storeInitCmd() *cobra.Command {
     },
   }
   cmd.Flags().String("chain", "blockchain", "name of the blockchain")
-  cmd.Flags().String("password", "", "password to encrypt the account private key")
+  cmd.Flags().String("password", "", "password for the genesis account")
   _ = cmd.MarkFlagRequired("password")
   cmd.Flags().Uint64("balance", 0, "initial balance for the genesis account")
   _ = cmd.MarkFlagRequired("balance")

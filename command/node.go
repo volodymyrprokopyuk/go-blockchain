@@ -10,20 +10,32 @@ func nodeCmd() *cobra.Command {
     Use: "node",
     Short: "Manages the blockchain node",
   }
+  cmd.PersistentFlags().String("keystore", ".keystore", "key store directory")
+  cmd.PersistentFlags().String("blockstore", ".blockstore", "block store directory")
   cmd.AddCommand(nodeStartCmd())
   return cmd
 }
 
 func nodeStartCmd() *cobra.Command {
-  return &cobra.Command{
+  cmd := &cobra.Command{
     Use: "start",
     Short: "Starts the blockchain node",
     RunE: func(cmd *cobra.Command, _ []string) error {
       keyStoreDir, _ := cmd.Flags().GetString("keystore")
       blockStoreDir, _ := cmd.Flags().GetString("blockstore")
-      addr, _ := cmd.Flags().GetString("node")
-      nd := node.NewNode(keyStoreDir, blockStoreDir, addr)
+      nodeAddr, _ := cmd.Flags().GetString("node")
+      bootstrap, _ := cmd.Flags().GetBool("bootstrap")
+      seedAddr, _ := cmd.Flags().GetString("seed")
+      cfg := node.NodeCfg{
+        KeyStoreDir: keyStoreDir, BlockStoreDir: blockStoreDir,
+        NodeAddr: nodeAddr, Bootstrap: bootstrap, SeedAddr: seedAddr,
+      }
+      nd := node.NewNode(cfg)
       return nd.Start()
     },
   }
+  cmd.Flags().Bool("bootstrap", false, "peer discovery bootstrap node")
+  cmd.Flags().String("seed", "", "peer discovery seed address host:port")
+  cmd.MarkFlagsMutuallyExclusive("bootstrap", "seed")
+  return cmd
 }
