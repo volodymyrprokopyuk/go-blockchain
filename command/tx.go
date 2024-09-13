@@ -19,7 +19,7 @@ func txCmd() *cobra.Command {
   return cmd
 }
 
-func txSign(addr, from, to string, value uint64, pwd string) ([]byte, error) {
+func grpcTxSign(addr, from, to string, value uint64, pwd string) ([]byte, error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -46,7 +46,7 @@ func txSignCmd() *cobra.Command {
       to, _ := cmd.Flags().GetString("to")
       value, _ := cmd.Flags().GetUint64("value")
       pwd, _ := cmd.Flags().GetString("password")
-      jstx, err := txSign(addr, from, to, value, pwd)
+      jstx, err := grpcTxSign(addr, from, to, value, pwd)
       if err != nil {
         return err
       }
@@ -65,7 +65,7 @@ func txSignCmd() *cobra.Command {
   return cmd
 }
 
-func txSend(addr, sigtx string) (string, error) {
+func grpcTxSend(addr, sigtx string) (string, error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -89,7 +89,7 @@ func txSendCmd() *cobra.Command {
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
       stx, _ := cmd.Flags().GetString("sigtx")
-      hash, err := txSend(addr, stx)
+      hash, err := grpcTxSend(addr, stx)
       if err != nil {
         return err
       }

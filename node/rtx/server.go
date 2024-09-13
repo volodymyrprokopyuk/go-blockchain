@@ -21,7 +21,7 @@ func NewTxSrv(keyStoreDir string, sta *state.State) *TxSrv {
   return &TxSrv{keyStoreDir: keyStoreDir, state: sta}
 }
 
-func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq,) (*TxSignRes, error) {
+func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
   path := filepath.Join(s.keyStoreDir, req.From)
   acc, err := account.Read(path, []byte(req.Password))
   if err != nil {

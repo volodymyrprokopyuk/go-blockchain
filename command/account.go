@@ -19,7 +19,7 @@ func accountCmd() *cobra.Command {
   return cmd
 }
 
-func accountCreate(addr, pwd string) (string, error) {
+func grpcAccountCreate(addr, pwd string) (string, error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -43,7 +43,7 @@ func accountCreateCmd() *cobra.Command {
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
       pwd, _ := cmd.Flags().GetString("password")
-      acc, err := accountCreate(addr, pwd)
+      acc, err := grpcAccountCreate(addr, pwd)
       if err != nil {
         return err
       }

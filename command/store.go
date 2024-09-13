@@ -19,7 +19,7 @@ func storeCmd() *cobra.Command {
   return cmd
 }
 
-func storeInit(addr, chain, pwd string, bal uint64) (string, error) {
+func grpcStoreInit(addr, chain, pwd string, bal uint64) (string, error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -45,7 +45,7 @@ func storeInitCmd() *cobra.Command {
       chain, _ := cmd.Flags().GetString("chain")
       pwd, _ := cmd.Flags().GetString("password")
       bal, _ := cmd.Flags().GetUint64("balance")
-      acc, err := storeInit(addr, chain, pwd, bal)
+      acc, err := grpcStoreInit(addr, chain, pwd, bal)
       if err != nil {
         return err
       }

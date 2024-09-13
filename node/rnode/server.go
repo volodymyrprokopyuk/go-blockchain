@@ -17,7 +17,7 @@ func NewNodeSrv(peerer Peerer) *NodeSrv {
   return &NodeSrv{peerer: peerer}
 }
 
-func (s *NodeSrv) PeedDiscover(
+func (s *NodeSrv) PeerDiscover(
   _ context.Context, req *PeerDiscoverReq,
 ) (*PeerDiscoverRes, error) {
   if s.peerer.Bootstrap() {
