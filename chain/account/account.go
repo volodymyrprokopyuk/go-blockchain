@@ -83,7 +83,7 @@ func Read(path string, pwd []byte) (Account, error) {
   return decodePrivateKey(jprv)
 }
 
-func (a Account) Sign(tx chain.Tx) (chain.SigTx, error) {
+func (a Account) SignTx(tx chain.Tx) (chain.SigTx, error) {
   sig, err := ecc.SignBytes(a.prv, tx.Hash().Bytes(), ecc.LowerS | ecc.RecID)
   if err != nil {
     return chain.SigTx{}, err
@@ -92,7 +92,7 @@ func (a Account) Sign(tx chain.Tx) (chain.SigTx, error) {
   return stx, nil
 }
 
-func Verify(stx chain.SigTx) (bool, error) {
+func VerifyTx(stx chain.SigTx) (bool, error) {
   pub, err := ecc.RecoverPubkey("P-256k1", stx.Tx.Hash().Bytes(), stx.Sig)
   if err != nil {
     return false, err

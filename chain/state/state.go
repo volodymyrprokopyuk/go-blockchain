@@ -23,7 +23,7 @@ func (s *State) Nonce(addr chain.Address) uint64 {
   return s.nonces[addr]
 }
 
-func NewState(gen store.Genesis) *State {
+func NewState(gen chain.Genesis) *State {
   return &State{
     balances: maps.Clone(gen.Balances),
     nonces: make(map[chain.Address]uint64),
@@ -97,7 +97,7 @@ func (s *State) String() string {
 
 func (s *State) ApplyTx(stx chain.SigTx) error {
   hash := stx.Hash()
-  valid, err := account.Verify(stx)
+  valid, err := account.VerifyTx(stx)
   if err != nil {
     return err
   }

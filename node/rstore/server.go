@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain/account"
-	"github.com/volodymyrprokopyuk/go-blockchain/chain/store"
 )
 
 type StoreSrv struct {
@@ -33,7 +33,7 @@ func (s *StoreSrv) StoreInit(
   if err != nil {
     return nil, err
   }
-  gen := store.NewGenesis(req.Chain, acc.Address(), req.Balance)
+  gen := chain.NewGenesis(req.Chain, acc.Address(), req.Balance)
   err = gen.Write(s.blockStoreDir)
   if err != nil {
     return nil, err

@@ -31,7 +31,7 @@ func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
     chain.Address(req.From), chain.Address(req.To), req.Value,
     s.state.Pending.Nonce(chain.Address(req.From)) + 1,
   )
-  stx, err := acc.Sign(tx)
+  stx, err := acc.SignTx(tx)
   if err != nil {
     return nil, err
   }

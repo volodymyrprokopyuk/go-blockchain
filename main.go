@@ -8,7 +8,6 @@ import (
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain/account"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain/state"
-	"github.com/volodymyrprokopyuk/go-blockchain/chain/store"
 	"github.com/volodymyrprokopyuk/go-blockchain/command"
 )
 
@@ -35,12 +34,12 @@ func newAccountSignVerify() error {
     return err
   }
   tx := chain.NewTx(acc.Address(), chain.Address("ben"), 12, 1)
-  stx, err := acc.Sign(tx)
+  stx, err := acc.SignTx(tx)
   fmt.Printf("%v\n", stx)
   if err != nil {
     return err
   }
-  valid, err := account.Verify(stx)
+  valid, err := account.VerifyTx(stx)
   if err != nil {
     return err
   }
@@ -65,12 +64,12 @@ func writeState() error {
   }
 
   // init state
-  gen := store.NewGenesis("blockchain", acc.Address(), 1000)
+  gen := chain.NewGenesis("blockchain", acc.Address(), 1000)
   err = gen.Write(blockStoreDir)
   if err != nil {
     return err
   }
-  gen, err = store.ReadGenesis(blockStoreDir)
+  gen, err = chain.ReadGenesis(blockStoreDir)
   if err != nil {
     return err
   }
@@ -81,7 +80,7 @@ func writeState() error {
     // send txs
     ben := chain.Address("beneficiary")
     tx := chain.NewTx(acc.Address(), ben, 12, sta.Pending.Nonce(acc.Address()) + 1)
-    stx, err := acc.Sign(tx)
+    stx, err := acc.SignTx(tx)
     if err != nil {
       return err
     }
@@ -90,7 +89,7 @@ func writeState() error {
       return err
     }
     tx = chain.NewTx(acc.Address(), ben, 34, sta.Pending.Nonce(acc.Address()) + 1)
-    stx, err = acc.Sign(tx)
+    stx, err = acc.SignTx(tx)
     if err != nil {
       return err
     }
@@ -130,7 +129,7 @@ func writeState() error {
 
 func readState() error {
   // init state
-  gen, err := store.ReadGenesis(blockStoreDir)
+  gen, err := chain.ReadGenesis(blockStoreDir)
   if err != nil {
     return err
   }

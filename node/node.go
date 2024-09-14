@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain/state"
-	"github.com/volodymyrprokopyuk/go-blockchain/chain/store"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/raccount"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rnode"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rstore"
@@ -40,7 +40,7 @@ type Node struct {
   state *state.State
   grpcSrv *grpc.Server
   peers map[string]struct{}
-  peersMtx *sync.RWMutex
+  peersMtx sync.RWMutex
 }
 
 func NewNode(cfg NodeCfg) *Node {
@@ -58,7 +58,6 @@ func NewNode(cfg NodeCfg) *Node {
   if !cfg.Bootstrap {
     nd.AddPeers(cfg.SeedAddr)
   }
-  nd.peersMtx = new(sync.RWMutex)
   return nd
 }
 
@@ -67,8 +66,8 @@ func (n *Node) Bootstrap() bool {
 }
 
 func (n *Node) AddPeers(peers ...string) {
-  // n.peersMtx.Lock()
-  // defer n.peersMtx.Unlock()
+  n.peersMtx.Lock()
+  defer n.peersMtx.Unlock()
   for _, peer := range peers {
     if peer != n.cfg.NodeAddr {
       n.peers[peer] = struct{}{}
@@ -77,8 +76,8 @@ func (n *Node) AddPeers(peers ...string) {
 }
 
 func (n *Node) Peers() []string {
-  // n.peersMtx.RLock()
-  // defer n.peersMtx.RUnlock()
+  n.peersMtx.RLock()
+  defer n.peersMtx.RUnlock()
   peers := make([]string, 0, len(n.peers))
   for peer := range n.peers {
     peers = append(peers, peer)
@@ -106,7 +105,7 @@ func (n *Node) Start() error {
 }
 
 func (n *Node) readState() error {
-  gen, err := store.ReadGenesis(n.cfg.BlockStoreDir)
+  gen, err := chain.ReadGenesis(n.cfg.BlockStoreDir)
   if err != nil {
     fmt.Println("warning: genesis not found: > bcn store init, then restart")
     return nil
