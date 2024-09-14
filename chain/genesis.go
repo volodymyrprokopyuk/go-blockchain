@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/dustinxie/ecc"
+	"golang.org/x/crypto/sha3"
 )
 
 const genesisFile = "genesis.json"
@@ -16,13 +19,46 @@ type Genesis struct {
 }
 
 func NewGenesis(name string, acc Address, balance uint64) Genesis {
-  bals := make(map[Address]uint64, 1)
-  bals[acc] = balance
-  return Genesis{Chain: name, Time: time.Now(), Balances: bals}
+  balances := make(map[Address]uint64, 1)
+  balances[acc] = balance
+  return Genesis{Chain: name, Time: time.Now(), Balances: balances}
 }
 
-func (g Genesis) Write(dir string) error {
-  jgen, err := json.Marshal(g)
+func (g Genesis) Hash() Hash {
+  jgen, _ := json.Marshal(g)
+  hash := make([]byte, 64)
+  sha3.ShakeSum256(hash, jgen)
+  return Hash(hash[:32])
+}
+
+type SigGenesis struct {
+  Genesis
+  Sig []byte `json:"sig"`
+}
+
+func NewSigGenesis(gen Genesis, sig []byte) SigGenesis {
+  return SigGenesis{Genesis: gen, Sig: sig}
+}
+
+func (g SigGenesis) Hash() Hash {
+  jsgen, _ := json.Marshal(g)
+  hash := make([]byte, 64)
+  sha3.ShakeSum256(hash, jsgen)
+  return Hash(hash[:32])
+}
+
+func VerifyGen(sgen SigGenesis) (bool, error) {
+  pub, err := ecc.RecoverPubkey("P-256k1", sgen.Genesis.Hash().Bytes(), sgen.Sig)
+  if err != nil {
+    return false, err
+  }
+  acc := NewAddress(pub)
+  _, exist := sgen.Balances[acc]
+  return exist, nil
+}
+
+func (g SigGenesis) Write(dir string) error {
+  jsgen, err := json.Marshal(g)
   if err != nil {
     return err
   }
@@ -31,16 +67,16 @@ func (g Genesis) Write(dir string) error {
     return err
   }
   path := filepath.Join(dir, genesisFile)
-  return os.WriteFile(path, jgen, 0600)
+  return os.WriteFile(path, jsgen, 0600)
 }
 
-func ReadGenesis(dir string) (Genesis, error) {
+func ReadGenesis(dir string) (SigGenesis, error) {
   path := filepath.Join(dir, genesisFile)
-  jgen, err := os.ReadFile(path)
+  jsgen, err := os.ReadFile(path)
   if err != nil {
-    return Genesis{}, err
+    return SigGenesis{}, err
   }
-  var gen Genesis
-  err = json.Unmarshal(jgen, &gen)
-  return gen, err
+  var sgen SigGenesis
+  err = json.Unmarshal(jsgen, &sgen)
+  return sgen, err
 }

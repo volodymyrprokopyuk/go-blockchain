@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dustinxie/ecc"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -47,4 +48,13 @@ func (t SigTx) Hash() Hash {
   hash := make([]byte, 64)
   sha3.ShakeSum256(hash, jstx)
   return Hash(hash[:32])
+}
+
+func VerifyTx(stx SigTx) (bool, error) {
+  pub, err := ecc.RecoverPubkey("P-256k1", stx.Tx.Hash().Bytes(), stx.Sig)
+  if err != nil {
+    return false, err
+  }
+  acc := NewAddress(pub)
+  return acc == stx.From, nil
 }

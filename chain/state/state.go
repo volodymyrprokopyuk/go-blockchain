@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
-	"github.com/volodymyrprokopyuk/go-blockchain/chain/account"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain/store"
 )
 
@@ -97,7 +96,7 @@ func (s *State) String() string {
 
 func (s *State) ApplyTx(stx chain.SigTx) error {
   hash := stx.Hash()
-  valid, err := account.VerifyTx(stx)
+  valid, err := chain.VerifyTx(stx)
   if err != nil {
     return err
   }
