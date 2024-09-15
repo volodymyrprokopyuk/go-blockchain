@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/signal"
@@ -121,6 +122,7 @@ func (n *Node) createGenesis() (chain.SigGenesis, error) {
     return chain.SigGenesis{}, err
   }
   err = acc.Write(n.cfg.KeyStoreDir, pass)
+  n.cfg.Password = "erase"
   if err != nil {
     return chain.SigGenesis{}, err
   }
@@ -202,6 +204,69 @@ func (n *Node) readBlocks() error {
   return nil
 }
 
+func (n *Node) grpcBlockSync(peer string) (
+  func(yield (func(err error, jblk []byte) bool)), func(), error,
+) {
+  conn, err := grpc.NewClient(
+    peer, grpc.WithTransportCredentials(insecure.NewCredentials()),
+  )
+  if err != nil {
+    return nil, nil, err
+  }
+  close := func() {
+    conn.Close()
+  }
+  cln := rnode.NewNodeClient(conn)
+  req := &rnode.BlockSyncReq{Number: n.state.LastBlock().Number + 1}
+  stream, err := cln.BlockSync(n.ctx, req)
+  if err != nil {
+    return nil, nil, err
+  }
+  more := true
+  blocks := func(yield func(err error, jblk []byte) bool) {
+    for more {
+      res, err := stream.Recv()
+      if err == io.EOF {
+        return
+      }
+      if err != nil {
+        yield(err, nil)
+        return
+      }
+      more = yield(nil, res.Block)
+    }
+  }
+  return blocks, close, nil
+}
+
+func (n *Node) syncBlocks() error {
+  for _, peer := range n.Peers() {
+    blocks, closeBlocks, err := n.grpcBlockSync(peer)
+    if err != nil {
+      return err
+    }
+    defer closeBlocks()
+    for err, jblk := range blocks {
+      if err != nil {
+        return err
+      }
+      var blk chain.Block
+      err := json.Unmarshal(jblk, &blk)
+      if err != nil {
+        return err
+      }
+      clo := n.state.Clone()
+      err = clo.ApplyBlock(blk)
+      if err != nil {
+        return err
+      }
+      n.state.Apply(clo)
+      n.state.ResetPending()
+    }
+  }
+  return nil
+}
+
 func (n *Node) initState() error {
   sgen, err := chain.ReadGenesis(n.cfg.BlockStoreDir)
   if err != nil {
@@ -225,12 +290,15 @@ func (n *Node) initState() error {
     return fmt.Errorf("invalid genesis signature")
   }
   n.state = state.NewState(sgen)
-  fmt.Printf("* Init state (ReadGenesis)\n%v\n", n.state)
   err = n.readBlocks()
   if err != nil {
     return err
   }
-  fmt.Printf("* Local state (ReadBlocks)\n%v\n", n.state)
+  err = n.syncBlocks()
+  if err != nil {
+    return err
+  }
+  fmt.Printf("* Sync state (SyncBlocks)\n%v\n", n.state)
   return nil
 }
 

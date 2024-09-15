@@ -8,6 +8,14 @@ message GenesisSyncRes {
   bytes Genesis = 1;
 }
 
+message BlockSyncReq {
+  uint64 Number = 1;
+}
+
+message BlockSyncRes {
+  bytes Block = 1;
+}
+
 message PeerDiscoverReq {
   string Peer = 1;
 }
@@ -18,5 +26,6 @@ message PeerDiscoverRes {
 
 service Node {
   rpc GenesisSync(GenesisSyncReq) returns (GenesisSyncRes);
+  rpc BlockSync(BlockSyncReq) returns (stream BlockSyncRes);
   rpc PeerDiscover(PeerDiscoverReq) returns (PeerDiscoverRes);
 }

@@ -22,6 +22,10 @@ func (s *State) Nonce(acc chain.Address) uint64 {
   return s.nonces[acc]
 }
 
+func (s *State) LastBlock() chain.Block {
+  return s.lastBlock
+}
+
 func NewState(gen chain.SigGenesis) *State {
   return &State{
     balances: maps.Clone(gen.Balances),

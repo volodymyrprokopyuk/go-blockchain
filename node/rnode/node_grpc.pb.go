@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	Node_GenesisSync_FullMethodName  = "/Node/GenesisSync"
+	Node_BlockSync_FullMethodName    = "/Node/BlockSync"
 	Node_PeerDiscover_FullMethodName = "/Node/PeerDiscover"
 )
 
@@ -28,6 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NodeClient interface {
 	GenesisSync(ctx context.Context, in *GenesisSyncReq, opts ...grpc.CallOption) (*GenesisSyncRes, error)
+	BlockSync(ctx context.Context, in *BlockSyncReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[BlockSyncRes], error)
 	PeerDiscover(ctx context.Context, in *PeerDiscoverReq, opts ...grpc.CallOption) (*PeerDiscoverRes, error)
 }
 
@@ -49,6 +51,25 @@ func (c *nodeClient) GenesisSync(ctx context.Context, in *GenesisSyncReq, opts .
 	return out, nil
 }
 
+func (c *nodeClient) BlockSync(ctx context.Context, in *BlockSyncReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[BlockSyncRes], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Node_ServiceDesc.Streams[0], Node_BlockSync_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[BlockSyncReq, BlockSyncRes]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Node_BlockSyncClient = grpc.ServerStreamingClient[BlockSyncRes]
+
 func (c *nodeClient) PeerDiscover(ctx context.Context, in *PeerDiscoverReq, opts ...grpc.CallOption) (*PeerDiscoverRes, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PeerDiscoverRes)
@@ -64,6 +85,7 @@ func (c *nodeClient) PeerDiscover(ctx context.Context, in *PeerDiscoverReq, opts
 // for forward compatibility.
 type NodeServer interface {
 	GenesisSync(context.Context, *GenesisSyncReq) (*GenesisSyncRes, error)
+	BlockSync(*BlockSyncReq, grpc.ServerStreamingServer[BlockSyncRes]) error
 	PeerDiscover(context.Context, *PeerDiscoverReq) (*PeerDiscoverRes, error)
 	mustEmbedUnimplementedNodeServer()
 }
@@ -77,6 +99,9 @@ type UnimplementedNodeServer struct{}
 
 func (UnimplementedNodeServer) GenesisSync(context.Context, *GenesisSyncReq) (*GenesisSyncRes, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenesisSync not implemented")
+}
+func (UnimplementedNodeServer) BlockSync(*BlockSyncReq, grpc.ServerStreamingServer[BlockSyncRes]) error {
+	return status.Errorf(codes.Unimplemented, "method BlockSync not implemented")
 }
 func (UnimplementedNodeServer) PeerDiscover(context.Context, *PeerDiscoverReq) (*PeerDiscoverRes, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PeerDiscover not implemented")
@@ -120,6 +145,17 @@ func _Node_GenesisSync_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Node_BlockSync_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(BlockSyncReq)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(NodeServer).BlockSync(m, &grpc.GenericServerStream[BlockSyncReq, BlockSyncRes]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Node_BlockSyncServer = grpc.ServerStreamingServer[BlockSyncRes]
+
 func _Node_PeerDiscover_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PeerDiscoverReq)
 	if err := dec(in); err != nil {
@@ -154,6 +190,12 @@ var Node_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Node_PeerDiscover_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "BlockSync",
+			Handler:       _Node_BlockSync_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "node.proto",
 }

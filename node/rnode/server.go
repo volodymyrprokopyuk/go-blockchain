@@ -2,10 +2,9 @@ package rnode
 
 import (
 	context "context"
-	"encoding/json"
-	"fmt"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
+	"google.golang.org/grpc"
 )
 
 type Peerer interface {
@@ -27,24 +26,37 @@ func NewNodeSrv(blockStoreDir string, peerer Peerer) *NodeSrv {
 func (s *NodeSrv) GenesisSync(
   _ context.Context, req *GenesisSyncReq,
 ) (*GenesisSyncRes, error) {
-  sgen, err := chain.ReadGenesis(s.blockStoreDir)
-  if err != nil {
-    fmt.Println("oh")
-    return nil, err
-  }
-  valid, err := chain.VerifyGen(sgen)
-  if err != nil {
-    return nil, err
-  }
-  if !valid {
-    return nil, fmt.Errorf("invalid genesis signature")
-  }
-  jsgen, err := json.Marshal(sgen)
+  jsgen, err := chain.ReadGenesisBytes(s.blockStoreDir)
   if err != nil {
     return nil, err
   }
   res := &GenesisSyncRes{Genesis: jsgen}
   return res, nil
+}
+
+func (s *NodeSrv) BlockSync(
+  req *BlockSyncReq, stream grpc.ServerStreamingServer[BlockSyncRes],
+) error {
+  blocks, closeBlocks, err := chain.ReadBlocksBytes(s.blockStoreDir)
+  if err != nil {
+    return err
+  }
+  defer closeBlocks()
+  num, i := int(req.Number), 1
+  for err, jblk := range blocks {
+    if err != nil {
+      return err
+    }
+    if i >= num {
+      res := &BlockSyncRes{Block: jblk}
+      err = stream.Send(res)
+      if err != nil {
+        return err
+      }
+    }
+    i++
+  }
+  return nil
 }
 
 func (s *NodeSrv) PeerDiscover(

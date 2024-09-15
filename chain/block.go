@@ -99,3 +99,29 @@ func ReadBlocks(dir string) (
   }
   return blocks, close, nil
 }
+
+func ReadBlocksBytes(dir string) (
+  func (yield func(err error, jblk []byte) bool), func(), error,
+) {
+  path := filepath.Join(dir, blocksFile)
+  file, err := os.Open(path)
+  if err != nil {
+    return nil, nil, err
+  }
+  close := func() {
+    file.Close()
+  }
+  blocks := func(yield func(err error, jblk []byte) bool) {
+    sca := bufio.NewScanner(file)
+    more := true
+    for sca.Scan() && more {
+      err := sca.Err()
+      if err != nil {
+        yield(err, nil)
+        return
+      }
+      more = yield(nil, sca.Bytes())
+    }
+  }
+  return blocks, close, nil
+}
