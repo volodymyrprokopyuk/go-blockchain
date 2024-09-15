@@ -7,13 +7,12 @@ import (
 	"strings"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
-	"github.com/volodymyrprokopyuk/go-blockchain/chain/store"
 )
 
 type State struct {
   balances map[chain.Address]uint64
   nonces map[chain.Address]uint64
-  lastBlock store.Block
+  lastBlock chain.Block
   txs map[chain.Hash]chain.SigTx
   Pending *State
 }
@@ -22,7 +21,7 @@ func (s *State) Nonce(addr chain.Address) uint64 {
   return s.nonces[addr]
 }
 
-func NewState(gen chain.Genesis) *State {
+func NewState(gen chain.SigGenesis) *State {
   return &State{
     balances: maps.Clone(gen.Balances),
     nonces: make(map[chain.Address]uint64),
@@ -116,7 +115,7 @@ func (s *State) ApplyTx(stx chain.SigTx) error {
   return nil
 }
 
-func (s *State) CreateBlock() store.Block {
+func (s *State) CreateBlock() chain.Block {
   pndTxs := make([]chain.SigTx, 0, len(s.Pending.txs))
   for _, tx := range s.Pending.txs {
     pndTxs = append(pndTxs, tx)
@@ -137,11 +136,11 @@ func (s *State) CreateBlock() store.Block {
     }
     txs = append(txs, tx)
   }
-  blk := store.NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
+  blk := chain.NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
   return blk
 }
 
-func (s *State) ApplyBlock(blk store.Block) error {
+func (s *State) ApplyBlock(blk chain.Block) error {
   if blk.Number != s.lastBlock.Number + 1 {
     return fmt.Errorf("%.7s: invalid block number", blk.Hash())
   }
@@ -159,7 +158,7 @@ func (s *State) ApplyBlock(blk store.Block) error {
 }
 
 func (s *State) ReadBlocks(blockStoreDir string) error {
-  blocks, closeBlocks, err := store.ReadBlocks(blockStoreDir)
+  blocks, closeBlocks, err := chain.ReadBlocks(blockStoreDir)
   if err != nil {
     return err
   }

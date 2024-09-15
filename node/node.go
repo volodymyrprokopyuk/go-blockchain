@@ -4,28 +4,30 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain/account"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain/state"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/raccount"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rnode"
-	"github.com/volodymyrprokopyuk/go-blockchain/node/rstore"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rtx"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 type NodeCfg struct {
-  KeyStoreDir string
-  BlockStoreDir string
   NodeAddr string
   Bootstrap bool
   SeedAddr string
+  KeyStoreDir string
+  BlockStoreDir string
+  Chain string
+  Password string
+  Balance uint64
 }
 
 type Node struct {
@@ -76,9 +78,9 @@ func (n *Node) AddPeers(peers ...string) {
 }
 
 func (n *Node) Peers() []string {
+  peers := make([]string, 0, len(n.peers))
   n.peersMtx.RLock()
   defer n.peersMtx.RUnlock()
-  peers := make([]string, 0, len(n.peers))
   for peer := range n.peers {
     peers = append(peers, peer)
   }
@@ -87,7 +89,7 @@ func (n *Node) Peers() []string {
 
 func (n *Node) Start() error {
   defer n.ctxCancel()
-  err := n.readState()
+  err := n.initState()
   if err != nil {
     return err
   }
@@ -100,25 +102,71 @@ func (n *Node) Start() error {
   }
   n.ctxCancel() // restore default signal handling
   n.grpcSrv.GracefulStop()
-  n.wg.Wait()
+  n.wg.Wait() // for discoverPeers
   return err
 }
 
-func (n *Node) readState() error {
-  gen, err := chain.ReadGenesis(n.cfg.BlockStoreDir)
-  if err != nil {
-    fmt.Println("warning: genesis not found: > bcn store init, then restart")
-    return nil
+func (n *Node) createGenesis() (chain.SigGenesis, error) {
+  pwd := []byte(n.cfg.Password)
+  if len(pwd) < 5 {
+    return chain.SigGenesis{}, fmt.Errorf("password length is less than 5")
   }
-  n.state = state.NewState(gen)
-  err = n.state.ReadBlocks(n.cfg.BlockStoreDir)
-  if err != nil {
-    if _, assert := err.(*os.PathError); !assert {
-      return err
-    }
-    fmt.Println("warning: blocks not yet created")
+  if n.cfg.Balance == 0 {
+    return chain.SigGenesis{}, fmt.Errorf("balance must be positive")
   }
-  fmt.Printf("* Read state (ReadBlocks)\n%v\n", n.state)
+  acc, err := account.NewAccount()
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  err = acc.Write(n.cfg.KeyStoreDir, pwd)
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  gen := chain.NewGenesis(n.cfg.Chain, acc.Address(), n.cfg.Balance)
+  sgen, err := acc.SignGen(gen)
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  err = sgen.Write(n.cfg.BlockStoreDir)
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  return sgen, nil
+}
+
+func (n *Node) initState() error {
+  sgen, err := chain.ReadGenesis(n.cfg.BlockStoreDir)
+  if err != nil {
+    if n.Bootstrap() {
+      sgen, err = n.createGenesis()
+      if err != nil {
+        return err
+      }
+    } // else {
+    //   sgen, err = n.syncGenesis()
+    //   if err != nil {
+    //     return err
+    //   }
+    // }
+  }
+  valid, err := chain.VerifyGen(sgen)
+  if err != nil {
+    return err
+  }
+  if !valid {
+    return fmt.Errorf("invalid genesis signature")
+  }
+  n.state = state.NewState(sgen)
+  fmt.Printf("* Init state (ReadGenesis)\n%v\n", n.state)
+
+  // err = n.state.ReadBlocks(n.cfg.BlockStoreDir)
+  // if err != nil {
+  //   if _, assert := err.(*os.PathError); !assert {
+  //     return err
+  //   }
+  //   fmt.Println("warning: blocks not yet created")
+  // }
+  // fmt.Printf("* Read state (ReadBlocks)\n%v\n", n.state)
   return nil
 }
 
@@ -135,8 +183,6 @@ func (n *Node) servegRPC() {
   n.grpcSrv = grpc.NewServer()
   nd := rnode.NewNodeSrv(n)
   rnode.RegisterNodeServer(n.grpcSrv, nd)
-  sto := rstore.NewStoreSrv(n.cfg.KeyStoreDir, n.cfg.BlockStoreDir)
-  rstore.RegisterStoreServer(n.grpcSrv, sto)
   acc := raccount.NewAccountSrv(n.cfg.KeyStoreDir)
   raccount.RegisterAccountServer(n.grpcSrv, acc)
   tx := rtx.NewTxSrv(n.cfg.KeyStoreDir, n.state)

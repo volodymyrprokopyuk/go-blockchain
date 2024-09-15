@@ -25,7 +25,12 @@ func nodeStartCmd() *cobra.Command {
       nodeAddr, _ := cmd.Flags().GetString("node")
       reAddr := regexp.MustCompile(`[-\.\w]+:\d+`)
       if !reAddr.MatchString(nodeAddr) {
-        return fmt.Errorf("expected node host:port, got %v", nodeAddr)
+        return fmt.Errorf("expected --node host:port, got %v", nodeAddr)
+      }
+      bootstrap, _ := cmd.Flags().GetBool("bootstrap")
+      seedAddr, _ := cmd.Flags().GetString("seed")
+      if !bootstrap && len(seedAddr) == 0 {
+        return fmt.Errorf("either --bootstrap or --seed <node> must be provided")
       }
       rePort := regexp.MustCompile(`\d+$`)
       port := rePort.FindString(nodeAddr)
@@ -37,23 +42,27 @@ func nodeStartCmd() *cobra.Command {
       if len(blockStoreDir) == 0 {
         blockStoreDir = ".blockstore" + port
       }
-      bootstrap, _ := cmd.Flags().GetBool("bootstrap")
-      seedAddr, _ := cmd.Flags().GetString("seed")
-      if !bootstrap && len(seedAddr) == 0 {
-        return fmt.Errorf("either --bootstrap or --seed <node> must be provided")
-      }
+      name, _ := cmd.Flags().GetString("chain")
+      password, _ := cmd.Flags().GetString("password")
+      balance, _ := cmd.Flags().GetUint64("balance")
       cfg := node.NodeCfg{
-        KeyStoreDir: keyStoreDir, BlockStoreDir: blockStoreDir,
         NodeAddr: nodeAddr, Bootstrap: bootstrap, SeedAddr: seedAddr,
+        KeyStoreDir: keyStoreDir, BlockStoreDir: blockStoreDir,
+        Chain: name, Password: password, Balance: balance,
       }
       nd := node.NewNode(cfg)
       return nd.Start()
     },
   }
-  cmd.Flags().String("keystore", "", "key store directory")
-  cmd.Flags().String("blockstore", "", "block store directory")
   cmd.Flags().Bool("bootstrap", false, "peer discovery bootstrap node")
   cmd.Flags().String("seed", "", "peer discovery seed address host:port")
   cmd.MarkFlagsMutuallyExclusive("bootstrap", "seed")
+  cmd.MarkFlagsOneRequired("bootstrap", "seed")
+  cmd.Flags().String("keystore", "", "key store directory")
+  cmd.Flags().String("blockstore", "", "block store directory")
+  cmd.Flags().String("chain", "blockchain", "name of the blockchain")
+  cmd.Flags().String("password", "", "password for the genesis account")
+  cmd.Flags().Uint64("balance", 0, "initial balance for the genesis account")
+  cmd.MarkFlagsRequiredTogether("password", "balance")
   return cmd
 }

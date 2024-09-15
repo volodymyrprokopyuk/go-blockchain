@@ -1,4 +1,4 @@
-package store
+package chain
 
 import (
 	"bufio"
@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -17,23 +16,23 @@ const blocksFile = "blocks.store"
 
 type Block struct {
   Number uint64 `json:"number"`
-  Parent chain.Hash `json:"parent"`
+  Parent Hash `json:"parent"`
   Time time.Time `json:"time"`
-  Txs []chain.SigTx `json:"txs"`
+  Txs []SigTx `json:"txs"`
 }
 
-func NewBlock(number uint64, parent chain.Hash, txs []chain.SigTx) Block {
+func NewBlock(number uint64, parent Hash, txs []SigTx) Block {
   return Block{Number: number, Parent: parent, Time: time.Now(), Txs: txs}
 }
 
-func (b Block) Hash() chain.Hash {
-  if b.Number == 0 && (b.Parent == chain.Hash{}) && len(b.Txs) == 0 {
-    return chain.Hash{}
+func (b Block) Hash() Hash {
+  if b.Number == 0 && (b.Parent == Hash{}) && len(b.Txs) == 0 {
+    return Hash{}
   }
   jblk, _ := json.Marshal(b)
   hash := make([]byte, 64)
   sha3.ShakeSum256(hash, jblk)
-  return chain.Hash(hash[:32])
+  return Hash(hash[:32])
 }
 
 func (b Block) String() string {
@@ -48,7 +47,7 @@ func (b Block) String() string {
 }
 
 type storeBlock struct {
-  Hash chain.Hash `json:"hash"`
+  Hash Hash `json:"hash"`
   Block Block `json:"block"`
 }
 
