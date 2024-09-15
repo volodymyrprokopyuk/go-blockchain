@@ -3,22 +3,25 @@ package rtx
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain/account"
-	"github.com/volodymyrprokopyuk/go-blockchain/chain/state"
 )
+
+type TxApplier interface {
+  Nonce(acc chain.Address) uint64
+  ApplyTx(stx chain.SigTx) error
+}
 
 type TxSrv struct {
   UnimplementedTxServer
   keyStoreDir string
-  state *state.State
+  txApplier TxApplier
 }
 
-func NewTxSrv(keyStoreDir string, sta *state.State) *TxSrv {
-  return &TxSrv{keyStoreDir: keyStoreDir, state: sta}
+func NewTxSrv(keyStoreDir string, txApplier TxApplier) *TxSrv {
+  return &TxSrv{keyStoreDir: keyStoreDir, txApplier: txApplier}
 }
 
 func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
@@ -29,7 +32,7 @@ func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
   }
   tx := chain.NewTx(
     chain.Address(req.From), chain.Address(req.To), req.Value,
-    s.state.Pending.Nonce(chain.Address(req.From)) + 1,
+    s.txApplier.Nonce(chain.Address(req.From)) + 1,
   )
   stx, err := acc.SignTx(tx)
   if err != nil {
@@ -49,11 +52,10 @@ func (s *TxSrv) TxSend(_ context.Context, req *TxSendReq) (*TxSendRes, error) {
   if err != nil {
     return nil, err
   }
-  err = s.state.Pending.ApplyTx(stx)
+  err = s.txApplier.ApplyTx(stx)
   if err != nil {
     return nil, err
   }
-  fmt.Printf("* Pending state (ApplyTx)\n%v\n", s.state)
   res := &TxSendRes{Hash: stx.Hash().String()}
   return res, nil
 }

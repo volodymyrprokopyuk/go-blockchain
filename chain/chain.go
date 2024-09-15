@@ -32,7 +32,7 @@ type Hash [32]byte
 
 func NewHash(str string) Hash {
   var hash Hash
-  hex.Decode(hash[:], []byte(str))
+  _, _ = hex.Decode(hash[:], []byte(str))
   return hash
 }
 

@@ -159,6 +159,9 @@ func (n *Node) syncGenesis() (chain.SigGenesis, error) {
   }
   var sgen chain.SigGenesis
   err = json.Unmarshal(jsgen, &sgen)
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
   valid, err := chain.VerifyGen(sgen)
   if err != nil {
     return chain.SigGenesis{}, err
@@ -198,6 +201,11 @@ func (n *Node) initState() error {
   n.state = state.NewState(sgen)
   fmt.Printf("* Init state (ReadGenesis)\n%v\n", n.state)
 
+  // err = n.readBlocs()
+  // if err != nil {
+  //   return err
+  // }
+
   // err = n.state.ReadBlocks(n.cfg.BlockStoreDir)
   // if err != nil {
   //   if _, assert := err.(*os.PathError); !assert {
@@ -224,7 +232,7 @@ func (n *Node) servegRPC() {
   rnode.RegisterNodeServer(n.grpcSrv, nd)
   acc := raccount.NewAccountSrv(n.cfg.KeyStoreDir)
   raccount.RegisterAccountServer(n.grpcSrv, acc)
-  tx := rtx.NewTxSrv(n.cfg.KeyStoreDir, n.state)
+  tx := rtx.NewTxSrv(n.cfg.KeyStoreDir, n.state.Pending)
   rtx.RegisterTxServer(n.grpcSrv, tx)
   err = n.grpcSrv.Serve(lis)
   if err != nil {

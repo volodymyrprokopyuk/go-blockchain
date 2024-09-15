@@ -13,6 +13,7 @@ type State struct {
   balances map[chain.Address]uint64
   nonces map[chain.Address]uint64
   lastBlock chain.Block
+  genesisHash chain.Hash
   txs map[chain.Hash]chain.SigTx
   Pending *State
 }
@@ -25,10 +26,12 @@ func NewState(gen chain.SigGenesis) *State {
   return &State{
     balances: maps.Clone(gen.Balances),
     nonces: make(map[chain.Address]uint64),
+    genesisHash: gen.Hash(),
     txs: make(map[chain.Hash]chain.SigTx),
     Pending: &State{
       balances: maps.Clone(gen.Balances),
       nonces: make(map[chain.Address]uint64),
+      genesisHash: gen.Hash(),
       txs: make(map[chain.Hash]chain.SigTx),
     },
   }
@@ -39,6 +42,7 @@ func (s *State) Clone() *State {
     balances: maps.Clone(s.balances),
     nonces: maps.Clone(s.nonces),
     lastBlock: s.lastBlock,
+    genesisHash: s.genesisHash,
     txs: maps.Clone(s.txs),
     Pending: &State{
       txs: maps.Clone(s.Pending.txs),
@@ -136,15 +140,21 @@ func (s *State) CreateBlock() chain.Block {
     }
     txs = append(txs, tx)
   }
-  blk := chain.NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
-  return blk
+  if s.lastBlock.Number == 0 {
+    return chain.NewBlock(s.lastBlock.Number + 1, s.genesisHash, txs)
+  }
+  return chain.NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
 }
 
 func (s *State) ApplyBlock(blk chain.Block) error {
   if blk.Number != s.lastBlock.Number + 1 {
     return fmt.Errorf("%.7s: invalid block number", blk.Hash())
   }
-  if blk.Parent != s.lastBlock.Hash() {
+  hash := s.lastBlock.Hash()
+  if blk.Number == 1 {
+    hash = s.genesisHash
+  }
+  if blk.Parent != hash {
     return fmt.Errorf("%.7s: invalid parent hash", blk.Hash())
   }
   for _, tx := range blk.Txs {
