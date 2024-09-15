@@ -19,15 +19,15 @@ func NewAccountSrv(keyStoreDir string) *AccountSrv {
 func (s *AccountSrv) AccountCreate(
   _ context.Context, req *AccountCreateReq,
 ) (*AccountCreateRes, error) {
-  pwd := []byte(req.Password)
-  if len(pwd) < 5 {
+  pass := []byte(req.Password)
+  if len(pass) < 5 {
     return nil, fmt.Errorf("password length is less than 5")
   }
   acc, err := account.NewAccount()
   if err != nil {
     return nil, err
   }
-  err = acc.Write(s.keyStoreDir, pwd)
+  err = acc.Write(s.keyStoreDir, pass)
   if err != nil {
     return nil, err
   }

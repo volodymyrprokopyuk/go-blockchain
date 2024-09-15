@@ -17,8 +17,8 @@ type State struct {
   Pending *State
 }
 
-func (s *State) Nonce(addr chain.Address) uint64 {
-  return s.nonces[addr]
+func (s *State) Nonce(acc chain.Address) uint64 {
+  return s.nonces[acc]
 }
 
 func NewState(gen chain.SigGenesis) *State {
@@ -157,8 +157,8 @@ func (s *State) ApplyBlock(blk chain.Block) error {
   return nil
 }
 
-func (s *State) ReadBlocks(blockStoreDir string) error {
-  blocks, closeBlocks, err := chain.ReadBlocks(blockStoreDir)
+func (s *State) ReadBlocks(dir string) error {
+  blocks, closeBlocks, err := chain.ReadBlocks(dir)
   if err != nil {
     return err
   }

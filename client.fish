@@ -2,18 +2,9 @@
 
 set -g pass password
 
-function chainInit -a port
-  set -l nd localhost:$port
-  set -l ks .keystore$port
-  set -l bs .blockstore$port
-  rm -rf $ks $bs
-  set -l own (./bcn store init --node $nd --password $pass --balance 1000)
-  echo owner: $own
-  set -l ben (./bcn account create --node $nd --password $pass)
-  echo benef: $ben
-end
-
-# chainInit 1124
+# ./bcn node start --node localhost:1122 --bootstrap --password $pass --balance 1000
+# ./bcn account create --node localhost:1122 --password $pass
+# ./bcn node start --node localhost:1123 --seed localhost:1122
 
 function txSignAndSend -a pass from to value
   set -l stx (./bcn tx sign --password $pass --from $from --to $to --value $value)

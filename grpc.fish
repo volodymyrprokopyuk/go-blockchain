@@ -10,12 +10,10 @@ function compile -a proto
   protoc --proto_path $import --go_out $out --go-grpc_out $out $proto
 end
 
-set -l account node/raccount/account.proto
-set -l store node/rstore/store.proto
-set -l tx node/rtx/tx.proto
 set -l node node/rnode/node.proto
+set -l account node/raccount/account.proto
+set -l tx node/rtx/tx.proto
 
-compile $account
-compile $store
-compile $tx
 compile $node
+compile $account
+compile $tx

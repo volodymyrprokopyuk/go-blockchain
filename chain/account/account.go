@@ -54,12 +54,12 @@ func NewAccount() (Account, error) {
   return Account{prv: prv, addr: addr}, nil
 }
 
-func (a Account) Write(dir string, pwd []byte) error {
+func (a Account) Write(dir string, pass []byte) error {
   jprv, err := a.encodePrivateKey()
   if err != nil {
     return err
   }
-  cprv, err := encryptWithPassword(jprv, pwd)
+  cprv, err := encryptWithPassword(jprv, pass)
   if err != nil {
     return err
   }
@@ -71,12 +71,12 @@ func (a Account) Write(dir string, pwd []byte) error {
   return os.WriteFile(path, cprv, 0600)
 }
 
-func Read(path string, pwd []byte) (Account, error) {
+func Read(path string, pass []byte) (Account, error) {
   cprv, err := os.ReadFile(path)
   if err != nil {
     return Account{}, err
   }
-  jprv, err := decryptWithPassword(cprv, pwd)
+  jprv, err := decryptWithPassword(cprv, pass)
   if err != nil {
     return Account{}, err
   }
@@ -116,13 +116,13 @@ func decodePrivateKey(jprv []byte) (Account, error) {
   return Account{prv: prv, addr: addr}, nil
 }
 
-func encryptWithPassword(msg, pwd []byte) ([]byte, error) {
+func encryptWithPassword(msg, pass []byte) ([]byte, error) {
   salt := make([]byte, encKeyLen)
   _, err := rand.Read(salt)
   if err != nil {
     return nil, err
   }
-  key := argon2.IDKey(pwd, salt, 1, 256, 1, encKeyLen)
+  key := argon2.IDKey(pass, salt, 1, 256, 1, encKeyLen)
   blk, err := aes.NewCipher(key)
   if err != nil {
     return nil, err
@@ -141,9 +141,9 @@ func encryptWithPassword(msg, pwd []byte) ([]byte, error) {
   return ciph, nil
 }
 
-func decryptWithPassword(ciph, pwd []byte) ([]byte, error) {
+func decryptWithPassword(ciph, pass []byte) ([]byte, error) {
   salt, ciph := ciph[:encKeyLen], ciph[encKeyLen:]
-  key := argon2.IDKey(pwd, salt, 1, 256, 1, encKeyLen)
+  key := argon2.IDKey(pass, salt, 1, 256, 1, encKeyLen)
   blk, err := aes.NewCipher(key)
   if err != nil {
     return nil, err

@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os/signal"
@@ -107,8 +108,8 @@ func (n *Node) Start() error {
 }
 
 func (n *Node) createGenesis() (chain.SigGenesis, error) {
-  pwd := []byte(n.cfg.Password)
-  if len(pwd) < 5 {
+  pass := []byte(n.cfg.Password)
+  if len(pass) < 5 {
     return chain.SigGenesis{}, fmt.Errorf("password length is less than 5")
   }
   if n.cfg.Balance == 0 {
@@ -118,7 +119,7 @@ func (n *Node) createGenesis() (chain.SigGenesis, error) {
   if err != nil {
     return chain.SigGenesis{}, err
   }
-  err = acc.Write(n.cfg.KeyStoreDir, pwd)
+  err = acc.Write(n.cfg.KeyStoreDir, pass)
   if err != nil {
     return chain.SigGenesis{}, err
   }
@@ -126,6 +127,44 @@ func (n *Node) createGenesis() (chain.SigGenesis, error) {
   sgen, err := acc.SignGen(gen)
   if err != nil {
     return chain.SigGenesis{}, err
+  }
+  err = sgen.Write(n.cfg.BlockStoreDir)
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  return sgen, nil
+}
+
+func (n *Node) grpcGenesisSync() ([]byte, error) {
+  conn, err := grpc.NewClient(
+    n.cfg.SeedAddr, grpc.WithTransportCredentials(insecure.NewCredentials()),
+  )
+  if err != nil {
+    return nil, err
+  }
+  defer conn.Close()
+  cln := rnode.NewNodeClient(conn)
+  req := &rnode.GenesisSyncReq{}
+  res, err := cln.GenesisSync(n.ctx, req)
+  if err != nil {
+    return nil, err
+  }
+  return res.Genesis, nil
+}
+
+func (n *Node) syncGenesis() (chain.SigGenesis, error) {
+  jsgen, err := n.grpcGenesisSync()
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  var sgen chain.SigGenesis
+  err = json.Unmarshal(jsgen, &sgen)
+  valid, err := chain.VerifyGen(sgen)
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  if !valid {
+    return chain.SigGenesis{}, fmt.Errorf("invalid genesis signature")
   }
   err = sgen.Write(n.cfg.BlockStoreDir)
   if err != nil {
@@ -142,12 +181,12 @@ func (n *Node) initState() error {
       if err != nil {
         return err
       }
-    } // else {
-    //   sgen, err = n.syncGenesis()
-    //   if err != nil {
-    //     return err
-    //   }
-    // }
+    } else {
+      sgen, err = n.syncGenesis()
+      if err != nil {
+        return err
+      }
+    }
   }
   valid, err := chain.VerifyGen(sgen)
   if err != nil {
@@ -181,7 +220,7 @@ func (n *Node) servegRPC() {
   defer lis.Close()
   fmt.Printf("* gRPC listening on %v\n", n.cfg.NodeAddr)
   n.grpcSrv = grpc.NewServer()
-  nd := rnode.NewNodeSrv(n)
+  nd := rnode.NewNodeSrv(n.cfg.BlockStoreDir, n)
   rnode.RegisterNodeServer(n.grpcSrv, nd)
   acc := raccount.NewAccountSrv(n.cfg.KeyStoreDir)
   raccount.RegisterAccountServer(n.grpcSrv, acc)

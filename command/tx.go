@@ -19,7 +19,9 @@ func txCmd() *cobra.Command {
   return cmd
 }
 
-func grpcTxSign(addr, from, to string, value uint64, pwd string) ([]byte, error) {
+func grpcTxSign(
+  addr, from, to string, value uint64, pass string,
+) ([]byte, error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -28,7 +30,7 @@ func grpcTxSign(addr, from, to string, value uint64, pwd string) ([]byte, error)
   }
   defer conn.Close()
   cln := rtx.NewTxClient(conn)
-  req := &rtx.TxSignReq{From: from, To: to, Value: value, Password: pwd}
+  req := &rtx.TxSignReq{From: from, To: to, Value: value, Password: pass}
   res, err := cln.TxSign(context.Background(), req)
   if err != nil {
     return nil, err
@@ -45,8 +47,8 @@ func txSignCmd() *cobra.Command {
       from, _ := cmd.Flags().GetString("from")
       to, _ := cmd.Flags().GetString("to")
       value, _ := cmd.Flags().GetUint64("value")
-      pwd, _ := cmd.Flags().GetString("password")
-      jstx, err := grpcTxSign(addr, from, to, value, pwd)
+      pass, _ := cmd.Flags().GetString("password")
+      jstx, err := grpcTxSign(addr, from, to, value, pass)
       if err != nil {
         return err
       }

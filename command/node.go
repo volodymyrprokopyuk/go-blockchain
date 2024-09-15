@@ -29,6 +29,9 @@ func nodeStartCmd() *cobra.Command {
       }
       bootstrap, _ := cmd.Flags().GetBool("bootstrap")
       seedAddr, _ := cmd.Flags().GetString("seed")
+      if !reAddr.MatchString(seedAddr) {
+        return fmt.Errorf("expected --seed host:port, got %v", seedAddr)
+      }
       if !bootstrap && len(seedAddr) == 0 {
         return fmt.Errorf("either --bootstrap or --seed <node> must be provided")
       }
@@ -43,12 +46,12 @@ func nodeStartCmd() *cobra.Command {
         blockStoreDir = ".blockstore" + port
       }
       name, _ := cmd.Flags().GetString("chain")
-      password, _ := cmd.Flags().GetString("password")
+      pass, _ := cmd.Flags().GetString("password")
       balance, _ := cmd.Flags().GetUint64("balance")
       cfg := node.NodeCfg{
         NodeAddr: nodeAddr, Bootstrap: bootstrap, SeedAddr: seedAddr,
         KeyStoreDir: keyStoreDir, BlockStoreDir: blockStoreDir,
-        Chain: name, Password: password, Balance: balance,
+        Chain: name, Password: pass, Balance: balance,
       }
       nd := node.NewNode(cfg)
       return nd.Start()

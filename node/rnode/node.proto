@@ -2,6 +2,12 @@ syntax = "proto3";
 
 option go_package = "./rnode";
 
+message GenesisSyncReq { }
+
+message GenesisSyncRes {
+  bytes Genesis = 1;
+}
+
 message PeerDiscoverReq {
   string Peer = 1;
 }
@@ -11,5 +17,6 @@ message PeerDiscoverRes {
 }
 
 service Node {
+  rpc GenesisSync(GenesisSyncReq) returns (GenesisSyncRes);
   rpc PeerDiscover(PeerDiscoverReq) returns (PeerDiscoverRes);
 }

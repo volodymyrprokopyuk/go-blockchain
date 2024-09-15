@@ -26,9 +26,6 @@ func NewBlock(number uint64, parent Hash, txs []SigTx) Block {
 }
 
 func (b Block) Hash() Hash {
-  if b.Number == 0 && (b.Parent == Hash{}) && len(b.Txs) == 0 {
-    return Hash{}
-  }
   jblk, _ := json.Marshal(b)
   hash := make([]byte, 64)
   sha3.ShakeSum256(hash, jblk)
