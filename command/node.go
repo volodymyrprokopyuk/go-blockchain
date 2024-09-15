@@ -29,11 +29,11 @@ func nodeStartCmd() *cobra.Command {
       }
       bootstrap, _ := cmd.Flags().GetBool("bootstrap")
       seedAddr, _ := cmd.Flags().GetString("seed")
-      if !bootstrap && !reAddr.MatchString(seedAddr) {
-        return fmt.Errorf("expected --seed host:port, got %v", seedAddr)
-      }
       if !bootstrap && len(seedAddr) == 0 {
         return fmt.Errorf("either --bootstrap or --seed <node> must be provided")
+      }
+      if !bootstrap && !reAddr.MatchString(seedAddr) {
+        return fmt.Errorf("expected --seed host:port, got %v", seedAddr)
       }
       rePort := regexp.MustCompile(`\d+$`)
       port := rePort.FindString(nodeAddr)

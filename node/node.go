@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -176,6 +177,31 @@ func (n *Node) syncGenesis() (chain.SigGenesis, error) {
   return sgen, nil
 }
 
+func (n *Node) readBlocks() error {
+  blocks, closeBlocks, err := chain.ReadBlocks(n.cfg.BlockStoreDir)
+  if err != nil {
+    if _, assert := err.(*os.PathError); !assert {
+      return err
+    }
+    fmt.Println("warning: blocks not yet created")
+    return nil
+  }
+  defer closeBlocks()
+  for err, blk := range blocks {
+    if err != nil {
+      return err
+    }
+    clo := n.state.Clone()
+    err = clo.ApplyBlock(blk)
+    if err != nil {
+      return err
+    }
+    n.state.Apply(clo)
+    n.state.ResetPending()
+  }
+  return nil
+}
+
 func (n *Node) initState() error {
   sgen, err := chain.ReadGenesis(n.cfg.BlockStoreDir)
   if err != nil {
@@ -200,20 +226,11 @@ func (n *Node) initState() error {
   }
   n.state = state.NewState(sgen)
   fmt.Printf("* Init state (ReadGenesis)\n%v\n", n.state)
-
-  // err = n.readBlocs()
-  // if err != nil {
-  //   return err
-  // }
-
-  // err = n.state.ReadBlocks(n.cfg.BlockStoreDir)
-  // if err != nil {
-  //   if _, assert := err.(*os.PathError); !assert {
-  //     return err
-  //   }
-  //   fmt.Println("warning: blocks not yet created")
-  // }
-  // fmt.Printf("* Read state (ReadBlocks)\n%v\n", n.state)
+  err = n.readBlocks()
+  if err != nil {
+    return err
+  }
+  fmt.Printf("* Local state (ReadBlocks)\n%v\n", n.state)
   return nil
 }
 
