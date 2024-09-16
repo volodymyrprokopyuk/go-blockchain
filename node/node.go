@@ -199,7 +199,6 @@ func (n *Node) readBlocks() error {
       return err
     }
     n.state.Apply(clo)
-    n.state.ResetPending()
   }
   return nil
 }
@@ -260,7 +259,6 @@ func (n *Node) syncBlocks() error {
         return err
       }
       n.state.Apply(clo)
-      n.state.ResetPending()
       err = blk.Write(n.cfg.BlockStoreDir)
       if err != nil {
         return err
@@ -395,7 +393,6 @@ func (n *Node) mine(interval time.Duration) {
         continue
       }
       n.state.Apply(clo)
-      n.state.ResetPending()
       fmt.Printf("* Block state (ApplyBlock)\n%v\n", n.state)
       // write block
       err = blk.Write(n.cfg.BlockStoreDir)

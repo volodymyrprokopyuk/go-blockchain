@@ -5,11 +5,13 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 )
 
 type State struct {
+  mtx sync.RWMutex
   balances map[chain.Address]uint64
   nonces map[chain.Address]uint64
   lastBlock chain.Block
@@ -19,10 +21,14 @@ type State struct {
 }
 
 func (s *State) Nonce(acc chain.Address) uint64 {
+  s.mtx.RLock()
+  defer s.mtx.RUnlock()
   return s.nonces[acc]
 }
 
 func (s *State) LastBlock() chain.Block {
+  s.mtx.RLock()
+  defer s.mtx.RUnlock()
   return s.lastBlock
 }
 
@@ -42,6 +48,8 @@ func NewState(gen chain.SigGenesis) *State {
 }
 
 func (s *State) Clone() *State {
+  s.mtx.RLock()
+  defer s.mtx.RUnlock()
   return &State{
     balances: maps.Clone(s.balances),
     nonces: maps.Clone(s.nonces),
@@ -55,18 +63,21 @@ func (s *State) Clone() *State {
 }
 
 func (s *State) Apply(sta *State) {
+  s.mtx.Lock()
+  defer s.mtx.Unlock()
   s.balances = sta.balances
   s.nonces = sta.nonces
   s.lastBlock = sta.lastBlock
-}
-
-func (s *State) ResetPending() {
   s.Pending.balances = maps.Clone(s.balances)
   s.Pending.nonces = maps.Clone(s.nonces)
-  s.Pending.txs = make(map[chain.Hash]chain.SigTx)
+  for _, tx := range sta.lastBlock.Txs {
+    delete(s.Pending.txs, tx.Hash())
+  }
 }
 
 func (s *State) String() string {
+  s.mtx.RLock()
+  defer s.mtx.RUnlock()
   var bld strings.Builder
   bld.WriteString("Balances\n")
   for acc, bal := range s.balances {
@@ -100,6 +111,8 @@ func (s *State) String() string {
 }
 
 func (s *State) ApplyTx(stx chain.SigTx) error {
+  s.mtx.Lock()
+  defer s.mtx.Unlock()
   hash := stx.Hash()
   valid, err := chain.VerifyTx(stx)
   if err != nil {
@@ -122,6 +135,7 @@ func (s *State) ApplyTx(stx chain.SigTx) error {
 }
 
 func (s *State) CreateBlock() chain.Block {
+  // no need to lock/unlock as CreateBlock is always executed on a clone
   pndTxs := make([]chain.SigTx, 0, len(s.Pending.txs))
   for _, tx := range s.Pending.txs {
     pndTxs = append(pndTxs, tx)
@@ -149,6 +163,7 @@ func (s *State) CreateBlock() chain.Block {
 }
 
 func (s *State) ApplyBlock(blk chain.Block) error {
+  // no need to lock/unlock as ApplyBlock is always executed on a clone
   if blk.Number != s.lastBlock.Number + 1 {
     return fmt.Errorf("%.7s: invalid block number", blk.Hash())
   }
