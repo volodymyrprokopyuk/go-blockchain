@@ -120,8 +120,21 @@ func ReadBlocksBytes(dir string) (
         yield(err, nil)
         return
       }
-      more = yield(nil, sca.Bytes())
+      jblk := sca.Bytes()
+      if len(jblk) == 0 {
+        continue
+      }
+      more = yield(nil, jblk)
     }
   }
   return blocks, close, nil
+}
+
+func UnmarshalBlockBytes(jblk []byte) (Block, error) {
+  var sblk storeBlock
+  err := json.Unmarshal(jblk, &sblk)
+  if err != nil {
+    return Block{}, err
+  }
+  return sblk.Block, nil
 }

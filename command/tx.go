@@ -44,10 +44,10 @@ func txSignCmd() *cobra.Command {
     Short: "Signs a transaction",
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
+      pass, _ := cmd.Flags().GetString("password")
       from, _ := cmd.Flags().GetString("from")
       to, _ := cmd.Flags().GetString("to")
       value, _ := cmd.Flags().GetUint64("value")
-      pass, _ := cmd.Flags().GetString("password")
       jstx, err := grpcTxSign(addr, from, to, value, pass)
       if err != nil {
         return err
@@ -56,14 +56,14 @@ func txSignCmd() *cobra.Command {
       return nil
     },
   }
+  cmd.Flags().String("password", "", "password of debtor account")
+  _ = cmd.MarkFlagRequired("password")
   cmd.Flags().String("from", "", "debtor address")
   _ = cmd.MarkFlagRequired("from")
   cmd.Flags().String("to", "", "creditor address")
   _ = cmd.MarkFlagRequired("to")
   cmd.Flags().Uint64("value", 0, "transfer amount")
   _ = cmd.MarkFlagRequired("value")
-  cmd.Flags().String("password", "", "password of debtor account")
-  _ = cmd.MarkFlagRequired("password")
   return cmd
 }
 

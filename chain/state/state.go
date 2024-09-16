@@ -61,11 +61,9 @@ func (s *State) Apply(sta *State) {
 }
 
 func (s *State) ResetPending() {
-  s.Pending = &State{
-    balances: maps.Clone(s.balances),
-    nonces: maps.Clone(s.nonces),
-    txs: make(map[chain.Hash]chain.SigTx),
-  }
+  s.Pending.balances = maps.Clone(s.balances)
+  s.Pending.nonces = maps.Clone(s.nonces)
+  s.Pending.txs = make(map[chain.Hash]chain.SigTx)
 }
 
 func (s *State) String() string {

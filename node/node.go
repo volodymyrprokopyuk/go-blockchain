@@ -97,8 +97,8 @@ func (n *Node) Start() error {
     return err
   }
   go n.servegRPC()
-  go n.discoverPeers(5 * time.Second)
-  // go n.mine(5 * time.Second)
+  go n.discoverPeers(1 * time.Minute)
+  go n.mine(10 * time.Second)
   select {
   case err = <- n.chErr:
   case <- n.ctx.Done():
@@ -250,8 +250,7 @@ func (n *Node) syncBlocks() error {
       if err != nil {
         return err
       }
-      var blk chain.Block
-      err := json.Unmarshal(jblk, &blk)
+      blk, err := chain.UnmarshalBlockBytes(jblk)
       if err != nil {
         return err
       }
@@ -262,6 +261,10 @@ func (n *Node) syncBlocks() error {
       }
       n.state.Apply(clo)
       n.state.ResetPending()
+      err = blk.Write(n.cfg.BlockStoreDir)
+      if err != nil {
+        return err
+      }
     }
   }
   return nil
@@ -345,13 +348,14 @@ func (n *Node) grpcPeerDiscover(peer string) ([]string, error) {
 func (n *Node) discoverPeers(interval time.Duration) {
   n.wg.Add(1)
   defer n.wg.Done()
-  tick := time.NewTicker(interval)
+  tick := time.NewTicker(5 * time.Second)
   defer tick.Stop()
   for {
     select {
     case <- n.ctx.Done():
       return
     case <- tick.C:
+      tick.Reset(interval)
       for _, peer := range n.Peers() {
         peers, err := n.grpcPeerDiscover(peer)
         if err != nil {
