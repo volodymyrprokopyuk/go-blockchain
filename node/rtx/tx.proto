@@ -21,7 +21,14 @@ message TxSendRes {
   string Hash = 1;
 }
 
+message TxReceiveReq {
+  bytes SigTx = 1;
+}
+
+message TxReceiveRes { }
+
 service Tx {
   rpc TxSign(TxSignReq) returns (TxSignRes);
   rpc TxSend(TxSendReq) returns (TxSendRes);
+  rpc TxReceive(stream TxReceiveReq) returns (TxReceiveRes);
 }

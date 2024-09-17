@@ -110,27 +110,27 @@ func (s *State) String() string {
   return bld.String()
 }
 
-func (s *State) ApplyTx(stx chain.SigTx) error {
+func (s *State) ApplyTx(tx chain.SigTx) error {
   s.mtx.Lock()
   defer s.mtx.Unlock()
-  hash := stx.Hash()
-  valid, err := chain.VerifyTx(stx)
+  hash := tx.Hash()
+  valid, err := chain.VerifyTx(tx)
   if err != nil {
     return err
   }
   if !valid {
     return fmt.Errorf("%.7s: invalid signature", hash)
   }
-  if stx.Nonce != s.nonces[stx.From] + 1 {
+  if tx.Nonce != s.nonces[tx.From] + 1 {
     return fmt.Errorf("%.7s: invalid nonce", hash)
   }
-  if s.balances[stx.From] < stx.Value {
+  if s.balances[tx.From] < tx.Value {
     return fmt.Errorf("%.7s: insufficient funds", hash)
   }
-  s.balances[stx.From] -= stx.Value
-  s.balances[stx.To] += stx.Value
-  s.nonces[stx.From]++
-  s.txs[hash] = stx
+  s.balances[tx.From] -= tx.Value
+  s.balances[tx.To] += tx.Value
+  s.nonces[tx.From]++
+  s.txs[hash] = tx
   return nil
 }
 

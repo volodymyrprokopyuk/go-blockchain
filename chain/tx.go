@@ -44,17 +44,17 @@ func NewSigTx(tx Tx, sig []byte) SigTx {
 }
 
 func (t SigTx) Hash() Hash {
-  jstx, _ := json.Marshal(t)
+  jtx, _ := json.Marshal(t)
   hash := make([]byte, 64)
-  sha3.ShakeSum256(hash, jstx)
+  sha3.ShakeSum256(hash, jtx)
   return Hash(hash[:32])
 }
 
-func VerifyTx(stx SigTx) (bool, error) {
-  pub, err := ecc.RecoverPubkey("P-256k1", stx.Tx.Hash().Bytes(), stx.Sig)
+func VerifyTx(tx SigTx) (bool, error) {
+  pub, err := ecc.RecoverPubkey("P-256k1", tx.Tx.Hash().Bytes(), tx.Sig)
   if err != nil {
     return false, err
   }
   acc := NewAddress(pub)
-  return acc == stx.From, nil
+  return acc == tx.From, nil
 }

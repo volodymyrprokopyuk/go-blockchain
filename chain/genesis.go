@@ -47,13 +47,13 @@ func (g SigGenesis) Hash() Hash {
   return Hash(hash[:32])
 }
 
-func VerifyGen(sgen SigGenesis) (bool, error) {
-  pub, err := ecc.RecoverPubkey("P-256k1", sgen.Genesis.Hash().Bytes(), sgen.Sig)
+func VerifyGen(gen SigGenesis) (bool, error) {
+  pub, err := ecc.RecoverPubkey("P-256k1", gen.Genesis.Hash().Bytes(), gen.Sig)
   if err != nil {
     return false, err
   }
   acc := NewAddress(pub)
-  _, exist := sgen.Balances[acc]
+  _, exist := gen.Balances[acc]
   return exist, nil
 }
 

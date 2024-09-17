@@ -48,11 +48,11 @@ func txSignCmd() *cobra.Command {
       from, _ := cmd.Flags().GetString("from")
       to, _ := cmd.Flags().GetString("to")
       value, _ := cmd.Flags().GetUint64("value")
-      jstx, err := grpcTxSign(addr, from, to, value, pass)
+      jtx, err := grpcTxSign(addr, from, to, value, pass)
       if err != nil {
         return err
       }
-      fmt.Printf("%s\n", jstx)
+      fmt.Printf("%s\n", jtx)
       return nil
     },
   }
@@ -67,7 +67,7 @@ func txSignCmd() *cobra.Command {
   return cmd
 }
 
-func grpcTxSend(addr, sigtx string) (string, error) {
+func grpcTxSend(addr, tx string) (string, error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -76,7 +76,7 @@ func grpcTxSend(addr, sigtx string) (string, error) {
   }
   defer conn.Close()
   cln := rtx.NewTxClient(conn)
-  req := &rtx.TxSendReq{SigTx: []byte(sigtx)}
+  req := &rtx.TxSendReq{SigTx: []byte(tx)}
   res, err := cln.TxSend(context.Background(), req)
   if err != nil {
     return "", err
@@ -90,8 +90,8 @@ func txSendCmd() *cobra.Command {
     Short: "Sends a signed transaction",
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
-      stx, _ := cmd.Flags().GetString("sigtx")
-      hash, err := grpcTxSend(addr, stx)
+      tx, _ := cmd.Flags().GetString("sigtx")
+      hash, err := grpcTxSend(addr, tx)
       if err != nil {
         return err
       }
