@@ -87,6 +87,11 @@ func (s *TxSrv) TxReceive(
     }
     var tx chain.SigTx
     err = json.Unmarshal(req.SigTx, &tx)
+    if err != nil {
+      fmt.Println(err)
+      continue
+    }
+    fmt.Printf("* Tx Receive\n%v\n", tx)
     err = s.txApplier.ApplyTx(tx)
     if err != nil {
       fmt.Println(err)

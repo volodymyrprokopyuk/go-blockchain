@@ -113,24 +113,23 @@ func (s *State) String() string {
 func (s *State) ApplyTx(tx chain.SigTx) error {
   s.mtx.Lock()
   defer s.mtx.Unlock()
-  hash := tx.Hash()
   valid, err := chain.VerifyTx(tx)
   if err != nil {
     return err
   }
   if !valid {
-    return fmt.Errorf("%.7s: invalid signature", hash)
+    return fmt.Errorf("error: invalid signature\n%v", tx)
   }
   if tx.Nonce != s.nonces[tx.From] + 1 {
-    return fmt.Errorf("%.7s: invalid nonce", hash)
+    return fmt.Errorf("error: invalid nonce\n%v", tx)
   }
   if s.balances[tx.From] < tx.Value {
-    return fmt.Errorf("%.7s: insufficient funds", hash)
+    return fmt.Errorf("error: insufficient funds\n%v", tx)
   }
   s.balances[tx.From] -= tx.Value
   s.balances[tx.To] += tx.Value
   s.nonces[tx.From]++
-  s.txs[hash] = tx
+  s.txs[tx.Hash()] = tx
   return nil
 }
 

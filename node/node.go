@@ -39,7 +39,7 @@ type Node struct {
   // context
   ctx context.Context
   ctxCancel func()
-  wg sync.WaitGroup
+  wg *sync.WaitGroup
   chErr chan error
   // components
   state *state.State
@@ -58,6 +58,7 @@ func NewNode(cfg NodeCfg) *Node {
   // context
   nd.ctx = ctx
   nd.ctxCancel = cancel
+  nd.wg = new(sync.WaitGroup)
   nd.chErr = make(chan error, 1)
   // components
   nd.peers = make(map[string]struct{})
@@ -99,16 +100,16 @@ func (n *Node) Start() error {
     return err
   }
   go n.servegRPC()
-  go n.discoverPeers(1 * time.Minute)
-  go n.relayTxs(10 * time.Second)
-  go n.mine(10 * time.Second)
+  go n.discoverPeers(5 * time.Second)
+  go n.relayTxs(5 * time.Second)
+  // go n.mine(10 * time.Second)
   select {
   case err = <- n.chErr:
   case <- n.ctx.Done():
   }
   n.ctxCancel() // restore default signal handling
   n.grpcSrv.GracefulStop()
-  n.wg.Wait() // for discoverPeers
+  n.wg.Wait()
   return err
 }
 
@@ -315,7 +316,7 @@ func (n *Node) servegRPC() {
     return
   }
   defer lis.Close()
-  fmt.Printf("* gRPC listening on %v\n", n.cfg.NodeAddr)
+  fmt.Printf("* gRPC address %v\n", n.cfg.NodeAddr)
   n.grpcSrv = grpc.NewServer()
   nd := rnode.NewNodeSrv(n.cfg.BlockStoreDir, n)
   rnode.RegisterNodeServer(n.grpcSrv, nd)
@@ -365,7 +366,7 @@ func (n *Node) discoverPeers(interval time.Duration) {
         }
         n.AddPeers(peers...)
       }
-      fmt.Printf("%v peers: %v\n", n.cfg.NodeAddr, n.Peers())
+      // fmt.Printf("* %v peers: %v\n", n.cfg.NodeAddr, n.Peers())
     }
   }
 }
@@ -376,10 +377,10 @@ func (n *Node) RelayTx(tx chain.SigTx) {
 
 func (n *Node) grpcRelayTxs() []chan chain.SigTx {
   peers := n.Peers()
-  chPeers := make([]chan chain.SigTx, len(peers))
+  chRelays := make([]chan chain.SigTx, len(peers))
   for i, peer := range peers {
-    chPeer := make(chan chain.SigTx)
-    chPeers[i] = chPeer
+    chRelay := make(chan chain.SigTx)
+    chRelays[i] = chRelay
     go func () {
       n.wg.Add(1)
       defer n.wg.Done()
@@ -397,7 +398,7 @@ func (n *Node) grpcRelayTxs() []chan chain.SigTx {
         fmt.Println(err)
         return
       }
-      for tx := range chPeer {
+      for tx := range chRelay {
         jtx, err := json.Marshal(tx)
         if err != nil {
           fmt.Println(err)
@@ -417,7 +418,7 @@ func (n *Node) grpcRelayTxs() []chan chain.SigTx {
       }
     }()
   }
-  return chPeers
+  return chRelays
 }
 
 func (n *Node) relayTxs(interval time.Duration) {
@@ -430,17 +431,24 @@ func (n *Node) relayTxs(interval time.Duration) {
     case <- n.ctx.Done():
       return
     case <- tick.C:
-      chPeers := n.grpcRelayTxs()
+      chRelays := n.grpcRelayTxs()
+      closeRelays := func() {
+        for _, chRelay := range chRelays {
+          close(chRelay)
+        }
+      }
       timer := time.NewTimer(interval - 1 * time.Second)
-      for {
+      relay: for {
         select {
+        case <- n.ctx.Done():
+          closeRelays()
+          return
         case <- timer.C:
-          for _, chPeer := range chPeers {
-            close(chPeer)
-          }
+          closeRelays()
+          break relay
         case tx := <- n.chTxRelay:
-          for _, chPeer := range chPeers {
-            chPeer <- tx
+          for _, chRelay := range chRelays {
+            chRelay <- tx
           }
         }
       }
@@ -461,11 +469,10 @@ func (n *Node) mine(interval time.Duration) {
       // create block
       clo := n.state.Clone()
       blk := clo.CreateBlock()
-      fmt.Printf("* Block\n%v\n", blk)
       if len(blk.Txs) == 0 {
-        fmt.Println("warning: empty block")
         continue
       }
+      fmt.Printf("* Block\n%v\n", blk)
       // apply block
       clo = n.state.Clone()
       err := clo.ApplyBlock(blk)
