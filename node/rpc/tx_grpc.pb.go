@@ -4,7 +4,7 @@
 // - protoc             v5.28.1
 // source: tx.proto
 
-package rtx
+package rpc
 
 import (
 	context "context"

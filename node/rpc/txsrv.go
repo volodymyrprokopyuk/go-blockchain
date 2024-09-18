@@ -1,4 +1,4 @@
-package rtx
+package rpc
 
 import (
 	"context"

@@ -4,7 +4,7 @@
 // - protoc             v5.28.1
 // source: node.proto
 
-package rnode
+package rpc
 
 import (
 	context "context"

@@ -10,10 +10,10 @@ function compile -a proto
   protoc --proto_path $import --go_out $out --go-grpc_out $out $proto
 end
 
-set -l node node/rnode/node.proto
-set -l acc node/raccount/account.proto
-set -l tx node/rtx/tx.proto
-set -l blk node/rblock/block.proto
+set -l node node/rpc/node.proto
+set -l acc node/rpc/account.proto
+set -l tx node/rpc/tx.proto
+set -l blk node/rpc/block.proto
 
 compile $node
 compile $acc

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/node/rnode"
+	"github.com/volodymyrprokopyuk/go-blockchain/node/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -69,8 +69,8 @@ func (d *discovery) grpcPeerDiscover(peer string) ([]string, error) {
     return nil, err
   }
   defer conn.Close()
-  cln := rnode.NewNodeClient(conn)
-  req := &rnode.PeerDiscoverReq{Peer: d.cfg.nodeAddr}
+  cln := rpc.NewNodeClient(conn)
+  req := &rpc.PeerDiscoverReq{Peer: d.cfg.nodeAddr}
   res, err := cln.PeerDiscover(d.ctx, req)
   if err != nil {
     return nil, err

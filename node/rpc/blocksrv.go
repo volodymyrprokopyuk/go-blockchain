@@ -1,4 +1,4 @@
-package rblock
+package rpc
 
 import (
 	"context"

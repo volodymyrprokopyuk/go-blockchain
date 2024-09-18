@@ -4,7 +4,7 @@
 // - protoc             v5.28.1
 // source: account.proto
 
-package raccount
+package rpc
 
 import (
 	context "context"

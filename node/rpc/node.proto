@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "./rnode";
+option go_package = "./rpc";
 
 message PeerDiscoverReq {
   string Peer = 1;

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
-	"github.com/volodymyrprokopyuk/go-blockchain/node/rtx"
+	"github.com/volodymyrprokopyuk/go-blockchain/node/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -49,7 +49,7 @@ func (r *txRelay) grpcRelays() []chan chain.SigTx {
         return
       }
       defer conn.Close()
-      cln := rtx.NewTxClient(conn)
+      cln := rpc.NewTxClient(conn)
       stream, err := cln.TxReceive(r.ctx)
       if err != nil {
         fmt.Println(err)
@@ -61,7 +61,7 @@ func (r *txRelay) grpcRelays() []chan chain.SigTx {
           fmt.Println(err)
           continue
         }
-        req := &rtx.TxReceiveReq{SigTx: jtx}
+        req := &rpc.TxReceiveReq{SigTx: jtx}
         err = stream.Send(req)
         if err != nil {
           fmt.Println(err)

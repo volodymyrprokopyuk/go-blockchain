@@ -58,7 +58,7 @@ func VerifyGen(gen SigGenesis) (bool, error) {
 }
 
 func (g SigGenesis) Write(dir string) error {
-  jsgen, err := json.Marshal(g)
+  jgen, err := json.Marshal(g)
   if err != nil {
     return err
   }
@@ -67,18 +67,18 @@ func (g SigGenesis) Write(dir string) error {
     return err
   }
   path := filepath.Join(dir, genesisFile)
-  return os.WriteFile(path, jsgen, 0600)
+  return os.WriteFile(path, jgen, 0600)
 }
 
 func ReadGenesis(dir string) (SigGenesis, error) {
   path := filepath.Join(dir, genesisFile)
-  jsgen, err := os.ReadFile(path)
+  jgen, err := os.ReadFile(path)
   if err != nil {
     return SigGenesis{}, err
   }
-  var sgen SigGenesis
-  err = json.Unmarshal(jsgen, &sgen)
-  return sgen, err
+  var gen SigGenesis
+  err = json.Unmarshal(jgen, &gen)
+  return gen, err
 }
 
 func ReadGenesisBytes(dir string) ([]byte, error) {

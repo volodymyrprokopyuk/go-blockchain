@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/volodymyrprokopyuk/go-blockchain/node/raccount"
+	"github.com/volodymyrprokopyuk/go-blockchain/node/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -27,8 +27,8 @@ func grpcAccountCreate(addr, pass string) (string, error) {
     return "", err
   }
   defer conn.Close()
-  cln := raccount.NewAccountClient(conn)
-  req := &raccount.AccountCreateReq{Password: pass}
+  cln := rpc.NewAccountClient(conn)
+  req := &rpc.AccountCreateReq{Password: pass}
   res, err := cln.AccountCreate(context.Background(), req)
   if err != nil {
     return "", err

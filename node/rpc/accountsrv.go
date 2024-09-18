@@ -1,4 +1,4 @@
-package raccount
+package rpc
 
 import (
 	"context"

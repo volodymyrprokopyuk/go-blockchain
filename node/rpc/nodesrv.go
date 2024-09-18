@@ -1,4 +1,4 @@
-package rnode
+package rpc
 
 import (
 	context "context"

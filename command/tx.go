@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/volodymyrprokopyuk/go-blockchain/node/rtx"
+	"github.com/volodymyrprokopyuk/go-blockchain/node/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -29,8 +29,8 @@ func grpcTxSign(
     return nil, err
   }
   defer conn.Close()
-  cln := rtx.NewTxClient(conn)
-  req := &rtx.TxSignReq{From: from, To: to, Value: value, Password: pass}
+  cln := rpc.NewTxClient(conn)
+  req := &rpc.TxSignReq{From: from, To: to, Value: value, Password: pass}
   res, err := cln.TxSign(context.Background(), req)
   if err != nil {
     return nil, err
@@ -75,8 +75,8 @@ func grpcTxSend(addr, tx string) (string, error) {
     return "", err
   }
   defer conn.Close()
-  cln := rtx.NewTxClient(conn)
-  req := &rtx.TxSendReq{SigTx: []byte(tx)}
+  cln := rpc.NewTxClient(conn)
+  req := &rpc.TxSendReq{SigTx: []byte(tx)}
   res, err := cln.TxSend(context.Background(), req)
   if err != nil {
     return "", err

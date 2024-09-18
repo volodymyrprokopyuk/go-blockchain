@@ -4,7 +4,7 @@
 // - protoc             v5.28.1
 // source: block.proto
 
-package rblock
+package rpc
 
 import (
 	context "context"

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "./raccount";
+option go_package = "./rpc";
 
 message AccountCreateReq {
   string Password = 1;

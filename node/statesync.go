@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
-	"github.com/volodymyrprokopyuk/go-blockchain/node/rblock"
+	"github.com/volodymyrprokopyuk/go-blockchain/node/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -61,8 +61,8 @@ func (s *stateSync) grpcGenesisSync() ([]byte, error) {
     return nil, err
   }
   defer conn.Close()
-  cln := rblock.NewBlockClient(conn)
-  req := &rblock.GenesisSyncReq{}
+  cln := rpc.NewBlockClient(conn)
+  req := &rpc.GenesisSyncReq{}
   res, err := cln.GenesisSync(s.ctx, req)
   if err != nil {
     return nil, err
@@ -130,8 +130,8 @@ func (s *stateSync) grpcBlockSync(peer string) (
   close := func() {
     conn.Close()
   }
-  cln := rblock.NewBlockClient(conn)
-  req := &rblock.BlockSyncReq{Number: s.state.LastBlock().Number + 1}
+  cln := rpc.NewBlockClient(conn)
+  req := &rpc.BlockSyncReq{Number: s.state.LastBlock().Number + 1}
   stream, err := cln.BlockSync(s.ctx, req)
   if err != nil {
     return nil, nil, err

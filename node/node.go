@@ -10,10 +10,7 @@ import (
 	"time"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
-	"github.com/volodymyrprokopyuk/go-blockchain/node/raccount"
-	"github.com/volodymyrprokopyuk/go-blockchain/node/rblock"
-	"github.com/volodymyrprokopyuk/go-blockchain/node/rnode"
-	"github.com/volodymyrprokopyuk/go-blockchain/node/rtx"
+	"github.com/volodymyrprokopyuk/go-blockchain/node/rpc"
 	"google.golang.org/grpc"
 )
 
@@ -99,14 +96,14 @@ func (n *Node) servegRPC() {
   defer lis.Close()
   fmt.Printf("* gRPC address %v\n", n.cfg.NodeAddr)
   n.grpcSrv = grpc.NewServer()
-  nd := rnode.NewNodeSrv(n.dis)
-  rnode.RegisterNodeServer(n.grpcSrv, nd)
-  acc := raccount.NewAccountSrv(n.cfg.KeyStoreDir)
-  raccount.RegisterAccountServer(n.grpcSrv, acc)
-  tx := rtx.NewTxSrv(n.cfg.KeyStoreDir, n.state.Pending, n.txRelay)
-  rtx.RegisterTxServer(n.grpcSrv, tx)
-  blk := rblock.NewBlockSrv(n.cfg.BlockStoreDir)
-  rblock.RegisterBlockServer(n.grpcSrv, blk)
+  nd := rpc.NewNodeSrv(n.dis)
+  rpc.RegisterNodeServer(n.grpcSrv, nd)
+  acc := rpc.NewAccountSrv(n.cfg.KeyStoreDir)
+  rpc.RegisterAccountServer(n.grpcSrv, acc)
+  tx := rpc.NewTxSrv(n.cfg.KeyStoreDir, n.state.Pending, n.txRelay)
+  rpc.RegisterTxServer(n.grpcSrv, tx)
+  blk := rpc.NewBlockSrv(n.cfg.BlockStoreDir)
+  rpc.RegisterBlockServer(n.grpcSrv, blk)
   err = n.grpcSrv.Serve(lis)
   if err != nil {
     n.chErr <- err

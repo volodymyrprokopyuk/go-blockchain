@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "./rtx";
+option go_package = "./rpc";
 
 message TxSignReq {
   string From = 1;
