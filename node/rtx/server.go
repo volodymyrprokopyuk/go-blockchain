@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
-	"github.com/volodymyrprokopyuk/go-blockchain/chain/account"
 	"google.golang.org/grpc"
 )
 
@@ -38,7 +37,7 @@ func NewTxSrv(
 
 func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
   path := filepath.Join(s.keyStoreDir, req.From)
-  acc, err := account.Read(path, []byte(req.Password))
+  acc, err := chain.ReadAccount(path, []byte(req.Password))
   if err != nil {
     return nil, err
   }

@@ -8,8 +8,6 @@ import (
 	"os"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
-	"github.com/volodymyrprokopyuk/go-blockchain/chain/account"
-	"github.com/volodymyrprokopyuk/go-blockchain/chain/state"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rblock"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -19,7 +17,7 @@ type stateSync struct {
   cfg NodeCfg
   ctx context.Context
   dis *discovery
-  state *state.State
+  state *chain.State
 }
 
 func newStateSync(ctx context.Context, cfg NodeCfg, dis *discovery) *stateSync {
@@ -34,7 +32,7 @@ func (s *stateSync) createGenesis() (chain.SigGenesis, error) {
   if s.cfg.Balance == 0 {
     return chain.SigGenesis{}, fmt.Errorf("balance must be positive")
   }
-  acc, err := account.NewAccount()
+  acc, err := chain.NewAccount()
   if err != nil {
     return chain.SigGenesis{}, err
   }
@@ -185,7 +183,7 @@ func (s *stateSync) syncBlocks() error {
   return nil
 }
 
-func (s *stateSync) syncState() (*state.State, error) {
+func (s *stateSync) syncState() (*chain.State, error) {
   gen, err := chain.ReadGenesis(s.cfg.BlockStoreDir)
   if err != nil {
     if s.cfg.Bootstrap {
@@ -207,7 +205,7 @@ func (s *stateSync) syncState() (*state.State, error) {
   if !valid {
     return nil, fmt.Errorf("invalid genesis signature")
   }
-  s.state = state.NewState(gen)
+  s.state = chain.NewState(gen)
   err = s.readBlocks()
   if err != nil {
     return nil, err

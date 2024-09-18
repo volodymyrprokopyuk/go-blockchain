@@ -41,9 +41,9 @@ func NewSigGenesis(gen Genesis, sig []byte) SigGenesis {
 }
 
 func (g SigGenesis) Hash() Hash {
-  jsgen, _ := json.Marshal(g)
+  jgen, _ := json.Marshal(g)
   hash := make([]byte, 64)
-  sha3.ShakeSum256(hash, jsgen)
+  sha3.ShakeSum256(hash, jgen)
   return Hash(hash[:32])
 }
 

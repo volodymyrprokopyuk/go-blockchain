@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/chain/account"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 )
 
 type AccountSrv struct {
@@ -23,7 +23,7 @@ func (s *AccountSrv) AccountCreate(
   if len(pass) < 5 {
     return nil, fmt.Errorf("password length is less than 5")
   }
-  acc, err := account.NewAccount()
+  acc, err := chain.NewAccount()
   if err != nil {
     return nil, err
   }

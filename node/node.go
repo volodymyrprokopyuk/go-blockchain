@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/chain/state"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/raccount"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rblock"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rnode"
@@ -37,7 +37,7 @@ type Node struct {
   wg *sync.WaitGroup
   chErr chan error
   // components
-  state *state.State
+  state *chain.State
   stateSync *stateSync
   grpcSrv *grpc.Server
   dis *discovery

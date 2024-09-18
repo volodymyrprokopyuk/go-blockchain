@@ -1,4 +1,4 @@
-package state
+package chain
 
 import (
 	"fmt"
@@ -6,43 +6,41 @@ import (
 	"slices"
 	"strings"
 	"sync"
-
-	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 )
 
 type State struct {
   mtx sync.RWMutex
-  balances map[chain.Address]uint64
-  nonces map[chain.Address]uint64
-  lastBlock chain.Block
-  genesisHash chain.Hash
-  txs map[chain.Hash]chain.SigTx
+  balances map[Address]uint64
+  nonces map[Address]uint64
+  lastBlock Block
+  genesisHash Hash
+  txs map[Hash]SigTx
   Pending *State
 }
 
-func (s *State) Nonce(acc chain.Address) uint64 {
+func (s *State) Nonce(acc Address) uint64 {
   s.mtx.RLock()
   defer s.mtx.RUnlock()
   return s.nonces[acc]
 }
 
-func (s *State) LastBlock() chain.Block {
+func (s *State) LastBlock() Block {
   s.mtx.RLock()
   defer s.mtx.RUnlock()
   return s.lastBlock
 }
 
-func NewState(gen chain.SigGenesis) *State {
+func NewState(gen SigGenesis) *State {
   return &State{
     balances: maps.Clone(gen.Balances),
-    nonces: make(map[chain.Address]uint64),
+    nonces: make(map[Address]uint64),
     genesisHash: gen.Hash(),
-    txs: make(map[chain.Hash]chain.SigTx),
+    txs: make(map[Hash]SigTx),
     Pending: &State{
       balances: maps.Clone(gen.Balances),
-      nonces: make(map[chain.Address]uint64),
+      nonces: make(map[Address]uint64),
       genesisHash: gen.Hash(),
-      txs: make(map[chain.Hash]chain.SigTx),
+      txs: make(map[Hash]SigTx),
     },
   }
 }
@@ -110,10 +108,10 @@ func (s *State) String() string {
   return bld.String()
 }
 
-func (s *State) ApplyTx(tx chain.SigTx) error {
+func (s *State) ApplyTx(tx SigTx) error {
   s.mtx.Lock()
   defer s.mtx.Unlock()
-  valid, err := chain.VerifyTx(tx)
+  valid, err := VerifyTx(tx)
   if err != nil {
     return err
   }
@@ -133,20 +131,20 @@ func (s *State) ApplyTx(tx chain.SigTx) error {
   return nil
 }
 
-func (s *State) CreateBlock() chain.Block {
+func (s *State) CreateBlock() Block {
   // no need to lock/unlock as CreateBlock is always executed on a clone
-  pndTxs := make([]chain.SigTx, 0, len(s.Pending.txs))
+  pndTxs := make([]SigTx, 0, len(s.Pending.txs))
   for _, tx := range s.Pending.txs {
     pndTxs = append(pndTxs, tx)
   }
-  slices.SortFunc(pndTxs, func(a, b chain.SigTx) int {
+  slices.SortFunc(pndTxs, func(a, b SigTx) int {
     cmp := strings.Compare(string(a.From), string(b.From))
     if cmp != 0 {
       return cmp
     }
     return int(a.Nonce) - int(b.Nonce)
   })
-  txs := make([]chain.SigTx, 0, len(pndTxs))
+  txs := make([]SigTx, 0, len(pndTxs))
   for _, tx := range pndTxs {
     err := s.ApplyTx(tx)
     if err != nil {
@@ -156,12 +154,12 @@ func (s *State) CreateBlock() chain.Block {
     txs = append(txs, tx)
   }
   if s.lastBlock.Number == 0 {
-    return chain.NewBlock(s.lastBlock.Number + 1, s.genesisHash, txs)
+    return NewBlock(s.lastBlock.Number + 1, s.genesisHash, txs)
   }
-  return chain.NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
+  return NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
 }
 
-func (s *State) ApplyBlock(blk chain.Block) error {
+func (s *State) ApplyBlock(blk Block) error {
   // no need to lock/unlock as ApplyBlock is always executed on a clone
   if blk.Number != s.lastBlock.Number + 1 {
     return fmt.Errorf("%.7s: invalid block number", blk.Hash())

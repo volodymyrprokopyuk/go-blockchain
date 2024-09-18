@@ -1,4 +1,4 @@
-package account
+package chain
 
 import (
 	"crypto/aes"
@@ -11,20 +11,19 @@ import (
 	"path/filepath"
 
 	"github.com/dustinxie/ecc"
-	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"golang.org/x/crypto/argon2"
 )
 
 const encKeyLen = uint32(32)
 
 type p256k1PrivateKey struct {
-  chain.P256k1PublicKey
+  P256k1PublicKey
   D *big.Int `json:"d"`
 }
 
 func newP256k1PrivateKey(prv *ecdsa.PrivateKey) p256k1PrivateKey {
   return p256k1PrivateKey{
-    P256k1PublicKey: chain.NewP256k1PublicKey(&prv.PublicKey), D: prv.D,
+    P256k1PublicKey: NewP256k1PublicKey(&prv.PublicKey), D: prv.D,
   }
 }
 
@@ -38,10 +37,10 @@ func (k *p256k1PrivateKey) privateKey() *ecdsa.PrivateKey {
 
 type Account struct {
   prv *ecdsa.PrivateKey
-  addr chain.Address // derived
+  addr Address // derived
 }
 
-func (a Account) Address() chain.Address {
+func (a Account) Address() Address {
   return a.addr
 }
 
@@ -50,7 +49,7 @@ func NewAccount() (Account, error) {
   if err != nil {
     return Account{}, err
   }
-  addr := chain.NewAddress(&prv.PublicKey)
+  addr := NewAddress(&prv.PublicKey)
   return Account{prv: prv, addr: addr}, nil
 }
 
@@ -71,7 +70,7 @@ func (a Account) Write(dir string, pass []byte) error {
   return os.WriteFile(path, cprv, 0600)
 }
 
-func Read(path string, pass []byte) (Account, error) {
+func ReadAccount(path string, pass []byte) (Account, error) {
   cprv, err := os.ReadFile(path)
   if err != nil {
     return Account{}, err
@@ -83,21 +82,21 @@ func Read(path string, pass []byte) (Account, error) {
   return decodePrivateKey(jprv)
 }
 
-func (a Account) SignGen(gen chain.Genesis) (chain.SigGenesis, error) {
+func (a Account) SignGen(gen Genesis) (SigGenesis, error) {
   sig, err := ecc.SignBytes(a.prv, gen.Hash().Bytes(), ecc.LowerS | ecc.RecID)
   if err != nil {
-    return chain.SigGenesis{}, err
+    return SigGenesis{}, err
   }
-  sgen := chain.NewSigGenesis(gen, sig)
+  sgen := NewSigGenesis(gen, sig)
   return sgen, nil
 }
 
-func (a Account) SignTx(tx chain.Tx) (chain.SigTx, error) {
+func (a Account) SignTx(tx Tx) (SigTx, error) {
   sig, err := ecc.SignBytes(a.prv, tx.Hash().Bytes(), ecc.LowerS | ecc.RecID)
   if err != nil {
-    return chain.SigTx{}, err
+    return SigTx{}, err
   }
-  stx := chain.NewSigTx(tx, sig)
+  stx := NewSigTx(tx, sig)
   return stx, nil
 }
 
@@ -112,7 +111,7 @@ func decodePrivateKey(jprv []byte) (Account, error) {
     return Account{}, err
   }
   prv := pk.privateKey()
-  addr := chain.NewAddress(&prv.PublicKey)
+  addr := NewAddress(&prv.PublicKey)
   return Account{prv: prv, addr: addr}, nil
 }
 
