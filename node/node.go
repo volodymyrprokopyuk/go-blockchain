@@ -45,7 +45,7 @@ type Node struct {
   state *state.State
   grpcSrv *grpc.Server
   dis *discovery
-  chTxRelay chan chain.SigTx
+  txRelay *txRelay
 }
 
 func NewNode(cfg NodeCfg) *Node {
@@ -66,7 +66,7 @@ func NewNode(cfg NodeCfg) *Node {
     seedAddr: nd.cfg.SeedAddr,
   }
   nd.dis = newDiscovery(nd.ctx, nd.wg, disCfg)
-  nd.chTxRelay = make(chan chain.SigTx, 100)
+  nd.txRelay = newTxRelay(nd.ctx, nd.wg, 100, nd.dis)
   return nd
 }
 
@@ -78,7 +78,7 @@ func (n *Node) Start() error {
   }
   go n.servegRPC()
   go n.dis.discoverPeers(5 * time.Second)
-  go n.relayTxs(5 * time.Second)
+  go n.txRelay.relayTxs(5 * time.Second)
   // go n.mine(10 * time.Second)
   select {
   case err = <- n.chErr:
@@ -299,96 +299,11 @@ func (n *Node) servegRPC() {
   rnode.RegisterNodeServer(n.grpcSrv, nd)
   acc := raccount.NewAccountSrv(n.cfg.KeyStoreDir)
   raccount.RegisterAccountServer(n.grpcSrv, acc)
-  tx := rtx.NewTxSrv(n.cfg.KeyStoreDir, n.state.Pending, n)
+  tx := rtx.NewTxSrv(n.cfg.KeyStoreDir, n.state.Pending, n.txRelay)
   rtx.RegisterTxServer(n.grpcSrv, tx)
   err = n.grpcSrv.Serve(lis)
   if err != nil {
     n.chErr <- err
-  }
-}
-
-func (n *Node) RelayTx(tx chain.SigTx) {
-  n.chTxRelay <- tx
-}
-
-func (n *Node) grpcRelayTxs() []chan chain.SigTx {
-  peers := n.dis.Peers()
-  chRelays := make([]chan chain.SigTx, len(peers))
-  for i, peer := range peers {
-    chRelay := make(chan chain.SigTx)
-    chRelays[i] = chRelay
-    go func () {
-      n.wg.Add(1)
-      defer n.wg.Done()
-      conn, err := grpc.NewClient(
-        peer, grpc.WithTransportCredentials(insecure.NewCredentials()),
-      )
-      if err != nil {
-        fmt.Println(err)
-        return
-      }
-      defer conn.Close()
-      cln := rtx.NewTxClient(conn)
-      stream, err := cln.TxReceive(n.ctx)
-      if err != nil {
-        fmt.Println(err)
-        return
-      }
-      for tx := range chRelay {
-        jtx, err := json.Marshal(tx)
-        if err != nil {
-          fmt.Println(err)
-          continue
-        }
-        req := &rtx.TxReceiveReq{SigTx: jtx}
-        err = stream.Send(req)
-        if err != nil {
-          fmt.Println(err)
-          continue
-        }
-      }
-      _, err = stream.CloseAndRecv()
-      if err != nil {
-        fmt.Println(err)
-        return
-      }
-    }()
-  }
-  return chRelays
-}
-
-func (n *Node) relayTxs(interval time.Duration) {
-  n.wg.Add(1)
-  defer n.wg.Done()
-  tick := time.NewTicker(interval)
-  defer tick.Stop()
-  for {
-    select {
-    case <- n.ctx.Done():
-      return
-    case <- tick.C:
-      chRelays := n.grpcRelayTxs()
-      closeRelays := func() {
-        for _, chRelay := range chRelays {
-          close(chRelay)
-        }
-      }
-      timer := time.NewTimer(interval - 1 * time.Second)
-      relay: for {
-        select {
-        case <- n.ctx.Done():
-          closeRelays()
-          return
-        case <- timer.C:
-          closeRelays()
-          break relay
-        case tx := <- n.chTxRelay:
-          for _, chRelay := range chRelays {
-            chRelay <- tx
-          }
-        }
-      }
-    }
   }
 }
 
