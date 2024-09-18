@@ -11,9 +11,11 @@ function compile -a proto
 end
 
 set -l node node/rnode/node.proto
-set -l account node/raccount/account.proto
+set -l acc node/raccount/account.proto
 set -l tx node/rtx/tx.proto
+set -l blk node/rblock/block.proto
 
 compile $node
-compile $account
+compile $acc
 compile $tx
+compile $blk

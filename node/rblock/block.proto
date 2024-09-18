@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option go_package = "./rblock";
+
+message GenesisSyncReq { }
+
+message GenesisSyncRes {
+  bytes Genesis = 1;
+}
+
+message BlockSyncReq {
+  uint64 Number = 1;
+}
+
+message BlockSyncRes {
+  bytes Block = 1;
+}
+
+service Block {
+  rpc GenesisSync(GenesisSyncReq) returns (GenesisSyncRes);
+  rpc BlockSync(BlockSyncReq) returns (stream BlockSyncRes);
+}
