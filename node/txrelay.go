@@ -38,8 +38,8 @@ func (r *txRelay) grpcRelays() []chan chain.SigTx {
   for i, peer := range peers {
     chRelay := make(chan chain.SigTx)
     chRelays[i] = chRelay
+    r.wg.Add(1)
     go func () {
-      r.wg.Add(1)
       defer r.wg.Done()
       conn, err := grpc.NewClient(
         peer, grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -79,7 +79,6 @@ func (r *txRelay) grpcRelays() []chan chain.SigTx {
 }
 
 func (r *txRelay) relayTxs(interval time.Duration) {
-  r.wg.Add(1)
   defer r.wg.Done()
   tick := time.NewTicker(interval)
   defer tick.Stop()

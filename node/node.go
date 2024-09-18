@@ -71,9 +71,13 @@ func (n *Node) Start() error {
     return err
   }
   n.state = sta
+  n.wg.Add(1)
   go n.servegRPC()
+  n.wg.Add(1)
   go n.dis.discoverPeers(5 * time.Second)
+  n.wg.Add(1)
   go n.txRelay.relayTxs(5 * time.Second)
+  // n.wg.Add(1)
   // go n.mine(10 * time.Second)
   select {
   case err = <- n.chErr:
@@ -86,7 +90,6 @@ func (n *Node) Start() error {
 }
 
 func (n *Node) servegRPC() {
-  n.wg.Add(1)
   defer n.wg.Done()
   lis, err := net.Listen("tcp", n.cfg.NodeAddr)
   if err != nil {
@@ -112,7 +115,6 @@ func (n *Node) servegRPC() {
 }
 
 func (n *Node) mine(interval time.Duration) {
-  n.wg.Add(1)
   defer n.wg.Done()
   tick := time.NewTicker(interval)
   defer tick.Stop()

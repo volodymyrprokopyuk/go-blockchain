@@ -79,7 +79,6 @@ func (d *discovery) grpcPeerDiscover(peer string) ([]string, error) {
 }
 
 func (d *discovery) discoverPeers(interval time.Duration) {
-  d.wg.Add(1)
   defer d.wg.Done()
   tick := time.NewTicker(5 * time.Second)
   defer tick.Stop()
