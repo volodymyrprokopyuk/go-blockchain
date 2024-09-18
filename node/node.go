@@ -44,8 +44,7 @@ type Node struct {
   // components
   state *state.State
   grpcSrv *grpc.Server
-  peers map[string]struct{}
-  peersMtx sync.RWMutex
+  dis *discovery
   chTxRelay chan chain.SigTx
 }
 
@@ -61,36 +60,14 @@ func NewNode(cfg NodeCfg) *Node {
   nd.wg = new(sync.WaitGroup)
   nd.chErr = make(chan error, 1)
   // components
-  nd.peers = make(map[string]struct{})
-  if !cfg.Bootstrap {
-    nd.AddPeers(cfg.SeedAddr)
+  disCfg := discoveryCfg{
+    bootstrap: nd.cfg.Bootstrap,
+    nodeAddr: nd.cfg.NodeAddr,
+    seedAddr: nd.cfg.SeedAddr,
   }
+  nd.dis = newDiscovery(nd.ctx, nd.wg, disCfg)
   nd.chTxRelay = make(chan chain.SigTx, 100)
   return nd
-}
-
-func (n *Node) Bootstrap() bool {
-  return n.cfg.Bootstrap
-}
-
-func (n *Node) AddPeers(peers ...string) {
-  n.peersMtx.Lock()
-  defer n.peersMtx.Unlock()
-  for _, peer := range peers {
-    if peer != n.cfg.NodeAddr {
-      n.peers[peer] = struct{}{}
-    }
-  }
-}
-
-func (n *Node) Peers() []string {
-  peers := make([]string, 0, len(n.peers))
-  n.peersMtx.RLock()
-  defer n.peersMtx.RUnlock()
-  for peer := range n.peers {
-    peers = append(peers, peer)
-  }
-  return peers
 }
 
 func (n *Node) Start() error {
@@ -100,7 +77,7 @@ func (n *Node) Start() error {
     return err
   }
   go n.servegRPC()
-  go n.discoverPeers(5 * time.Second)
+  go n.dis.discoverPeers(5 * time.Second)
   go n.relayTxs(5 * time.Second)
   // go n.mine(10 * time.Second)
   select {
@@ -243,7 +220,7 @@ func (n *Node) grpcBlockSync(peer string) (
 }
 
 func (n *Node) syncBlocks() error {
-  for _, peer := range n.Peers() {
+  for _, peer := range n.dis.Peers() {
     blocks, closeBlocks, err := n.grpcBlockSync(peer)
     if err != nil {
       return err
@@ -275,7 +252,7 @@ func (n *Node) syncBlocks() error {
 func (n *Node) initState() error {
   sgen, err := chain.ReadGenesis(n.cfg.BlockStoreDir)
   if err != nil {
-    if n.Bootstrap() {
+    if n.cfg.Bootstrap {
       sgen, err = n.createGenesis()
       if err != nil {
         return err
@@ -318,7 +295,7 @@ func (n *Node) servegRPC() {
   defer lis.Close()
   fmt.Printf("* gRPC address %v\n", n.cfg.NodeAddr)
   n.grpcSrv = grpc.NewServer()
-  nd := rnode.NewNodeSrv(n.cfg.BlockStoreDir, n)
+  nd := rnode.NewNodeSrv(n.cfg.BlockStoreDir, n.dis)
   rnode.RegisterNodeServer(n.grpcSrv, nd)
   acc := raccount.NewAccountSrv(n.cfg.KeyStoreDir)
   raccount.RegisterAccountServer(n.grpcSrv, acc)
@@ -330,53 +307,12 @@ func (n *Node) servegRPC() {
   }
 }
 
-func (n *Node) grpcPeerDiscover(peer string) ([]string, error) {
-  conn, err := grpc.NewClient(
-    peer, grpc.WithTransportCredentials(insecure.NewCredentials()),
-  )
-  if err != nil {
-    return nil, err
-  }
-  defer conn.Close()
-  cln := rnode.NewNodeClient(conn)
-  req := &rnode.PeerDiscoverReq{Peer: n.cfg.NodeAddr}
-  res, err := cln.PeerDiscover(n.ctx, req)
-  if err != nil {
-    return nil, err
-  }
-  return res.Peers, nil
-}
-
-func (n *Node) discoverPeers(interval time.Duration) {
-  n.wg.Add(1)
-  defer n.wg.Done()
-  tick := time.NewTicker(5 * time.Second)
-  defer tick.Stop()
-  for {
-    select {
-    case <- n.ctx.Done():
-      return
-    case <- tick.C:
-      tick.Reset(interval)
-      for _, peer := range n.Peers() {
-        peers, err := n.grpcPeerDiscover(peer)
-        if err != nil {
-          fmt.Println(err)
-          continue
-        }
-        n.AddPeers(peers...)
-      }
-      // fmt.Printf("* %v peers: %v\n", n.cfg.NodeAddr, n.Peers())
-    }
-  }
-}
-
 func (n *Node) RelayTx(tx chain.SigTx) {
   n.chTxRelay <- tx
 }
 
 func (n *Node) grpcRelayTxs() []chan chain.SigTx {
-  peers := n.Peers()
+  peers := n.dis.Peers()
   chRelays := make([]chan chain.SigTx, len(peers))
   for i, peer := range peers {
     chRelay := make(chan chain.SigTx)

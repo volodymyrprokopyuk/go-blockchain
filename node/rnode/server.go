@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type Peerer interface {
+type Discoverer interface {
   Bootstrap() bool
   AddPeers(peers ...string);
   Peers() []string;
@@ -16,11 +16,11 @@ type Peerer interface {
 type NodeSrv struct {
   UnimplementedNodeServer
   blockStoreDir string
-  peerer Peerer
+  dis Discoverer
 }
 
-func NewNodeSrv(blockStoreDir string, peerer Peerer) *NodeSrv {
-  return &NodeSrv{blockStoreDir: blockStoreDir, peerer: peerer}
+func NewNodeSrv(blockStoreDir string, dis Discoverer) *NodeSrv {
+  return &NodeSrv{blockStoreDir: blockStoreDir, dis: dis}
 }
 
 func (s *NodeSrv) GenesisSync(
@@ -62,9 +62,9 @@ func (s *NodeSrv) BlockSync(
 func (s *NodeSrv) PeerDiscover(
   _ context.Context, req *PeerDiscoverReq,
 ) (*PeerDiscoverRes, error) {
-  if s.peerer.Bootstrap() {
-    s.peerer.AddPeers(req.Peer)
+  if s.dis.Bootstrap() {
+    s.dis.AddPeers(req.Peer)
   }
-  res := &PeerDiscoverRes{Peers: s.peerer.Peers()}
+  res := &PeerDiscoverRes{Peers: s.dis.Peers()}
   return res, nil
 }
