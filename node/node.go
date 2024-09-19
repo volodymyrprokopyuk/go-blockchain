@@ -40,6 +40,7 @@ type Node struct {
   dis *discovery
   // txRelay *txRelay
   txRelay *msgRelay[chain.SigTx, grpcMsgRelay[chain.SigTx]]
+  blkRelay *msgRelay[chain.Block, grpcMsgRelay[chain.Block]]
   prop *proposer
 }
 
@@ -64,6 +65,7 @@ func NewNode(cfg NodeCfg) *Node {
   nd.stateSync = newStateSync(nd.ctx, nd.cfg, nd.dis)
   // nd.txRelay = newTxRelay(nd.ctx, nd.wg, 100, nd.dis)
   nd.txRelay = newMsgRelay(nd.ctx, nd.wg, 100, nd.dis, grpcTxRelay)
+  nd.blkRelay = newMsgRelay(nd.ctx, nd.wg, 10, nd.dis, grpcBlockRelay)
   nd.prop = newProposer(nd.ctx, nd.wg)
   return nd
 }
@@ -85,6 +87,8 @@ func (n *Node) Start() error {
   go n.txRelay.relayMsgs(5 * time.Second)
   n.wg.Add(1)
   go n.prop.proposeBlocks(5 * time.Second)
+  n.wg.Add(1)
+  go n.blkRelay.relayMsgs(5 * time.Second)
   select {
   case err = <- n.chErr:
   case <- n.ctx.Done():
@@ -111,7 +115,7 @@ func (n *Node) servegRPC() {
   rpc.RegisterAccountServer(n.grpcSrv, acc)
   tx := rpc.NewTxSrv(n.cfg.KeyStoreDir, n.state.Pending, n.txRelay)
   rpc.RegisterTxServer(n.grpcSrv, tx)
-  blk := rpc.NewBlockSrv(n.cfg.BlockStoreDir)
+  blk := rpc.NewBlockSrv(n.cfg.BlockStoreDir, n.state, n.blkRelay)
   rpc.RegisterBlockServer(n.grpcSrv, blk)
   err = n.grpcSrv.Serve(lis)
   if err != nil {

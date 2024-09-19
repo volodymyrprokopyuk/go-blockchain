@@ -16,7 +16,14 @@ message BlockSyncRes {
   bytes Block = 1;
 }
 
+message BlockReceiveReq {
+  bytes Block = 1;
+}
+
+message BlockReceiveRes { }
+
 service Block {
   rpc GenesisSync(GenesisSyncReq) returns (GenesisSyncRes);
   rpc BlockSync(BlockSyncReq) returns (stream BlockSyncRes);
+  rpc BlockReceive(BlockReceiveReq) returns (BlockReceiveRes);
 }

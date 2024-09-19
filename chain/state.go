@@ -162,14 +162,14 @@ func (s *State) CreateBlock() Block {
 func (s *State) ApplyBlock(blk Block) error {
   // no need to lock/unlock as ApplyBlock is always executed on a clone
   if blk.Number != s.lastBlock.Number + 1 {
-    return fmt.Errorf("%.7s: invalid block number", blk.Hash())
+    return fmt.Errorf("error: invalid block number\n%v", blk)
   }
   hash := s.lastBlock.Hash()
   if blk.Number == 1 {
     hash = s.genesisHash
   }
   if blk.Parent != hash {
-    return fmt.Errorf("%.7s: invalid parent hash", blk.Hash())
+    return fmt.Errorf("error: invalid parent hash\n%v", blk)
   }
   for _, tx := range blk.Txs {
     err := s.ApplyTx(tx)
@@ -178,5 +178,16 @@ func (s *State) ApplyBlock(blk Block) error {
     }
   }
   s.lastBlock = blk
+  return nil
+}
+
+func (s *State) ApplyBlockToState(blk Block) error {
+  clo := s.Clone()
+  err := clo.ApplyBlock(blk)
+  if err != nil {
+    return err
+  }
+  s.Apply(clo)
+  fmt.Printf("* Block state (ApplyBlock)\n%v\n", s)
   return nil
 }

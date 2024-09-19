@@ -2,18 +2,36 @@ package rpc
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"google.golang.org/grpc"
 )
 
+type BlockApplier interface {
+  ApplyBlockToState(blk chain.Block) error
+}
+
+type BlockRelayer interface {
+  RelayBlock(blk chain.Block)
+}
+
 type BlockSrv struct {
   UnimplementedBlockServer
   blockStoreDir string
+  blkApplier BlockApplier
+  blkRelayer BlockRelayer
 }
 
-func NewBlockSrv(blockStoreDir string) *BlockSrv {
-  return &BlockSrv{blockStoreDir: blockStoreDir}
+func NewBlockSrv(
+  blockStoreDir string, blkApplicer BlockApplier,
+  blkRelayer BlockRelayer,
+) *BlockSrv {
+  return &BlockSrv{
+    blockStoreDir: blockStoreDir, blkApplier: blkApplicer,
+    blkRelayer: blkRelayer,
+  }
 }
 
 func (s *BlockSrv) GenesisSync(
@@ -50,4 +68,26 @@ func (s *BlockSrv) BlockSync(
     i++
   }
   return nil
+}
+
+func (s *BlockSrv) BlockReceive(
+  _ context.Context, req *BlockReceiveReq,
+) (*BlockReceiveRes, error) {
+  var blk chain.Block
+  err := json.Unmarshal(req.Block, &blk)
+  if err != nil {
+    return nil, err
+  }
+  fmt.Printf("* Block Receive\n%v\n", blk)
+  err = s.blkApplier.ApplyBlockToState(blk)
+  if err != nil {
+    return nil, err
+  }
+  err = blk.Write(s.blockStoreDir)
+  if err != nil {
+    return nil, err
+  }
+  s.blkRelayer.RelayBlock(blk)
+  res := &BlockReceiveRes{}
+  return res, nil
 }

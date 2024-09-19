@@ -42,6 +42,20 @@ var grpcTxRelay grpcMsgRelay[chain.SigTx] = func(
   return err
 }
 
+var grpcBlockRelay grpcMsgRelay[chain.Block] = func(
+  ctx context.Context, conn *grpc.ClientConn, chRelay chan chain.Block,
+) error {
+  cln := rpc.NewBlockClient(conn)
+  blk := <- chRelay
+  jblk, err := json.Marshal(blk)
+  if err != nil {
+    return err
+  }
+  req := &rpc.BlockReceiveReq{Block: jblk}
+  _, err = cln.BlockReceive(ctx, req)
+  return err
+}
+
 type msgRelay[Msg any, Relay grpcMsgRelay[Msg]] struct {
   ctx context.Context
   wg *sync.WaitGroup
@@ -62,6 +76,10 @@ func newMsgRelay[Msg any, Relay grpcMsgRelay[Msg]](
 
 func (r *msgRelay[Msg, Relay]) RelayTx(tx Msg) {
   r.chMsg <- tx
+}
+
+func (r *msgRelay[Msg, Relay]) RelayBlock(blk Msg) {
+  r.chMsg <- blk
 }
 
 func (r *msgRelay[Msg, Relay]) grpcRelays() []chan Msg {
