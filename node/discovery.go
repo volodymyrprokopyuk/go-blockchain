@@ -78,7 +78,7 @@ func (d *discovery) grpcPeerDiscover(peer string) ([]string, error) {
   return res.Peers, nil
 }
 
-func (d *discovery) discoverPeers(interval time.Duration) {
+func (d *discovery) discoverPeers(period time.Duration) {
   defer d.wg.Done()
   tick := time.NewTicker(5 * time.Second)
   defer tick.Stop()
@@ -87,7 +87,7 @@ func (d *discovery) discoverPeers(interval time.Duration) {
     case <- d.ctx.Done():
       return
     case <- tick.C:
-      tick.Reset(interval)
+      tick.Reset(period)
       for _, peer := range d.Peers() {
         peers, err := d.grpcPeerDiscover(peer)
         if err != nil {

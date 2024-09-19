@@ -78,9 +78,9 @@ func (r *txRelay) grpcRelays() []chan chain.SigTx {
   return chRelays
 }
 
-func (r *txRelay) relayTxs(interval time.Duration) {
+func (r *txRelay) relayTxs(period time.Duration) {
   defer r.wg.Done()
-  tick := time.NewTicker(interval)
+  tick := time.NewTicker(period)
   defer tick.Stop()
   for {
     select {
@@ -93,10 +93,11 @@ func (r *txRelay) relayTxs(interval time.Duration) {
           close(chRelay)
         }
       }
-      timer := time.NewTimer(interval - 1 * time.Second)
+      timer := time.NewTimer(period - 1 * time.Second)
       relay: for {
         select {
         case <- r.ctx.Done():
+          timer.Stop()
           closeRelays()
           return
         case <- timer.C:

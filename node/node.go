@@ -38,7 +38,9 @@ type Node struct {
   stateSync *stateSync
   grpcSrv *grpc.Server
   dis *discovery
-  txRelay *txRelay
+  // txRelay *txRelay
+  txRelay *msgRelay[chain.SigTx, grpcMsgRelay[chain.SigTx]]
+  prop *proposer
 }
 
 func NewNode(cfg NodeCfg) *Node {
@@ -60,7 +62,9 @@ func NewNode(cfg NodeCfg) *Node {
   }
   nd.dis = newDiscovery(nd.ctx, nd.wg, disCfg)
   nd.stateSync = newStateSync(nd.ctx, nd.cfg, nd.dis)
-  nd.txRelay = newTxRelay(nd.ctx, nd.wg, 100, nd.dis)
+  // nd.txRelay = newTxRelay(nd.ctx, nd.wg, 100, nd.dis)
+  nd.txRelay = newMsgRelay(nd.ctx, nd.wg, 100, nd.dis, grpcTxRelay)
+  nd.prop = newProposer(nd.ctx, nd.wg)
   return nd
 }
 
@@ -71,14 +75,16 @@ func (n *Node) Start() error {
     return err
   }
   n.state = sta
+  n.prop.state = n.state
   n.wg.Add(1)
   go n.servegRPC()
   n.wg.Add(1)
   go n.dis.discoverPeers(5 * time.Second)
   n.wg.Add(1)
-  go n.txRelay.relayTxs(5 * time.Second)
-  // n.wg.Add(1)
-  // go n.mine(10 * time.Second)
+  // go n.txRelay.relayTxs(5 * time.Second)
+  go n.txRelay.relayMsgs(5 * time.Second)
+  n.wg.Add(1)
+  go n.prop.proposeBlocks(5 * time.Second)
   select {
   case err = <- n.chErr:
   case <- n.ctx.Done():
@@ -137,6 +143,7 @@ func (n *Node) mine(interval time.Duration) {
         fmt.Println(err)
         continue
       }
+
       n.state.Apply(clo)
       fmt.Printf("* Block state (ApplyBlock)\n%v\n", n.state)
       // write block

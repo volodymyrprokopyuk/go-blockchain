@@ -60,15 +60,15 @@ func (s *State) Clone() *State {
   }
 }
 
-func (s *State) Apply(sta *State) {
+func (s *State) Apply(state *State) {
   s.mtx.Lock()
   defer s.mtx.Unlock()
-  s.balances = sta.balances
-  s.nonces = sta.nonces
-  s.lastBlock = sta.lastBlock
+  s.balances = state.balances
+  s.nonces = state.nonces
+  s.lastBlock = state.lastBlock
   s.Pending.balances = maps.Clone(s.balances)
   s.Pending.nonces = maps.Clone(s.nonces)
-  for _, tx := range sta.lastBlock.Txs {
+  for _, tx := range state.lastBlock.Txs {
     delete(s.Pending.txs, tx.Hash())
   }
 }
