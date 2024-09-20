@@ -66,7 +66,7 @@ func NewNode(cfg NodeCfg) *Node {
   // nd.txRelay = newTxRelay(nd.ctx, nd.wg, 100, nd.dis)
   nd.txRelay = newMsgRelay(nd.ctx, nd.wg, 100, nd.dis, grpcTxRelay)
   nd.blkRelay = newMsgRelay(nd.ctx, nd.wg, 10, nd.dis, grpcBlockRelay)
-  nd.prop = newProposer(nd.ctx, nd.wg)
+  nd.prop = newProposer(nd.ctx, nd.wg, nd.blkRelay)
   return nd
 }
 

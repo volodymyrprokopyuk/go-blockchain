@@ -15,10 +15,14 @@ type proposer struct {
   ctx context.Context
   wg *sync.WaitGroup
   state *chain.State
+  blkRelay *msgRelay[chain.Block, grpcMsgRelay[chain.Block]]
 }
 
-func newProposer(ctx context.Context, wg *sync.WaitGroup) *proposer {
-  return &proposer{ctx: ctx, wg: wg}
+func newProposer(
+  ctx context.Context, wg *sync.WaitGroup,
+  blkRelay *msgRelay[chain.Block, grpcMsgRelay[chain.Block]],
+) *proposer {
+  return &proposer{ctx: ctx, wg: wg, blkRelay: blkRelay}
 }
 
 func randPeriod(maxPeriod time.Duration) time.Duration {
@@ -49,7 +53,7 @@ func (p *proposer) proposeBlocks(maxPeriod time.Duration) {
         continue
       }
       fmt.Printf("* Proposed block: %v\n", blk)
-      // p.blkRelay.relayBlock(blk)
+      p.blkRelay.RelayBlock(blk)
     }
   }
 }
