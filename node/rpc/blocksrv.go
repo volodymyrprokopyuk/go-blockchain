@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"google.golang.org/grpc"
@@ -90,4 +91,35 @@ func (s *BlockSrv) BlockReceive(
   s.blkRelayer.RelayBlock(blk)
   res := &BlockReceiveRes{}
   return res, nil
+}
+
+func (s *BlockSrv) BlockSearch(
+  req *BlockSearchReq, stream grpc.ServerStreamingServer[BlockSearchRes],
+) error {
+  blocks, closeBlocks, err := chain.ReadBlocks(s.blockStoreDir)
+  if err != nil {
+    return err
+  }
+  defer closeBlocks()
+  for err, blk := range blocks {
+    if err != nil {
+      return err
+    }
+    if req.Number != 0 && blk.Number == req.Number ||
+      len(req.BlockHash) > 0 &&
+        strings.HasPrefix(blk.Hash().String(), req.BlockHash) ||
+      len(req.ParentHash) > 0 &&
+        strings.HasPrefix(blk.Parent.String(), req.ParentHash) {
+      jblk, err := json.Marshal(blk)
+      if err != nil {
+        return err
+      }
+      res := &BlockSearchRes{Block: jblk}
+      err = stream.Send(res)
+      if err != nil {
+        return err
+      }
+    }
+  }
+  return nil
 }

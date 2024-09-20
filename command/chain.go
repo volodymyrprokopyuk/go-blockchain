@@ -13,6 +13,6 @@ func ChainCmd() *cobra.Command {
     SilenceErrors: true,
   }
   cmd.PersistentFlags().String("node", "localhost:1122", "node address host:port")
-  cmd.AddCommand(nodeCmd(), accountCmd(), txCmd())
+  cmd.AddCommand(nodeCmd(), accountCmd(), txCmd(), blockCmd())
   return cmd
 }
