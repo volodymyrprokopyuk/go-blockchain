@@ -15,7 +15,7 @@ func accountCmd() *cobra.Command {
     Use: "account",
     Short: "Manages accounts on the blockchain",
   }
-  cmd.AddCommand(accountCreateCmd())
+  cmd.AddCommand(accountCreateCmd(), accountBalanceCmd())
   return cmd
 }
 
@@ -53,5 +53,42 @@ func accountCreateCmd() *cobra.Command {
   }
   cmd.Flags().String("password", "", "password to encrypt the account private key")
   _ = cmd.MarkFlagRequired("password")
+  return cmd
+}
+
+func grpcAccountBalance(addr, acc string) (uint64, error) {
+  conn, err := grpc.NewClient(
+    addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
+  )
+  if err != nil {
+    return 0, err
+  }
+  defer conn.Close()
+  cln := rpc.NewAccountClient(conn)
+  req := &rpc.AccountBalanceReq{Address: acc}
+  res, err := cln.AccountBalance(context.Background(), req)
+  if err != nil {
+    return 0, err
+  }
+  return res.Balance, nil
+}
+
+func accountBalanceCmd() *cobra.Command {
+  cmd := &cobra.Command{
+    Use: "balance",
+    Short: "Returns an account balance",
+    RunE: func(cmd *cobra.Command, _ []string) error {
+      addr, _ := cmd.Flags().GetString("node")
+      acc, _ := cmd.Flags().GetString("account")
+      balance, err := grpcAccountBalance(addr, acc)
+      if err != nil {
+        return err
+      }
+      fmt.Printf("%.7s: %v\n", acc, balance)
+      return nil
+    },
+  }
+  cmd.Flags().String("account", "", "account address")
+  _ = cmd.MarkFlagRequired("account")
   return cmd
 }

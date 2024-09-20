@@ -10,6 +10,15 @@ message AccountCreateRes {
   string Address = 1;
 }
 
+message AccountBalanceReq {
+  string Address = 1;
+}
+
+message AccountBalanceRes {
+  uint64 Balance = 1;
+}
+
 service Account {
   rpc AccountCreate(AccountCreateReq) returns (AccountCreateRes);
+  rpc AccountBalance(AccountBalanceReq) returns (AccountBalanceRes);
 }

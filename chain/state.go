@@ -18,6 +18,12 @@ type State struct {
   Pending *State
 }
 
+func (s *State) Balance(acc Address) uint64 {
+  s.mtx.RLock()
+  defer s.mtx.RUnlock()
+  return s.balances[acc]
+}
+
 func (s *State) Nonce(acc Address) uint64 {
   s.mtx.RLock()
   defer s.mtx.RUnlock()
