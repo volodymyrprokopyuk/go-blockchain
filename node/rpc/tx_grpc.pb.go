@@ -22,6 +22,7 @@ const (
 	Tx_TxSign_FullMethodName    = "/Tx/TxSign"
 	Tx_TxSend_FullMethodName    = "/Tx/TxSend"
 	Tx_TxReceive_FullMethodName = "/Tx/TxReceive"
+	Tx_TxSearch_FullMethodName  = "/Tx/TxSearch"
 )
 
 // TxClient is the client API for Tx service.
@@ -31,6 +32,7 @@ type TxClient interface {
 	TxSign(ctx context.Context, in *TxSignReq, opts ...grpc.CallOption) (*TxSignRes, error)
 	TxSend(ctx context.Context, in *TxSendReq, opts ...grpc.CallOption) (*TxSendRes, error)
 	TxReceive(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[TxReceiveReq, TxReceiveRes], error)
+	TxSearch(ctx context.Context, in *TxSearchReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[TxSearchRes], error)
 }
 
 type txClient struct {
@@ -74,6 +76,25 @@ func (c *txClient) TxReceive(ctx context.Context, opts ...grpc.CallOption) (grpc
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Tx_TxReceiveClient = grpc.ClientStreamingClient[TxReceiveReq, TxReceiveRes]
 
+func (c *txClient) TxSearch(ctx context.Context, in *TxSearchReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[TxSearchRes], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Tx_ServiceDesc.Streams[1], Tx_TxSearch_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[TxSearchReq, TxSearchRes]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Tx_TxSearchClient = grpc.ServerStreamingClient[TxSearchRes]
+
 // TxServer is the server API for Tx service.
 // All implementations must embed UnimplementedTxServer
 // for forward compatibility.
@@ -81,6 +102,7 @@ type TxServer interface {
 	TxSign(context.Context, *TxSignReq) (*TxSignRes, error)
 	TxSend(context.Context, *TxSendReq) (*TxSendRes, error)
 	TxReceive(grpc.ClientStreamingServer[TxReceiveReq, TxReceiveRes]) error
+	TxSearch(*TxSearchReq, grpc.ServerStreamingServer[TxSearchRes]) error
 	mustEmbedUnimplementedTxServer()
 }
 
@@ -99,6 +121,9 @@ func (UnimplementedTxServer) TxSend(context.Context, *TxSendReq) (*TxSendRes, er
 }
 func (UnimplementedTxServer) TxReceive(grpc.ClientStreamingServer[TxReceiveReq, TxReceiveRes]) error {
 	return status.Errorf(codes.Unimplemented, "method TxReceive not implemented")
+}
+func (UnimplementedTxServer) TxSearch(*TxSearchReq, grpc.ServerStreamingServer[TxSearchRes]) error {
+	return status.Errorf(codes.Unimplemented, "method TxSearch not implemented")
 }
 func (UnimplementedTxServer) mustEmbedUnimplementedTxServer() {}
 func (UnimplementedTxServer) testEmbeddedByValue()            {}
@@ -164,6 +189,17 @@ func _Tx_TxReceive_Handler(srv interface{}, stream grpc.ServerStream) error {
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Tx_TxReceiveServer = grpc.ClientStreamingServer[TxReceiveReq, TxReceiveRes]
 
+func _Tx_TxSearch_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(TxSearchReq)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(TxServer).TxSearch(m, &grpc.GenericServerStream[TxSearchReq, TxSearchRes]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Tx_TxSearchServer = grpc.ServerStreamingServer[TxSearchRes]
+
 // Tx_ServiceDesc is the grpc.ServiceDesc for Tx service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -185,6 +221,11 @@ var Tx_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "TxReceive",
 			Handler:       _Tx_TxReceive_Handler,
 			ClientStreams: true,
+		},
+		{
+			StreamName:    "TxSearch",
+			Handler:       _Tx_TxSearch_Handler,
+			ServerStreams: true,
 		},
 	},
 	Metadata: "tx.proto",

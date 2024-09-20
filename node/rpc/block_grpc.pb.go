@@ -22,6 +22,7 @@ const (
 	Block_GenesisSync_FullMethodName  = "/Block/GenesisSync"
 	Block_BlockSync_FullMethodName    = "/Block/BlockSync"
 	Block_BlockReceive_FullMethodName = "/Block/BlockReceive"
+	Block_BlockSearch_FullMethodName  = "/Block/BlockSearch"
 )
 
 // BlockClient is the client API for Block service.
@@ -31,6 +32,7 @@ type BlockClient interface {
 	GenesisSync(ctx context.Context, in *GenesisSyncReq, opts ...grpc.CallOption) (*GenesisSyncRes, error)
 	BlockSync(ctx context.Context, in *BlockSyncReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[BlockSyncRes], error)
 	BlockReceive(ctx context.Context, in *BlockReceiveReq, opts ...grpc.CallOption) (*BlockReceiveRes, error)
+	BlockSearch(ctx context.Context, in *BlockSearchReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[BlockSearchRes], error)
 }
 
 type blockClient struct {
@@ -80,6 +82,25 @@ func (c *blockClient) BlockReceive(ctx context.Context, in *BlockReceiveReq, opt
 	return out, nil
 }
 
+func (c *blockClient) BlockSearch(ctx context.Context, in *BlockSearchReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[BlockSearchRes], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Block_ServiceDesc.Streams[1], Block_BlockSearch_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[BlockSearchReq, BlockSearchRes]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Block_BlockSearchClient = grpc.ServerStreamingClient[BlockSearchRes]
+
 // BlockServer is the server API for Block service.
 // All implementations must embed UnimplementedBlockServer
 // for forward compatibility.
@@ -87,6 +108,7 @@ type BlockServer interface {
 	GenesisSync(context.Context, *GenesisSyncReq) (*GenesisSyncRes, error)
 	BlockSync(*BlockSyncReq, grpc.ServerStreamingServer[BlockSyncRes]) error
 	BlockReceive(context.Context, *BlockReceiveReq) (*BlockReceiveRes, error)
+	BlockSearch(*BlockSearchReq, grpc.ServerStreamingServer[BlockSearchRes]) error
 	mustEmbedUnimplementedBlockServer()
 }
 
@@ -105,6 +127,9 @@ func (UnimplementedBlockServer) BlockSync(*BlockSyncReq, grpc.ServerStreamingSer
 }
 func (UnimplementedBlockServer) BlockReceive(context.Context, *BlockReceiveReq) (*BlockReceiveRes, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BlockReceive not implemented")
+}
+func (UnimplementedBlockServer) BlockSearch(*BlockSearchReq, grpc.ServerStreamingServer[BlockSearchRes]) error {
+	return status.Errorf(codes.Unimplemented, "method BlockSearch not implemented")
 }
 func (UnimplementedBlockServer) mustEmbedUnimplementedBlockServer() {}
 func (UnimplementedBlockServer) testEmbeddedByValue()               {}
@@ -174,6 +199,17 @@ func _Block_BlockReceive_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Block_BlockSearch_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(BlockSearchReq)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(BlockServer).BlockSearch(m, &grpc.GenericServerStream[BlockSearchReq, BlockSearchRes]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Block_BlockSearchServer = grpc.ServerStreamingServer[BlockSearchRes]
+
 // Block_ServiceDesc is the grpc.ServiceDesc for Block service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -194,6 +230,11 @@ var Block_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "BlockSync",
 			Handler:       _Block_BlockSync_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "BlockSearch",
+			Handler:       _Block_BlockSearch_Handler,
 			ServerStreams: true,
 		},
 	},

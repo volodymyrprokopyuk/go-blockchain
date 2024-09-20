@@ -58,3 +58,19 @@ func VerifyTx(tx SigTx) (bool, error) {
   acc := NewAddress(pub)
   return acc == tx.From, nil
 }
+
+type SearchTx struct {
+  SigTx
+  BlockNumber uint64 `json:"blockNumber"`
+  BlockHash Hash `json:"blockHash"`
+}
+
+func NewSearchTx(tx SigTx, blkNumber uint64, blkHash Hash) SearchTx {
+  return SearchTx{SigTx: tx, BlockNumber: blkNumber, BlockHash: blkHash}
+}
+
+func (t SearchTx) String() string {
+  return fmt.Sprintf(
+    "%v (block: %v, %.7s)", t.SigTx.Tx, t.BlockNumber, t.BlockHash,
+  )
+}

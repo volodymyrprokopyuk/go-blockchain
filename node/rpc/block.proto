@@ -22,8 +22,19 @@ message BlockReceiveReq {
 
 message BlockReceiveRes { }
 
+message BlockSearchReq {
+  uint64 Number = 1;
+  string BlockHash = 2;
+  string ParentHash = 3;
+}
+
+message BlockSearchRes {
+  bytes Block = 1;
+}
+
 service Block {
   rpc GenesisSync(GenesisSyncReq) returns (GenesisSyncRes);
   rpc BlockSync(BlockSyncReq) returns (stream BlockSyncRes);
   rpc BlockReceive(BlockReceiveReq) returns (BlockReceiveRes);
+  rpc BlockSearch(BlockSearchReq) returns (stream BlockSearchRes);
 }

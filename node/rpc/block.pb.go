@@ -284,6 +284,116 @@ func (*BlockReceiveRes) Descriptor() ([]byte, []int) {
 	return file_block_proto_rawDescGZIP(), []int{5}
 }
 
+type BlockSearchReq struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Number     uint64 `protobuf:"varint,1,opt,name=Number,proto3" json:"Number,omitempty"`
+	BlockHash  string `protobuf:"bytes,2,opt,name=BlockHash,proto3" json:"BlockHash,omitempty"`
+	ParentHash string `protobuf:"bytes,3,opt,name=ParentHash,proto3" json:"ParentHash,omitempty"`
+}
+
+func (x *BlockSearchReq) Reset() {
+	*x = BlockSearchReq{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_block_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *BlockSearchReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlockSearchReq) ProtoMessage() {}
+
+func (x *BlockSearchReq) ProtoReflect() protoreflect.Message {
+	mi := &file_block_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlockSearchReq.ProtoReflect.Descriptor instead.
+func (*BlockSearchReq) Descriptor() ([]byte, []int) {
+	return file_block_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *BlockSearchReq) GetNumber() uint64 {
+	if x != nil {
+		return x.Number
+	}
+	return 0
+}
+
+func (x *BlockSearchReq) GetBlockHash() string {
+	if x != nil {
+		return x.BlockHash
+	}
+	return ""
+}
+
+func (x *BlockSearchReq) GetParentHash() string {
+	if x != nil {
+		return x.ParentHash
+	}
+	return ""
+}
+
+type BlockSearchRes struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Block []byte `protobuf:"bytes,1,opt,name=Block,proto3" json:"Block,omitempty"`
+}
+
+func (x *BlockSearchRes) Reset() {
+	*x = BlockSearchRes{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_block_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *BlockSearchRes) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlockSearchRes) ProtoMessage() {}
+
+func (x *BlockSearchRes) ProtoReflect() protoreflect.Message {
+	mi := &file_block_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlockSearchRes.ProtoReflect.Descriptor instead.
+func (*BlockSearchRes) Descriptor() ([]byte, []int) {
+	return file_block_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *BlockSearchRes) GetBlock() []byte {
+	if x != nil {
+		return x.Block
+	}
+	return nil
+}
+
 var File_block_proto protoreflect.FileDescriptor
 
 var file_block_proto_rawDesc = []byte{
@@ -300,7 +410,16 @@ var file_block_proto_rawDesc = []byte{
 	0x63, 0x6b, 0x52, 0x65, 0x63, 0x65, 0x69, 0x76, 0x65, 0x52, 0x65, 0x71, 0x12, 0x14, 0x0a, 0x05,
 	0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x05, 0x42, 0x6c, 0x6f,
 	0x63, 0x6b, 0x22, 0x11, 0x0a, 0x0f, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x63, 0x65, 0x69,
-	0x76, 0x65, 0x52, 0x65, 0x73, 0x32, 0x99, 0x01, 0x0a, 0x05, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x12,
+	0x76, 0x65, 0x52, 0x65, 0x73, 0x22, 0x66, 0x0a, 0x0e, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x53, 0x65,
+	0x61, 0x72, 0x63, 0x68, 0x52, 0x65, 0x71, 0x12, 0x16, 0x0a, 0x06, 0x4e, 0x75, 0x6d, 0x62, 0x65,
+	0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x06, 0x4e, 0x75, 0x6d, 0x62, 0x65, 0x72, 0x12,
+	0x1c, 0x0a, 0x09, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x48, 0x61, 0x73, 0x68, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x09, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x48, 0x61, 0x73, 0x68, 0x12, 0x1e, 0x0a,
+	0x0a, 0x50, 0x61, 0x72, 0x65, 0x6e, 0x74, 0x48, 0x61, 0x73, 0x68, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x0a, 0x50, 0x61, 0x72, 0x65, 0x6e, 0x74, 0x48, 0x61, 0x73, 0x68, 0x22, 0x26, 0x0a,
+	0x0e, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x53, 0x65, 0x61, 0x72, 0x63, 0x68, 0x52, 0x65, 0x73, 0x12,
+	0x14, 0x0a, 0x05, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x05,
+	0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x32, 0xcc, 0x01, 0x0a, 0x05, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x12,
 	0x2f, 0x0a, 0x0b, 0x47, 0x65, 0x6e, 0x65, 0x73, 0x69, 0x73, 0x53, 0x79, 0x6e, 0x63, 0x12, 0x0f,
 	0x2e, 0x47, 0x65, 0x6e, 0x65, 0x73, 0x69, 0x73, 0x53, 0x79, 0x6e, 0x63, 0x52, 0x65, 0x71, 0x1a,
 	0x0f, 0x2e, 0x47, 0x65, 0x6e, 0x65, 0x73, 0x69, 0x73, 0x53, 0x79, 0x6e, 0x63, 0x52, 0x65, 0x73,
@@ -310,8 +429,11 @@ var file_block_proto_rawDesc = []byte{
 	0x0c, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x63, 0x65, 0x69, 0x76, 0x65, 0x12, 0x10, 0x2e,
 	0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x63, 0x65, 0x69, 0x76, 0x65, 0x52, 0x65, 0x71, 0x1a,
 	0x10, 0x2e, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x63, 0x65, 0x69, 0x76, 0x65, 0x52, 0x65,
-	0x73, 0x42, 0x07, 0x5a, 0x05, 0x2e, 0x2f, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x33,
+	0x73, 0x12, 0x31, 0x0a, 0x0b, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x53, 0x65, 0x61, 0x72, 0x63, 0x68,
+	0x12, 0x0f, 0x2e, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x53, 0x65, 0x61, 0x72, 0x63, 0x68, 0x52, 0x65,
+	0x71, 0x1a, 0x0f, 0x2e, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x53, 0x65, 0x61, 0x72, 0x63, 0x68, 0x52,
+	0x65, 0x73, 0x30, 0x01, 0x42, 0x07, 0x5a, 0x05, 0x2e, 0x2f, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -326,7 +448,7 @@ func file_block_proto_rawDescGZIP() []byte {
 	return file_block_proto_rawDescData
 }
 
-var file_block_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_block_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_block_proto_goTypes = []any{
 	(*GenesisSyncReq)(nil),  // 0: GenesisSyncReq
 	(*GenesisSyncRes)(nil),  // 1: GenesisSyncRes
@@ -334,16 +456,20 @@ var file_block_proto_goTypes = []any{
 	(*BlockSyncRes)(nil),    // 3: BlockSyncRes
 	(*BlockReceiveReq)(nil), // 4: BlockReceiveReq
 	(*BlockReceiveRes)(nil), // 5: BlockReceiveRes
+	(*BlockSearchReq)(nil),  // 6: BlockSearchReq
+	(*BlockSearchRes)(nil),  // 7: BlockSearchRes
 }
 var file_block_proto_depIdxs = []int32{
 	0, // 0: Block.GenesisSync:input_type -> GenesisSyncReq
 	2, // 1: Block.BlockSync:input_type -> BlockSyncReq
 	4, // 2: Block.BlockReceive:input_type -> BlockReceiveReq
-	1, // 3: Block.GenesisSync:output_type -> GenesisSyncRes
-	3, // 4: Block.BlockSync:output_type -> BlockSyncRes
-	5, // 5: Block.BlockReceive:output_type -> BlockReceiveRes
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
+	6, // 3: Block.BlockSearch:input_type -> BlockSearchReq
+	1, // 4: Block.GenesisSync:output_type -> GenesisSyncRes
+	3, // 5: Block.BlockSync:output_type -> BlockSyncRes
+	5, // 6: Block.BlockReceive:output_type -> BlockReceiveRes
+	7, // 7: Block.BlockSearch:output_type -> BlockSearchRes
+	4, // [4:8] is the sub-list for method output_type
+	0, // [0:4] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -427,6 +553,30 @@ func file_block_proto_init() {
 				return nil
 			}
 		}
+		file_block_proto_msgTypes[6].Exporter = func(v any, i int) any {
+			switch v := v.(*BlockSearchReq); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_block_proto_msgTypes[7].Exporter = func(v any, i int) any {
+			switch v := v.(*BlockSearchRes); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -434,7 +584,7 @@ func file_block_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_block_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
