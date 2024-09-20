@@ -38,7 +38,6 @@ type Node struct {
   stateSync *stateSync
   grpcSrv *grpc.Server
   dis *discovery
-  // txRelay *txRelay
   txRelay *msgRelay[chain.SigTx, grpcMsgRelay[chain.SigTx]]
   blkRelay *msgRelay[chain.Block, grpcMsgRelay[chain.Block]]
   prop *proposer
@@ -63,7 +62,6 @@ func NewNode(cfg NodeCfg) *Node {
   }
   nd.dis = newDiscovery(nd.ctx, nd.wg, disCfg)
   nd.stateSync = newStateSync(nd.ctx, nd.cfg, nd.dis)
-  // nd.txRelay = newTxRelay(nd.ctx, nd.wg, 100, nd.dis)
   nd.txRelay = newMsgRelay(nd.ctx, nd.wg, 100, nd.dis, grpcTxRelay)
   nd.blkRelay = newMsgRelay(nd.ctx, nd.wg, 10, nd.dis, grpcBlockRelay)
   nd.prop = newProposer(nd.ctx, nd.wg, nd.blkRelay)
@@ -83,7 +81,6 @@ func (n *Node) Start() error {
   n.wg.Add(1)
   go n.dis.discoverPeers(5 * time.Second)
   n.wg.Add(1)
-  // go n.txRelay.relayTxs(5 * time.Second)
   go n.txRelay.relayMsgs(5 * time.Second)
   n.wg.Add(1)
   go n.prop.proposeBlocks(5 * time.Second)

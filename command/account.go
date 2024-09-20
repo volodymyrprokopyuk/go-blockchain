@@ -84,7 +84,7 @@ func accountBalanceCmd() *cobra.Command {
       if err != nil {
         return err
       }
-      fmt.Printf("%.7s: %v\n", acc, balance)
+      fmt.Printf("%v: %v\n", acc, balance)
       return nil
     },
   }

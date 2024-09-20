@@ -53,13 +53,13 @@ func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
   if err != nil {
     return nil, err
   }
-  res := &TxSignRes{SigTx: jtx}
+  res := &TxSignRes{Tx: jtx}
   return res, nil
 }
 
 func (s *TxSrv) TxSend(_ context.Context, req *TxSendReq) (*TxSendRes, error) {
   var tx chain.SigTx
-  err := json.Unmarshal(req.SigTx, &tx)
+  err := json.Unmarshal(req.Tx, &tx)
   if err != nil {
     return nil, err
   }
@@ -68,7 +68,7 @@ func (s *TxSrv) TxSend(_ context.Context, req *TxSendReq) (*TxSendRes, error) {
     return nil, err
   }
   s.txRelayer.RelayTx(tx)
-  res := &TxSendRes{Hash: tx.Hash().String()}
+  res := &TxSendRes{TxHash: tx.Hash().String()}
   return res, nil
 }
 
@@ -85,7 +85,7 @@ func (s *TxSrv) TxReceive(
       return err
     }
     var tx chain.SigTx
-    err = json.Unmarshal(req.SigTx, &tx)
+    err = json.Unmarshal(req.Tx, &tx)
     if err != nil {
       fmt.Println(err)
       continue

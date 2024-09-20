@@ -10,19 +10,19 @@ message TxSignReq {
 }
 
 message TxSignRes {
-  bytes SigTx = 1;
+  bytes Tx = 1;
 }
 
 message TxSendReq {
-  bytes SigTx = 1;
+  bytes Tx = 1;
 }
 
 message TxSendRes {
-  string Hash = 1;
+  string TxHash = 1;
 }
 
 message TxReceiveReq {
-  bytes SigTx = 1;
+  bytes Tx = 1;
 }
 
 message TxReceiveRes { }

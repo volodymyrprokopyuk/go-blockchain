@@ -35,7 +35,7 @@ func grpcTxSign(
   if err != nil {
     return nil, err
   }
-  return res.SigTx, nil
+  return res.Tx, nil
 }
 
 func txSignCmd() *cobra.Command {
@@ -76,12 +76,12 @@ func grpcTxSend(addr, tx string) (string, error) {
   }
   defer conn.Close()
   cln := rpc.NewTxClient(conn)
-  req := &rpc.TxSendReq{SigTx: []byte(tx)}
+  req := &rpc.TxSendReq{Tx: []byte(tx)}
   res, err := cln.TxSend(context.Background(), req)
   if err != nil {
     return "", err
   }
-  return res.Hash, nil
+  return res.TxHash, nil
 }
 
 func txSendCmd() *cobra.Command {

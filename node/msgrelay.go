@@ -31,7 +31,7 @@ var grpcTxRelay grpcMsgRelay[chain.SigTx] = func(
       fmt.Println(err)
       continue
     }
-    req := &rpc.TxReceiveReq{SigTx: jtx}
+    req := &rpc.TxReceiveReq{Tx: jtx}
     err = stream.Send(req)
     if err != nil {
       fmt.Println(err)
