@@ -48,11 +48,11 @@ func nodeStartCmd(_ context.Context) *cobra.Command {
       }
       name, _ := cmd.Flags().GetString("chain")
       pass, _ := cmd.Flags().GetString("password")
-      balance, _ := cmd.Flags().GetUint64("balance")
+      bal, _ := cmd.Flags().GetUint64("balance")
       cfg := node.NodeCfg{
         NodeAddr: nodeAddr, Bootstrap: bootstrap, SeedAddr: seedAddr,
         KeyStoreDir: keyStoreDir, BlockStoreDir: blockStoreDir,
-        Chain: name, Password: pass, Balance: balance,
+        Chain: name, Password: pass, Balance: bal,
       }
       nd := node.NewNode(cfg)
       return nd.Start()

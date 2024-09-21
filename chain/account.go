@@ -37,11 +37,7 @@ func (k *p256k1PrivateKey) privateKey() *ecdsa.PrivateKey {
 
 type Account struct {
   prv *ecdsa.PrivateKey
-  addr Address // derived
-}
-
-func (a Account) Address() Address {
-  return a.addr
+  addr Address // derived prv => pub => addr
 }
 
 func NewAccount() (Account, error) {
@@ -51,6 +47,10 @@ func NewAccount() (Account, error) {
   }
   addr := NewAddress(&prv.PublicKey)
   return Account{prv: prv, addr: addr}, nil
+}
+
+func (a Account) Address() Address {
+  return a.addr
 }
 
 func (a Account) Write(dir string, pass []byte) error {

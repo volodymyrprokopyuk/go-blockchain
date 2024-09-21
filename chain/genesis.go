@@ -47,16 +47,6 @@ func (g SigGenesis) Hash() Hash {
   return Hash(hash[:32])
 }
 
-func VerifyGen(gen SigGenesis) (bool, error) {
-  pub, err := ecc.RecoverPubkey("P-256k1", gen.Genesis.Hash().Bytes(), gen.Sig)
-  if err != nil {
-    return false, err
-  }
-  acc := NewAddress(pub)
-  _, exist := gen.Balances[acc]
-  return exist, nil
-}
-
 func (g SigGenesis) Write(dir string) error {
   jgen, err := json.Marshal(g)
   if err != nil {
@@ -68,6 +58,16 @@ func (g SigGenesis) Write(dir string) error {
   }
   path := filepath.Join(dir, genesisFile)
   return os.WriteFile(path, jgen, 0600)
+}
+
+func VerifyGen(gen SigGenesis) (bool, error) {
+  pub, err := ecc.RecoverPubkey("P-256k1", gen.Genesis.Hash().Bytes(), gen.Sig)
+  if err != nil {
+    return false, err
+  }
+  acc := NewAddress(pub)
+  _, exist := gen.Balances[acc]
+  return exist, nil
 }
 
 func ReadGenesis(dir string) (SigGenesis, error) {

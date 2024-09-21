@@ -80,11 +80,11 @@ func accountBalanceCmd(ctx context.Context) *cobra.Command {
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
       acc, _ := cmd.Flags().GetString("account")
-      balance, err := grpcAccountBalance(ctx, addr, acc)
+      bal, err := grpcAccountBalance(ctx, addr, acc)
       if err != nil {
         return err
       }
-      fmt.Printf("%v: %v\n", acc, balance)
+      fmt.Printf("%v: %v\n", acc, bal)
       return nil
     },
   }

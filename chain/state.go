@@ -18,24 +18,6 @@ type State struct {
   Pending *State
 }
 
-func (s *State) Balance(acc Address) uint64 {
-  s.mtx.RLock()
-  defer s.mtx.RUnlock()
-  return s.balances[acc]
-}
-
-func (s *State) Nonce(acc Address) uint64 {
-  s.mtx.RLock()
-  defer s.mtx.RUnlock()
-  return s.nonces[acc]
-}
-
-func (s *State) LastBlock() Block {
-  s.mtx.RLock()
-  defer s.mtx.RUnlock()
-  return s.lastBlock
-}
-
 func NewState(gen SigGenesis) *State {
   return &State{
     balances: maps.Clone(gen.Balances),
@@ -77,6 +59,24 @@ func (s *State) Apply(state *State) {
   for _, tx := range state.lastBlock.Txs {
     delete(s.Pending.txs, tx.Hash())
   }
+}
+
+func (s *State) Balance(acc Address) uint64 {
+  s.mtx.RLock()
+  defer s.mtx.RUnlock()
+  return s.balances[acc]
+}
+
+func (s *State) Nonce(acc Address) uint64 {
+  s.mtx.RLock()
+  defer s.mtx.RUnlock()
+  return s.nonces[acc]
+}
+
+func (s *State) LastBlock() Block {
+  s.mtx.RLock()
+  defer s.mtx.RUnlock()
+  return s.lastBlock
 }
 
 func (s *State) String() string {
