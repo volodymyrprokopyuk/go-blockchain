@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strings"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"google.golang.org/grpc"
@@ -23,15 +24,18 @@ type TxRelayer interface {
 type TxSrv struct {
   UnimplementedTxServer
   keyStoreDir string
+  blockStoreDir string
   txApplier TxApplier
   txRelayer TxRelayer
 }
 
 func NewTxSrv(
-  keyStoreDir string, txApplier TxApplier, txRelayer TxRelayer,
+  keyStoreDir string, blockStoreDir string,
+  txApplier TxApplier, txRelayer TxRelayer,
 ) *TxSrv {
   return &TxSrv{
-    keyStoreDir: keyStoreDir, txApplier: txApplier, txRelayer: txRelayer,
+    keyStoreDir: keyStoreDir, blockStoreDir: blockStoreDir,
+    txApplier: txApplier, txRelayer: txRelayer,
   }
 }
 
@@ -98,4 +102,56 @@ func (s *TxSrv) TxReceive(
     }
     s.txRelayer.RelayTx(tx)
   }
+}
+
+func sendTxSearchRes(
+  blk chain.Block, tx chain.SigTx,
+  stream grpc.ServerStreamingServer[TxSearchRes],
+) error {
+  stx := chain.NewSearchTx(tx, blk.Number, blk.Hash())
+  jtx, err := json.Marshal(stx)
+  if err != nil {
+    return err
+  }
+  res := &TxSearchRes{Tx: jtx}
+  err = stream.Send(res)
+  if err != nil {
+    return err
+  }
+  return nil
+}
+
+func (s *TxSrv) TxSearch(
+  req *TxSearchReq, stream grpc.ServerStreamingServer[TxSearchRes],
+) error {
+  blocks, closeBlocks, err := chain.ReadBlocks(s.blockStoreDir)
+  if err != nil {
+    return err
+  }
+  defer closeBlocks()
+  prefix := strings.HasPrefix
+  block: for err, blk := range blocks {
+    if err != nil {
+      return err
+    }
+    for _, tx := range blk.Txs {
+      if len(req.TxHash) > 0 && prefix(tx.Tx.Hash().String(), req.TxHash) {
+        err = sendTxSearchRes(blk, tx, stream)
+        if err != nil {
+          return err
+        }
+        break block
+      }
+      if len(req.From) > 0 && prefix(string(tx.From), req.From) ||
+        len(req.To) > 0 && prefix(string(tx.To), req.To) ||
+        len(req.Account) > 0 &&
+          (prefix(string(tx.From), req.From) || prefix(string(tx.To), req.To)) {
+        err := sendTxSearchRes(blk, tx, stream)
+        if err != nil {
+          return err
+        }
+      }
+    }
+  }
+  return nil
 }

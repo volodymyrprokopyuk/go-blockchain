@@ -71,6 +71,6 @@ func NewSearchTx(tx SigTx, blkNumber uint64, blkHash Hash) SearchTx {
 
 func (t SearchTx) String() string {
   return fmt.Sprintf(
-    "%v (block: %v, %.7s)", t.SigTx.Tx, t.BlockNumber, t.BlockHash,
+    "%v     block: %4d, %.7s", t.SigTx.Tx, t.BlockNumber, t.BlockHash,
   )
 }

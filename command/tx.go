@@ -2,9 +2,12 @@ package command
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -15,7 +18,7 @@ func txCmd(ctx context.Context) *cobra.Command {
     Use: "tx",
     Short: "Manages transactions on the blockchain",
   }
-  cmd.AddCommand(txSignCmd(ctx), txSendCmd(ctx))
+  cmd.AddCommand(txSignCmd(ctx), txSendCmd(ctx), txSearchCmd(ctx))
   return cmd
 }
 
@@ -101,5 +104,83 @@ func txSendCmd(ctx context.Context) *cobra.Command {
   }
   cmd.Flags().String("sigtx", "", "signed transaction")
   _ = cmd.MarkFlagRequired("sigtx")
+  return cmd
+}
+
+func grpcTxSearch(
+  ctx context.Context, addr, hash, from, to, account string,
+) (func(yeild func(err error, tx chain.SearchTx) bool), func(), error) {
+  conn, err := grpc.NewClient(
+    addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
+  )
+  if err != nil {
+    return nil, nil, err
+  }
+  close := func() {
+    conn.Close()
+  }
+  cln := rpc.NewTxClient(conn)
+  req := &rpc.TxSearchReq{TxHash: hash, From: from, To: to, Account: account}
+  stream, err := cln.TxSearch(ctx, req)
+  if err != nil {
+    return nil, nil, err
+  }
+  more := true
+  txs := func(yield func(err error, tx chain.SearchTx) bool) {
+    for more {
+      res, err := stream.Recv()
+      if err == io.EOF {
+        return
+      }
+      if err != nil {
+        yield(err, chain.SearchTx{})
+        return
+      }
+      var tx chain.SearchTx
+      err = json.Unmarshal(res.Tx, &tx)
+      if err != nil {
+        yield(err, chain.SearchTx{})
+        return
+      }
+      more = yield(nil, tx)
+    }
+  }
+  return txs, close, nil
+}
+
+func txSearchCmd(ctx context.Context) *cobra.Command {
+  cmd := &cobra.Command{
+    Use: "search",
+    Short: "Searches transactions by transaction hash, from, to, account address",
+    RunE: func(cmd *cobra.Command, _ []string) error {
+      addr, _ := cmd.Flags().GetString("node")
+      hash, _ := cmd.Flags().GetString("hash")
+      from, _ := cmd.Flags().GetString("from")
+      to, _ := cmd.Flags().GetString("to")
+      account, _ := cmd.Flags().GetString("account")
+      txs, closeTxs, err := grpcTxSearch(ctx, addr, hash, from, to, account)
+      if err != nil {
+        return err
+      }
+      defer closeTxs()
+      found := false
+      for err, tx := range txs {
+        if err != nil {
+          return err
+        }
+        found = true
+        fmt.Printf("%v\n", tx)
+      }
+      if !found {
+        fmt.Println("no transactions found")
+      }
+      return nil
+    },
+  }
+  cmd.Flags().String("hash", "", "transaction hash")
+  cmd.Flags().String("from", "", "debtor address")
+  cmd.Flags().String("to", "", "creditor address")
+  cmd.Flags().String("account", "", "account address")
+  cmd.MarkFlagsOneRequired("hash", "from", "to", "account")
   return cmd
 }

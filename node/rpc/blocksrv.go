@@ -113,15 +113,14 @@ func (s *BlockSrv) BlockSearch(
     return err
   }
   defer closeBlocks()
+  prefix := strings.HasPrefix
   for err, blk := range blocks {
     if err != nil {
       return err
     }
     if req.Number != 0 && blk.Number == req.Number ||
-      len(req.BlockHash) > 0 &&
-        strings.HasPrefix(blk.Hash().String(), req.BlockHash) ||
-      len(req.ParentHash) > 0 &&
-        strings.HasPrefix(blk.Parent.String(), req.ParentHash) {
+      len(req.BlockHash) > 0 && prefix(blk.Hash().String(), req.BlockHash) ||
+      len(req.ParentHash) > 0 && prefix(blk.Parent.String(), req.ParentHash) {
       jblk, err := json.Marshal(blk)
       if err != nil {
         return err
@@ -131,6 +130,7 @@ func (s *BlockSrv) BlockSearch(
       if err != nil {
         return err
       }
+      break
     }
   }
   return nil

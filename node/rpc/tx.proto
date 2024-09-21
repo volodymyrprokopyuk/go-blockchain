@@ -35,7 +35,7 @@ message TxSearchReq {
 }
 
 message TxSearchRes {
-  bytes SearchTx = 1;
+  bytes Tx = 1;
 }
 
 service Tx {

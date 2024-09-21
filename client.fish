@@ -27,3 +27,8 @@ set -l ben fd29d489ac7887eeafe6e81b060f913b70ea26bb792036067926f315d6057b86
 # ./bcn block search --node $node --number 11
 # ./bcn block search --node $node --hash eabb4cf
 # ./bcn block search --node $node --parent 07b9fe4
+
+# ./bcn tx search --hash 0c477ba
+# ./bcn tx search --from d8a05ac
+# ./bcn tx search --to fd29d48
+# ./bcn tx search --account d8a05ac

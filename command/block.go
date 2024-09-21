@@ -24,7 +24,7 @@ func blockCmd(ctx context.Context) *cobra.Command {
 
 func grpcBlockSearch(
   ctx context.Context, addr string, number uint64, hash, parent string,
-) (func(yield (func (err error, blk chain.Block) bool)), func(), error) {
+) (func(yield func(err error, blk chain.Block) bool), func(), error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -89,7 +89,6 @@ func blockSearchCmd(ctx context.Context) *cobra.Command {
       }
       if !found {
         fmt.Println("no blocks found")
-        return nil
       }
       return nil
     },

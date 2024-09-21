@@ -113,7 +113,9 @@ func (n *Node) servegRPC() {
   rpc.RegisterNodeServer(n.grpcSrv, nd)
   acc := rpc.NewAccountSrv(n.cfg.KeyStoreDir, n.state)
   rpc.RegisterAccountServer(n.grpcSrv, acc)
-  tx := rpc.NewTxSrv(n.cfg.KeyStoreDir, n.state.Pending, n.txRelay)
+  tx := rpc.NewTxSrv(
+    n.cfg.KeyStoreDir, n.cfg.BlockStoreDir, n.state.Pending, n.txRelay,
+  )
   rpc.RegisterTxServer(n.grpcSrv, tx)
   blk := rpc.NewBlockSrv(n.cfg.BlockStoreDir, n.state, n.blkRelay)
   rpc.RegisterBlockServer(n.grpcSrv, blk)
