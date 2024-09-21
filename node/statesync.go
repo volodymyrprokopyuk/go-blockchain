@@ -16,12 +16,14 @@ import (
 type stateSync struct {
   cfg NodeCfg
   ctx context.Context
-  dis *discovery
+  peerDisc *peerDiscovery
   state *chain.State
 }
 
-func newStateSync(ctx context.Context, cfg NodeCfg, dis *discovery) *stateSync {
-  return &stateSync{ctx: ctx, cfg: cfg, dis: dis}
+func newStateSync(
+  ctx context.Context, cfg NodeCfg, peerDisc *peerDiscovery,
+) *stateSync {
+  return &stateSync{ctx: ctx, cfg: cfg, peerDisc: peerDisc}
 }
 
 func (s *stateSync) createGenesis() (chain.SigGenesis, error) {
@@ -100,7 +102,6 @@ func (s *stateSync) readBlocks() error {
     if _, assert := err.(*os.PathError); !assert {
       return err
     }
-    fmt.Println("warning: blocks not yet created")
     return nil
   }
   defer closeBlocks()
@@ -108,12 +109,12 @@ func (s *stateSync) readBlocks() error {
     if err != nil {
       return err
     }
-    clo := s.state.Clone()
-    err = clo.ApplyBlock(blk)
+    clone := s.state.Clone()
+    err = clone.ApplyBlock(blk)
     if err != nil {
       return err
     }
-    s.state.Apply(clo)
+    s.state.Apply(clone)
   }
   return nil
 }
@@ -154,7 +155,7 @@ func (s *stateSync) grpcBlockSync(peer string) (
 }
 
 func (s *stateSync) syncBlocks() error {
-  for _, peer := range s.dis.Peers() {
+  for _, peer := range s.peerDisc.Peers() {
     blocks, closeBlocks, err := s.grpcBlockSync(peer)
     if err != nil {
       return err
@@ -168,12 +169,12 @@ func (s *stateSync) syncBlocks() error {
       if err != nil {
         return err
       }
-      clo := s.state.Clone()
-      err = clo.ApplyBlock(blk)
+      clone := s.state.Clone()
+      err = clone.ApplyBlock(blk)
       if err != nil {
         return err
       }
-      s.state.Apply(clo)
+      s.state.Apply(clone)
       err = blk.Write(s.cfg.BlockStoreDir)
       if err != nil {
         return err

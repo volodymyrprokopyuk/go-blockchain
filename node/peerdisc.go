@@ -11,37 +11,37 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type discoveryCfg struct {
-  bootstrap bool
+type peerDiscoveryCfg struct {
   nodeAddr string
+  bootstrap bool
   seedAddr string
 }
 
-type discovery struct {
-  cfg discoveryCfg
+type peerDiscovery struct {
+  cfg peerDiscoveryCfg
   ctx context.Context
   wg *sync.WaitGroup
-  peers map[string]struct{}
   mtx sync.RWMutex
+  peers map[string]struct{}
 }
 
-func newDiscovery(
-  ctx context.Context, wg *sync.WaitGroup, cfg discoveryCfg,
-) *discovery {
-  dis := &discovery{
+func newPeerDiscovery(
+  ctx context.Context, wg *sync.WaitGroup, cfg peerDiscoveryCfg,
+) *peerDiscovery {
+  peerDisc := &peerDiscovery{
     ctx: ctx, wg: wg, cfg: cfg, peers: make(map[string]struct{}),
   }
-  if !dis.Bootstrap() {
-    dis.AddPeers(dis.cfg.seedAddr)
+  if !peerDisc.Bootstrap() {
+    peerDisc.AddPeers(peerDisc.cfg.seedAddr)
   }
-  return dis
+  return peerDisc
 }
 
-func (d *discovery) Bootstrap() bool {
+func (d *peerDiscovery) Bootstrap() bool {
   return d.cfg.bootstrap
 }
 
-func (d *discovery) AddPeers(peers ...string) {
+func (d *peerDiscovery) AddPeers(peers ...string) {
   d.mtx.Lock()
   defer d.mtx.Unlock()
   for _, peer := range peers {
@@ -51,7 +51,7 @@ func (d *discovery) AddPeers(peers ...string) {
   }
 }
 
-func (d *discovery) Peers() []string {
+func (d *peerDiscovery) Peers() []string {
   d.mtx.RLock()
   defer d.mtx.RUnlock()
   peers := make([]string, 0, len(d.peers))
@@ -61,7 +61,7 @@ func (d *discovery) Peers() []string {
   return peers
 }
 
-func (d *discovery) grpcPeerDiscover(peer string) ([]string, error) {
+func (d *peerDiscovery) grpcPeerDiscover(peer string) ([]string, error) {
   conn, err := grpc.NewClient(
     peer, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -78,7 +78,7 @@ func (d *discovery) grpcPeerDiscover(peer string) ([]string, error) {
   return res.Peers, nil
 }
 
-func (d *discovery) discoverPeers(period time.Duration) {
+func (d *peerDiscovery) discoverPeers(period time.Duration) {
   defer d.wg.Done()
   tick := time.NewTicker(5 * time.Second) // initial early peer discovery
   defer tick.Stop()

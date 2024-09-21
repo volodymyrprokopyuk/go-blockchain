@@ -18,8 +18,8 @@ set -l node localhost:1122
 set -l own d8a05ac9b2aa10baf70e611cd6019d317e9983f3d680a770ddc726e6d65311f1
 set -l ben fd29d489ac7887eeafe6e81b060f913b70ea26bb792036067926f315d6057b86
 
-# txSignAndSend $node $pass $own $ben 12
-# txSignAndSend $node $pass $own $ben 34
+txSignAndSend $node $pass $own $ben 12
+txSignAndSend $node $pass $own $ben 34
 
 # ./bcn account balance --node $node --account $own
 # ./bcn account balance --node $node --account $ben

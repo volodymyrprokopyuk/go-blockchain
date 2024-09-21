@@ -40,9 +40,9 @@ type Node struct {
   state *chain.State
   stateSync *stateSync
   grpcSrv *grpc.Server
-  dis *discovery
+  peerDisc *peerDiscovery
   txRelay *msgRelay[chain.SigTx, grpcMsgRelay[chain.SigTx]]
-  prop *proposer
+  blockProp *blockProposer
   blkRelay *msgRelay[chain.Block, grpcMsgRelay[chain.Block]]
 }
 
@@ -58,40 +58,40 @@ func NewNode(cfg NodeCfg) *Node {
   nd.wg = new(sync.WaitGroup)
   nd.chErr = make(chan error, 1)
   // components
-  disCfg := discoveryCfg{
-    bootstrap: nd.cfg.Bootstrap,
+  peerDiscCfg := peerDiscoveryCfg{
     nodeAddr: nd.cfg.NodeAddr,
+    bootstrap: nd.cfg.Bootstrap,
     seedAddr: nd.cfg.SeedAddr,
   }
-  nd.dis = newDiscovery(nd.ctx, nd.wg, disCfg)
-  nd.stateSync = newStateSync(nd.ctx, nd.cfg, nd.dis)
-  nd.txRelay = newMsgRelay(nd.ctx, nd.wg, 100, nd.dis, grpcTxRelay)
-  nd.blkRelay = newMsgRelay(nd.ctx, nd.wg, 10, nd.dis, grpcBlockRelay)
-  nd.prop = newProposer(nd.ctx, nd.wg, nd.blkRelay)
+  nd.peerDisc = newPeerDiscovery(nd.ctx, nd.wg, peerDiscCfg)
+  nd.stateSync = newStateSync(nd.ctx, nd.cfg, nd.peerDisc)
+  nd.txRelay = newMsgRelay(nd.ctx, nd.wg, 100, nd.peerDisc, grpcTxRelay)
+  nd.blkRelay = newMsgRelay(nd.ctx, nd.wg, 10, nd.peerDisc, grpcBlockRelay)
+  nd.blockProp = newBlockProposer(nd.ctx, nd.wg, nd.blkRelay)
   return nd
 }
 
 func (n *Node) Start() error {
   defer n.ctxCancel()
-  sta, err := n.stateSync.syncState()
+  state, err := n.stateSync.syncState()
   if err != nil {
     return err
   }
-  n.state = sta
-  n.prop.state = n.state
+  n.state = state
+  n.blockProp.state = n.state
   n.wg.Add(1)
   go n.servegRPC()
   n.wg.Add(1)
-  go n.dis.discoverPeers(30 * time.Second)
+  go n.peerDisc.discoverPeers(30 * time.Second)
   n.wg.Add(1)
   go n.txRelay.relayMsgs(30 * time.Second)
   n.wg.Add(1)
-  go n.prop.proposeBlocks(10 * time.Second)
+  go n.blockProp.proposeBlocks(10 * time.Second)
   n.wg.Add(1)
   go n.blkRelay.relayMsgs(30 * time.Second)
   select {
-  case err = <- n.chErr:
   case <- n.ctx.Done():
+  case err = <- n.chErr:
   }
   n.ctxCancel() // restore default signal handling
   n.grpcSrv.GracefulStop()
@@ -109,8 +109,8 @@ func (n *Node) servegRPC() {
   defer lis.Close()
   fmt.Printf("* gRPC address %v\n", n.cfg.NodeAddr)
   n.grpcSrv = grpc.NewServer()
-  nd := rpc.NewNodeSrv(n.dis)
-  rpc.RegisterNodeServer(n.grpcSrv, nd)
+  node := rpc.NewNodeSrv(n.peerDisc)
+  rpc.RegisterNodeServer(n.grpcSrv, node)
   acc := rpc.NewAccountSrv(n.cfg.KeyStoreDir, n.state)
   rpc.RegisterAccountServer(n.grpcSrv, acc)
   tx := rpc.NewTxSrv(

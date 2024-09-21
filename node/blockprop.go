@@ -11,18 +11,18 @@ import (
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 )
 
-type proposer struct {
+type blockProposer struct {
   ctx context.Context
   wg *sync.WaitGroup
   state *chain.State
   blkRelay *msgRelay[chain.Block, grpcMsgRelay[chain.Block]]
 }
 
-func newProposer(
+func newBlockProposer(
   ctx context.Context, wg *sync.WaitGroup,
   blkRelay *msgRelay[chain.Block, grpcMsgRelay[chain.Block]],
-) *proposer {
-  return &proposer{ctx: ctx, wg: wg, blkRelay: blkRelay}
+) *blockProposer {
+  return &blockProposer{ctx: ctx, wg: wg, blkRelay: blkRelay}
 }
 
 func randPeriod(maxPeriod time.Duration) time.Duration {
@@ -31,23 +31,23 @@ func randPeriod(maxPeriod time.Duration) time.Duration {
   return minPeriod + time.Duration(randSpan.Int64())
 }
 
-func (p *proposer) proposeBlocks(maxPeriod time.Duration) {
+func (p *blockProposer) proposeBlocks(maxPeriod time.Duration) {
   defer p.wg.Done()
-  timer := time.NewTimer(randPeriod(maxPeriod))
+  randPropose := time.NewTimer(randPeriod(maxPeriod))
   for {
     select {
     case <- p.ctx.Done():
-      timer.Stop()
+      randPropose.Stop()
       return
-    case <- timer.C:
-      timer.Reset(randPeriod(maxPeriod))
-      clo := p.state.Clone()
-      blk := clo.CreateBlock()
+    case <- randPropose.C:
+      randPropose.Reset(randPeriod(maxPeriod))
+      clone := p.state.Clone()
+      blk := clone.CreateBlock()
       if len(blk.Txs) == 0 {
         continue
       }
-      clo = p.state.Clone()
-      err := clo.ApplyBlock(blk)
+      clone = p.state.Clone()
+      err := clone.ApplyBlock(blk)
       if err != nil {
         fmt.Println(err)
         continue

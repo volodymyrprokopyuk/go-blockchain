@@ -188,12 +188,12 @@ func (s *State) ApplyBlock(blk Block) error {
 }
 
 func (s *State) ApplyBlockToState(blk Block) error {
-  clo := s.Clone()
-  err := clo.ApplyBlock(blk)
+  clone := s.Clone()
+  err := clone.ApplyBlock(blk)
   if err != nil {
     return err
   }
-  s.Apply(clo)
+  s.Apply(clone)
   fmt.Printf("* Block state (ApplyBlock)\n%v\n", s)
   return nil
 }

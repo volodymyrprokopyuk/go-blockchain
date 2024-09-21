@@ -71,17 +71,17 @@ type msgRelay[Msg any, Relay grpcMsgRelay[Msg]] struct {
   ctx context.Context
   wg *sync.WaitGroup
   chMsg chan Msg
-  dis *discovery
+  peerDisc *peerDiscovery
   grpcRelay Relay
 }
 
 func newMsgRelay[Msg any, Relay grpcMsgRelay[Msg]](
-  ctx context.Context, wg *sync.WaitGroup, cap int, dis *discovery,
-  grpcRelay Relay,
+  ctx context.Context, wg *sync.WaitGroup, cap int,
+  peerDisc *peerDiscovery, grpcRelay Relay,
 ) *msgRelay[Msg, Relay] {
   return &msgRelay[Msg, Relay]{
-    ctx: ctx, wg: wg, chMsg: make(chan Msg, cap), dis: dis,
-    grpcRelay: grpcRelay,
+    ctx: ctx, wg: wg, chMsg: make(chan Msg, cap),
+    peerDisc: peerDisc, grpcRelay: grpcRelay,
   }
 }
 
@@ -94,7 +94,7 @@ func (r *msgRelay[Msg, Relay]) RelayBlock(blk Msg) {
 }
 
 func (r *msgRelay[Msg, Relay]) grpcRelays() []chan Msg {
-  peers := r.dis.Peers()
+  peers := r.peerDisc.Peers()
   chRelays := make([]chan Msg, len(peers))
   for i, peer := range peers {
     chRelay := make(chan Msg)
