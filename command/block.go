@@ -13,17 +13,17 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func blockCmd() *cobra.Command {
+func blockCmd(ctx context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "block",
     Short: "Queries blocks on the blockchain",
   }
-  cmd.AddCommand(blockSearchCmd())
+  cmd.AddCommand(blockSearchCmd(ctx))
   return cmd
 }
 
 func grpcBlockSearch(
-  addr string, number uint64, hash, parent string,
+  ctx context.Context, addr string, number uint64, hash, parent string,
 ) (func(yield (func (err error, blk chain.Block) bool)), func(), error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -38,7 +38,7 @@ func grpcBlockSearch(
   req := &rpc.BlockSearchReq{
     Number: number, BlockHash: hash, ParentHash: parent,
   }
-  stream, err := cln.BlockSearch(context.Background(), req)
+  stream, err := cln.BlockSearch(ctx, req)
   if err != nil {
     return nil, nil, err
   }
@@ -65,7 +65,7 @@ func grpcBlockSearch(
   return blocks, close, nil
 }
 
-func blockSearchCmd() *cobra.Command {
+func blockSearchCmd(ctx context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "search",
     Short: "Searches blocks by block number, block hash, or parent hash",
@@ -74,7 +74,7 @@ func blockSearchCmd() *cobra.Command {
       number, _ := cmd.Flags().GetUint64("number")
       hash, _ := cmd.Flags().GetString("hash")
       parent, _ := cmd.Flags().GetString("parent")
-      blocks, closeBlocks, err := grpcBlockSearch(addr, number, hash, parent)
+      blocks, closeBlocks, err := grpcBlockSearch(ctx, addr, number, hash, parent)
       if err != nil {
         return err
       }

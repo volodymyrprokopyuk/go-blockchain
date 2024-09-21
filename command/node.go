@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 
@@ -8,16 +9,16 @@ import (
 	"github.com/volodymyrprokopyuk/go-blockchain/node"
 )
 
-func nodeCmd() *cobra.Command {
+func nodeCmd(ctx context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "node",
     Short: "Manages the blockchain node",
   }
-  cmd.AddCommand(nodeStartCmd())
+  cmd.AddCommand(nodeStartCmd(ctx))
   return cmd
 }
 
-func nodeStartCmd() *cobra.Command {
+func nodeStartCmd(_ context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "start",
     Short: "Starts the blockchain node",

@@ -1,8 +1,12 @@
 package command
 
-import "github.com/spf13/cobra"
+import (
+	"context"
 
-func ChainCmd() *cobra.Command {
+	"github.com/spf13/cobra"
+)
+
+func ChainCmd(ctx context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "bcn",
     Short: "Manages the blockchain",
@@ -13,6 +17,6 @@ func ChainCmd() *cobra.Command {
     SilenceErrors: true,
   }
   cmd.PersistentFlags().String("node", "localhost:1122", "node address host:port")
-  cmd.AddCommand(nodeCmd(), accountCmd(), txCmd(), blockCmd())
+  cmd.AddCommand(nodeCmd(ctx), accountCmd(ctx), txCmd(ctx), blockCmd(ctx))
   return cmd
 }

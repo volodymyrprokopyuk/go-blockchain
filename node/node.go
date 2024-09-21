@@ -15,11 +15,14 @@ import (
 )
 
 type NodeCfg struct {
+  // addressing
   NodeAddr string
   Bootstrap bool
   SeedAddr string
+  // stores
   KeyStoreDir string
   BlockStoreDir string
+  // genesis
   Chain string
   Password string
   Balance uint64
@@ -39,17 +42,17 @@ type Node struct {
   grpcSrv *grpc.Server
   dis *discovery
   txRelay *msgRelay[chain.SigTx, grpcMsgRelay[chain.SigTx]]
-  blkRelay *msgRelay[chain.Block, grpcMsgRelay[chain.Block]]
   prop *proposer
+  blkRelay *msgRelay[chain.Block, grpcMsgRelay[chain.Block]]
 }
 
 func NewNode(cfg NodeCfg) *Node {
   // configure
   nd := &Node{cfg: cfg}
-  ctx, cancel := signal.NotifyContext(
-    context.Background(), syscall.SIGINT, syscall.SIGINT, syscall.SIGKILL,
-  )
   // context
+  ctx, cancel := signal.NotifyContext(
+    context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL,
+  )
   nd.ctx = ctx
   nd.ctxCancel = cancel
   nd.wg = new(sync.WaitGroup)
@@ -79,13 +82,13 @@ func (n *Node) Start() error {
   n.wg.Add(1)
   go n.servegRPC()
   n.wg.Add(1)
-  go n.dis.discoverPeers(5 * time.Second)
+  go n.dis.discoverPeers(30 * time.Second)
   n.wg.Add(1)
-  go n.txRelay.relayMsgs(5 * time.Second)
+  go n.txRelay.relayMsgs(30 * time.Second)
   n.wg.Add(1)
-  go n.prop.proposeBlocks(5 * time.Second)
+  go n.prop.proposeBlocks(10 * time.Second)
   n.wg.Add(1)
-  go n.blkRelay.relayMsgs(5 * time.Second)
+  go n.blkRelay.relayMsgs(30 * time.Second)
   select {
   case err = <- n.chErr:
   case <- n.ctx.Done():
@@ -118,41 +121,5 @@ func (n *Node) servegRPC() {
   if err != nil {
     n.chErr <- err
     return
-  }
-}
-
-func (n *Node) mine(interval time.Duration) {
-  defer n.wg.Done()
-  tick := time.NewTicker(interval)
-  defer tick.Stop()
-  for {
-    select {
-    case <- n.ctx.Done():
-      return
-    case <- tick.C:
-      // create block
-      clo := n.state.Clone()
-      blk := clo.CreateBlock()
-      if len(blk.Txs) == 0 {
-        continue
-      }
-      fmt.Printf("* Block\n%v\n", blk)
-      // apply block
-      clo = n.state.Clone()
-      err := clo.ApplyBlock(blk)
-      if err != nil {
-        fmt.Println(err)
-        continue
-      }
-
-      n.state.Apply(clo)
-      fmt.Printf("* Block state (ApplyBlock)\n%v\n", n.state)
-      // write block
-      err = blk.Write(n.cfg.BlockStoreDir)
-      if err != nil {
-        fmt.Println(err)
-        continue
-      }
-    }
   }
 }

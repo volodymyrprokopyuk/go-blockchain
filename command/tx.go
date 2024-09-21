@@ -10,17 +10,17 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func txCmd() *cobra.Command {
+func txCmd(ctx context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "tx",
     Short: "Manages transactions on the blockchain",
   }
-  cmd.AddCommand(txSignCmd(), txSendCmd())
+  cmd.AddCommand(txSignCmd(ctx), txSendCmd(ctx))
   return cmd
 }
 
 func grpcTxSign(
-  addr, from, to string, value uint64, pass string,
+  ctx context.Context, addr, from, to string, value uint64, pass string,
 ) ([]byte, error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -31,14 +31,14 @@ func grpcTxSign(
   defer conn.Close()
   cln := rpc.NewTxClient(conn)
   req := &rpc.TxSignReq{From: from, To: to, Value: value, Password: pass}
-  res, err := cln.TxSign(context.Background(), req)
+  res, err := cln.TxSign(ctx, req)
   if err != nil {
     return nil, err
   }
   return res.Tx, nil
 }
 
-func txSignCmd() *cobra.Command {
+func txSignCmd(ctx context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "sign",
     Short: "Signs a transaction",
@@ -48,7 +48,7 @@ func txSignCmd() *cobra.Command {
       from, _ := cmd.Flags().GetString("from")
       to, _ := cmd.Flags().GetString("to")
       value, _ := cmd.Flags().GetUint64("value")
-      jtx, err := grpcTxSign(addr, from, to, value, pass)
+      jtx, err := grpcTxSign(ctx, addr, from, to, value, pass)
       if err != nil {
         return err
       }
@@ -67,7 +67,7 @@ func txSignCmd() *cobra.Command {
   return cmd
 }
 
-func grpcTxSend(addr, tx string) (string, error) {
+func grpcTxSend(ctx context.Context, addr, tx string) (string, error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -77,21 +77,21 @@ func grpcTxSend(addr, tx string) (string, error) {
   defer conn.Close()
   cln := rpc.NewTxClient(conn)
   req := &rpc.TxSendReq{Tx: []byte(tx)}
-  res, err := cln.TxSend(context.Background(), req)
+  res, err := cln.TxSend(ctx, req)
   if err != nil {
     return "", err
   }
   return res.TxHash, nil
 }
 
-func txSendCmd() *cobra.Command {
+func txSendCmd(ctx context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "send",
     Short: "Sends a signed transaction",
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
       tx, _ := cmd.Flags().GetString("sigtx")
-      hash, err := grpcTxSend(addr, tx)
+      hash, err := grpcTxSend(ctx, addr, tx)
       if err != nil {
         return err
       }
