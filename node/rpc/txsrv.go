@@ -72,7 +72,7 @@ func (s *TxSrv) TxSend(_ context.Context, req *TxSendReq) (*TxSendRes, error) {
     return nil, err
   }
   s.txRelayer.RelayTx(tx)
-  res := &TxSendRes{TxHash: tx.Hash().String()}
+  res := &TxSendRes{Hash: tx.Hash().String()}
   return res, nil
 }
 
@@ -135,7 +135,7 @@ func (s *TxSrv) TxSearch(
       return err
     }
     for _, tx := range blk.Txs {
-      if len(req.TxHash) > 0 && prefix(tx.Tx.Hash().String(), req.TxHash) {
+      if len(req.Hash) > 0 && prefix(tx.Tx.Hash().String(), req.Hash) {
         err = sendTxSearchRes(blk, tx, stream)
         if err != nil {
           return err

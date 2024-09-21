@@ -24,8 +24,8 @@ message BlockReceiveRes { }
 
 message BlockSearchReq {
   uint64 Number = 1;
-  string BlockHash = 2;
-  string ParentHash = 3;
+  string Hash = 2;
+  string Parent = 3;
 }
 
 message BlockSearchRes {

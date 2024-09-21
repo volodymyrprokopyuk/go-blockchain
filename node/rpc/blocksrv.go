@@ -119,8 +119,8 @@ func (s *BlockSrv) BlockSearch(
       return err
     }
     if req.Number != 0 && blk.Number == req.Number ||
-      len(req.BlockHash) > 0 && prefix(blk.Hash().String(), req.BlockHash) ||
-      len(req.ParentHash) > 0 && prefix(blk.Parent.String(), req.ParentHash) {
+      len(req.Hash) > 0 && prefix(blk.Hash().String(), req.Hash) ||
+      len(req.Parent) > 0 && prefix(blk.Parent.String(), req.Parent) {
       jblk, err := json.Marshal(blk)
       if err != nil {
         return err

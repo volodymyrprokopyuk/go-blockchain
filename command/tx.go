@@ -84,7 +84,7 @@ func grpcTxSend(ctx context.Context, addr, tx string) (string, error) {
   if err != nil {
     return "", err
   }
-  return res.TxHash, nil
+  return res.Hash, nil
 }
 
 func txSendCmd(ctx context.Context) *cobra.Command {
@@ -120,7 +120,7 @@ func grpcTxSearch(
     conn.Close()
   }
   cln := rpc.NewTxClient(conn)
-  req := &rpc.TxSearchReq{TxHash: hash, From: from, To: to, Account: account}
+  req := &rpc.TxSearchReq{Hash: hash, From: from, To: to, Account: account}
   stream, err := cln.TxSearch(ctx, req)
   if err != nil {
     return nil, nil, err

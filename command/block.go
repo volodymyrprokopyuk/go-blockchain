@@ -35,9 +35,7 @@ func grpcBlockSearch(
     conn.Close()
   }
   cln := rpc.NewBlockClient(conn)
-  req := &rpc.BlockSearchReq{
-    Number: number, BlockHash: hash, ParentHash: parent,
-  }
+  req := &rpc.BlockSearchReq{Number: number, Hash: hash, Parent: parent}
   stream, err := cln.BlockSearch(ctx, req)
   if err != nil {
     return nil, nil, err

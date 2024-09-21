@@ -18,7 +18,7 @@ message TxSendReq {
 }
 
 message TxSendRes {
-  string TxHash = 1;
+  string Hash = 1;
 }
 
 message TxReceiveReq {
@@ -28,7 +28,7 @@ message TxReceiveReq {
 message TxReceiveRes { }
 
 message TxSearchReq {
-  string TxHash = 1;
+  string Hash = 1;
   string From = 2;
   string To = 3;
   string Account = 4;
