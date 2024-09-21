@@ -4,7 +4,7 @@ import (
 	context "context"
 )
 
-type Discoverer interface {
+type PeerDiscoverer interface {
   Bootstrap() bool
   AddPeers(peers ...string);
   Peers() []string;
@@ -12,19 +12,19 @@ type Discoverer interface {
 
 type NodeSrv struct {
   UnimplementedNodeServer
-  dis Discoverer
+  peerDisc PeerDiscoverer
 }
 
-func NewNodeSrv(dis Discoverer) *NodeSrv {
-  return &NodeSrv{dis: dis}
+func NewNodeSrv(peerDisc PeerDiscoverer) *NodeSrv {
+  return &NodeSrv{peerDisc: peerDisc}
 }
 
 func (s *NodeSrv) PeerDiscover(
   _ context.Context, req *PeerDiscoverReq,
 ) (*PeerDiscoverRes, error) {
-  if s.dis.Bootstrap() {
-    s.dis.AddPeers(req.Peer)
+  if s.peerDisc.Bootstrap() {
+    s.peerDisc.AddPeers(req.Peer)
   }
-  res := &PeerDiscoverRes{Peers: s.dis.Peers()}
+  res := &PeerDiscoverRes{Peers: s.peerDisc.Peers()}
   return res, nil
 }

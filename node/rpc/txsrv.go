@@ -88,6 +88,11 @@ func (s *TxSrv) TxReceive(
     if err != nil {
       return err
     }
+    select {
+    case <- stream.Context().Done():
+      return nil
+    default:
+    }
     var tx chain.SigTx
     err = json.Unmarshal(req.Tx, &tx)
     if err != nil {
@@ -133,6 +138,11 @@ func (s *TxSrv) TxSearch(
   block: for err, blk := range blocks {
     if err != nil {
       return err
+    }
+    select {
+    case <- stream.Context().Done():
+      return nil
+    default:
     }
     for _, tx := range blk.Txs {
       if len(req.Hash) > 0 && prefix(tx.Tx.Hash().String(), req.Hash) {

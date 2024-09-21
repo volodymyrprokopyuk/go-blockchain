@@ -27,12 +27,10 @@ type BlockSrv struct {
 }
 
 func NewBlockSrv(
-  blockStoreDir string, blkApplicer BlockApplier,
-  blkRelayer BlockRelayer,
+  blockStoreDir string, blkApplicer BlockApplier, blkRelayer BlockRelayer,
 ) *BlockSrv {
   return &BlockSrv{
-    blockStoreDir: blockStoreDir, blkApplier: blkApplicer,
-    blkRelayer: blkRelayer,
+    blockStoreDir: blockStoreDir, blkApplier: blkApplicer, blkRelayer: blkRelayer,
   }
 }
 
@@ -60,6 +58,11 @@ func (s *BlockSrv) BlockSync(
     if err != nil {
       return err
     }
+    select {
+    case <- stream.Context().Done():
+      return nil
+    default:
+    }
     if i >= num {
       res := &BlockSyncRes{Block: jblk}
       err = stream.Send(res)
@@ -83,6 +86,11 @@ func (s *BlockSrv) BlockReceive(
     }
     if err != nil {
       return err
+    }
+    select {
+    case <- stream.Context().Done():
+      return nil
+    default:
     }
     var blk chain.Block
     err = json.Unmarshal(req.Block, &blk)
@@ -117,6 +125,11 @@ func (s *BlockSrv) BlockSearch(
   for err, blk := range blocks {
     if err != nil {
       return err
+    }
+    select {
+    case <- stream.Context().Done():
+      return nil
+    default:
     }
     if req.Number != 0 && blk.Number == req.Number ||
       len(req.Hash) > 0 && prefix(blk.Hash().String(), req.Hash) ||

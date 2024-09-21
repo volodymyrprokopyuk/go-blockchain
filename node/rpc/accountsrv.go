@@ -7,20 +7,20 @@ import (
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 )
 
-type AccountBalancer interface {
+type BalanceChecker interface {
   Balance(acc chain.Address) uint64
 }
 
 type AccountSrv struct {
   UnimplementedAccountServer
   keyStoreDir string
-  accBalancer AccountBalancer
+  balChecker BalanceChecker
 }
 
 func NewAccountSrv(
-  keyStoreDir string, accBalancer AccountBalancer,
+  keyStoreDir string, balChecker BalanceChecker,
 ) *AccountSrv {
-  return &AccountSrv{keyStoreDir: keyStoreDir, accBalancer: accBalancer}
+  return &AccountSrv{keyStoreDir: keyStoreDir, balChecker: balChecker}
 }
 
 func (s *AccountSrv) AccountCreate(
@@ -46,7 +46,7 @@ func (s *AccountSrv) AccountBalance(
   _ context.Context, req *AccountBalanceReq,
 ) (*AccountBalanceRes, error) {
   acc := req.Address
-  balance := s.accBalancer.Balance(chain.Address(acc))
-  res := &AccountBalanceRes{Balance: balance}
+  bal := s.balChecker.Balance(chain.Address(acc))
+  res := &AccountBalanceRes{Balance: bal}
   return res, nil
 }
