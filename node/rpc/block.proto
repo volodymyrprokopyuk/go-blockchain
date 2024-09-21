@@ -35,6 +35,6 @@ message BlockSearchRes {
 service Block {
   rpc GenesisSync(GenesisSyncReq) returns (GenesisSyncRes);
   rpc BlockSync(BlockSyncReq) returns (stream BlockSyncRes);
-  rpc BlockReceive(BlockReceiveReq) returns (BlockReceiveRes);
+  rpc BlockReceive(stream BlockReceiveReq) returns (BlockReceiveRes);
   rpc BlockSearch(BlockSearchReq) returns (stream BlockSearchRes);
 }

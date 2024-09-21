@@ -24,6 +24,6 @@ set -l ben fd29d489ac7887eeafe6e81b060f913b70ea26bb792036067926f315d6057b86
 # ./bcn account balance --node $node --account $own
 # ./bcn account balance --node $node --account $ben
 
-./bcn block search --node $node --number 11
-./bcn block search --node $node --hash eabb4cf
-./bcn block search --node $node --parent 07b9fe4
+# ./bcn block search --node $node --number 11
+# ./bcn block search --node $node --hash eabb4cf
+# ./bcn block search --node $node --parent 07b9fe4

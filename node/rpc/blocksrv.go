@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
@@ -72,25 +73,36 @@ func (s *BlockSrv) BlockSync(
 }
 
 func (s *BlockSrv) BlockReceive(
-  _ context.Context, req *BlockReceiveReq,
-) (*BlockReceiveRes, error) {
-  var blk chain.Block
-  err := json.Unmarshal(req.Block, &blk)
-  if err != nil {
-    return nil, err
+  stream grpc.ClientStreamingServer[BlockReceiveReq, BlockReceiveRes],
+) error {
+  for {
+    req, err := stream.Recv()
+    if err == io.EOF {
+      res := &BlockReceiveRes{}
+      return stream.SendAndClose(res)
+    }
+    if err != nil {
+      return err
+    }
+    var blk chain.Block
+    err = json.Unmarshal(req.Block, &blk)
+    if err != nil {
+      fmt.Println(err)
+      continue
+    }
+    fmt.Printf("* Block Receive\n%v\n", blk)
+    err = s.blkApplier.ApplyBlockToState(blk)
+    if err != nil {
+      fmt.Println(err)
+      continue
+    }
+    err = blk.Write(s.blockStoreDir)
+    if err != nil {
+      fmt.Println(err)
+      continue
+    }
+    s.blkRelayer.RelayBlock(blk)
   }
-  fmt.Printf("* Block Receive\n%v\n", blk)
-  err = s.blkApplier.ApplyBlockToState(blk)
-  if err != nil {
-    return nil, err
-  }
-  err = blk.Write(s.blockStoreDir)
-  if err != nil {
-    return nil, err
-  }
-  s.blkRelayer.RelayBlock(blk)
-  res := &BlockReceiveRes{}
-  return res, nil
 }
 
 func (s *BlockSrv) BlockSearch(

@@ -46,6 +46,10 @@ var grpcBlockRelay grpcMsgRelay[chain.Block] = func(
   ctx context.Context, conn *grpc.ClientConn, chRelay chan chain.Block,
 ) error {
   cln := rpc.NewBlockClient(conn)
+  stream, err := cln.BlockReceive(ctx)
+  if err != nil {
+    return err
+  }
   for blk := range chRelay {
     jblk, err := json.Marshal(blk)
     if err != nil {
@@ -53,13 +57,14 @@ var grpcBlockRelay grpcMsgRelay[chain.Block] = func(
       continue
     }
     req := &rpc.BlockReceiveReq{Block: jblk}
-    _, err = cln.BlockReceive(ctx, req)
+    err = stream.Send(req)
     if err != nil {
       fmt.Println(err)
       continue
     }
   }
-  return nil
+  _, err = stream.CloseAndRecv()
+  return err
 }
 
 type msgRelay[Msg any, Relay grpcMsgRelay[Msg]] struct {
