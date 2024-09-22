@@ -30,7 +30,7 @@ func (t Tx) Hash() Hash {
 
 func (t Tx) String() string {
   return fmt.Sprintf(
-    "Tx %.7s: %.7s -> %.7s %5d %5d", t.Hash(), t.From, t.To, t.Value, t.Nonce,
+    "Tx %.7s: %.7s -> %.7s %8d %8d", t.Hash(), t.From, t.To, t.Value, t.Nonce,
   )
 }
 

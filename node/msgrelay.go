@@ -25,21 +25,29 @@ var grpcTxRelay grpcMsgRelay[chain.SigTx] = func(
   if err != nil {
     return err
   }
-  for tx := range chRelay {
-    jtx, err := json.Marshal(tx)
-    if err != nil {
-      fmt.Println(err)
-      continue
-    }
-    req := &rpc.TxReceiveReq{Tx: jtx}
-    err = stream.Send(req)
-    if err != nil {
-      fmt.Println(err)
-      continue
+  for {
+    select {
+    case <- ctx.Done():
+      _, err = stream.CloseAndRecv()
+      return err
+    case tx, open := <- chRelay:
+      if !open {
+        _, err = stream.CloseAndRecv()
+        return err
+      }
+      jtx, err := json.Marshal(tx)
+      if err != nil {
+        fmt.Println(err)
+        continue
+      }
+      req := &rpc.TxReceiveReq{Tx: jtx}
+      err = stream.Send(req)
+      if err != nil {
+        fmt.Println(err)
+        continue
+      }
     }
   }
-  _, err = stream.CloseAndRecv()
-  return err
 }
 
 var grpcBlockRelay grpcMsgRelay[chain.Block] = func(
@@ -50,21 +58,29 @@ var grpcBlockRelay grpcMsgRelay[chain.Block] = func(
   if err != nil {
     return err
   }
-  for blk := range chRelay {
-    jblk, err := json.Marshal(blk)
-    if err != nil {
-      fmt.Println(err)
-      continue
-    }
-    req := &rpc.BlockReceiveReq{Block: jblk}
-    err = stream.Send(req)
-    if err != nil {
-      fmt.Println(err)
-      continue
+  for {
+    select {
+    case <- ctx.Done():
+      _, err = stream.CloseAndRecv()
+      return err
+    case blk, open := <- chRelay:
+      if !open {
+        _, err = stream.CloseAndRecv()
+        return err
+      }
+      jblk, err := json.Marshal(blk)
+      if err != nil {
+        fmt.Println(err)
+        continue
+      }
+      req := &rpc.BlockReceiveReq{Block: jblk}
+      err = stream.Send(req)
+      if err != nil {
+        fmt.Println(err)
+        continue
+      }
     }
   }
-  _, err = stream.CloseAndRecv()
-  return err
 }
 
 type msgRelay[Msg any, Relay grpcMsgRelay[Msg]] struct {

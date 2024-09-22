@@ -80,11 +80,6 @@ func (s *TxSrv) TxReceive(
   stream grpc.ClientStreamingServer[TxReceiveReq, TxReceiveRes],
 ) error {
   for {
-    select {
-    case <- stream.Context().Done():
-      return nil
-    default:
-    }
     req, err := stream.Recv()
     if err == io.EOF {
       res := &TxReceiveRes{}
@@ -138,11 +133,6 @@ func (s *TxSrv) TxSearch(
   block: for err, blk := range blocks {
     if err != nil {
       return err
-    }
-    select {
-    case <- stream.Context().Done():
-      return nil
-    default:
     }
     for _, tx := range blk.Txs {
       if len(req.Hash) > 0 && prefix(tx.Tx.Hash().String(), req.Hash) {

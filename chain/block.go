@@ -48,7 +48,7 @@ func (b Block) String() string {
     fmt.Sprintf("Block %4d: %.7s -> %.7s\n", b.Number, b.Hash(), b.Parent),
   )
   for _, tx := range b.Txs {
-    bld.WriteString(fmt.Sprintf("  %v\n", tx))
+    bld.WriteString(fmt.Sprintf("%v\n", tx))
   }
   return bld.String()
 }

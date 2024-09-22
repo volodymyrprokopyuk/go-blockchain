@@ -83,32 +83,32 @@ func (s State) String() string {
   s.mtx.RLock()
   defer s.mtx.RUnlock()
   var bld strings.Builder
-  bld.WriteString("Balances\n")
+  bld.WriteString("* Balances\n")
   for acc, bal := range s.balances {
-    bld.WriteString(fmt.Sprintf("  %.7s: %29d\n", acc, bal))
+    bld.WriteString(fmt.Sprintf("Acc %.7s: %26d\n", acc, bal))
   }
-  bld.WriteString("Nonces\n")
+  bld.WriteString("* Nonces\n")
   for acc, nonce := range s.nonces {
-    bld.WriteString(fmt.Sprintf("  %.7s: %35d\n", acc, nonce))
+    bld.WriteString(fmt.Sprintf("Acc %.7s: %35d\n", acc, nonce))
   }
-  bld.WriteString("Last block\n")
+  bld.WriteString("* Last block\n")
   bld.WriteString(fmt.Sprintf("%v", s.lastBlock))
   if s.Pending != nil && len(s.Pending.txs) > 0 {
-    bld.WriteString("Pending txs\n")
+    bld.WriteString("* Pending txs\n")
     for _, tx := range s.Pending.txs {
-      bld.WriteString(fmt.Sprintf("  %v\n", tx))
+      bld.WriteString(fmt.Sprintf("%v\n", tx))
     }
   }
   if s.Pending != nil && len(s.Pending.balances) > 0 {
-    bld.WriteString("Pending balances\n")
+    bld.WriteString("* Pending balances\n")
     for acc, bal := range s.Pending.balances {
-      bld.WriteString(fmt.Sprintf("  %.7s: %29d\n", acc, bal))
+      bld.WriteString(fmt.Sprintf("Acc %.7s: %26d\n", acc, bal))
     }
   }
   if s.Pending != nil && len(s.Pending.nonces) > 0 {
-    bld.WriteString("Pending nonces\n")
+    bld.WriteString("* Pending nonces\n")
     for acc, nonce := range s.Pending.nonces {
-      bld.WriteString(fmt.Sprintf("  %.7s: %35d\n", acc, nonce))
+      bld.WriteString(fmt.Sprintf("Acc %.7s: %35d\n", acc, nonce))
     }
   }
   return bld.String()
@@ -194,6 +194,6 @@ func (s *State) ApplyBlockToState(blk Block) error {
     return err
   }
   s.Apply(clone)
-  fmt.Printf("* Block state (ApplyBlock)\n%v\n", s)
+  fmt.Printf("** Block state (ApplyBlock)\n%v", s)
   return nil
 }

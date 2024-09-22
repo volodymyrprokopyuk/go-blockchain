@@ -90,11 +90,11 @@ func (n *Node) Start() error {
   n.wg.Add(1)
   go n.peerDisc.discoverPeers(30 * time.Second)
   n.wg.Add(1)
-  go n.txRelay.relayMsgs(30 * time.Second)
+  go n.txRelay.relayMsgs(10 * time.Second)
   n.wg.Add(1)
   go n.blockProp.proposeBlocks(10 * time.Second)
   n.wg.Add(1)
-  go n.blkRelay.relayMsgs(30 * time.Second)
+  go n.blkRelay.relayMsgs(10 * time.Second)
   select {
   case <- n.ctx.Done():
   case err = <- n.chErr:

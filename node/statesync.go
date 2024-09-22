@@ -219,6 +219,6 @@ func (s *stateSync) syncState() (*chain.State, error) {
   if err != nil {
     return nil, err
   }
-  fmt.Printf("* Sync state (SyncState)\n%v", s.state)
+  fmt.Printf("** Sync state (SyncState)\n%v", s.state)
   return s.state, nil
 }

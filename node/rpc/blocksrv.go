@@ -61,11 +61,6 @@ func (s *BlockSrv) BlockSync(
     if err != nil {
       return err
     }
-    select {
-    case <- stream.Context().Done():
-      return nil
-    default:
-    }
     if i >= num {
       res := &BlockSyncRes{Block: jblk}
       err = stream.Send(res)
@@ -93,11 +88,6 @@ func (s *BlockSrv) BlockReceive(
   stream grpc.ClientStreamingServer[BlockReceiveReq, BlockReceiveRes],
 ) error {
   for {
-    select {
-    case <- stream.Context().Done():
-      return nil
-    default:
-    }
     req, err := stream.Recv()
     if err == io.EOF {
       res := &BlockReceiveRes{}
@@ -140,11 +130,6 @@ func (s *BlockSrv) BlockSearch(
   for err, blk := range blocks {
     if err != nil {
       return err
-    }
-    select {
-    case <- stream.Context().Done():
-      return nil
-    default:
     }
     if req.Number != 0 && blk.Number == req.Number ||
       len(req.Hash) > 0 && prefix(blk.Hash().String(), req.Hash) ||
