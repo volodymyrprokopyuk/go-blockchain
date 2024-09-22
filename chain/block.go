@@ -35,7 +35,7 @@ func (b Block) Hash() Hash {
 func (b Block) String() string {
   var bld strings.Builder
   bld.WriteString(
-    fmt.Sprintf("%2d: %.7s -> %.7s\n", b.Number, b.Hash(), b.Parent),
+    fmt.Sprintf("Block %4d: %.7s -> %.7s\n", b.Number, b.Hash(), b.Parent),
   )
   for _, tx := range b.Txs {
     bld.WriteString(fmt.Sprintf("  %v\n", tx))

@@ -99,7 +99,7 @@ func (s *TxSrv) TxReceive(
       fmt.Println(err)
       continue
     }
-    fmt.Printf("* Tx Receive\n%v\n", tx)
+    fmt.Printf("* Tx received\n%v\n", tx)
     err = s.txApplier.ApplyTx(tx)
     if err != nil {
       fmt.Println(err)

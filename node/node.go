@@ -36,6 +36,8 @@ type Node struct {
   ctxCancel func()
   wg *sync.WaitGroup
   chErr chan error
+  // events
+  evStream *eventStream
   // components
   state *chain.State
   stateSync *stateSync
@@ -57,6 +59,8 @@ func NewNode(cfg NodeCfg) *Node {
   nd.ctxCancel = cancel
   nd.wg = new(sync.WaitGroup)
   nd.chErr = make(chan error, 1)
+  // events
+  nd.evStream = newEventStream(nd.ctx, nd.wg)
   // components
   peerDiscCfg := peerDiscoveryCfg{
     nodeAddr: nd.cfg.NodeAddr,
@@ -73,6 +77,8 @@ func NewNode(cfg NodeCfg) *Node {
 
 func (n *Node) Start() error {
   defer n.ctxCancel()
+  n.wg.Add(1)
+  go n.evStream.StreamEvents()
   state, err := n.stateSync.syncState()
   if err != nil {
     return err
@@ -107,7 +113,7 @@ func (n *Node) servegRPC() {
     return
   }
   defer lis.Close()
-  fmt.Printf("* gRPC address %v\n", n.cfg.NodeAddr)
+  fmt.Printf("* gRPC %v\n", n.cfg.NodeAddr)
   n.grpcSrv = grpc.NewServer()
   node := rpc.NewNodeSrv(n.peerDisc)
   rpc.RegisterNodeServer(n.grpcSrv, node)
@@ -117,7 +123,7 @@ func (n *Node) servegRPC() {
     n.cfg.KeyStoreDir, n.cfg.BlockStoreDir, n.state.Pending, n.txRelay,
   )
   rpc.RegisterTxServer(n.grpcSrv, tx)
-  blk := rpc.NewBlockSrv(n.cfg.BlockStoreDir, n.state, n.blkRelay)
+  blk := rpc.NewBlockSrv(n.cfg.BlockStoreDir, n.evStream, n.state, n.blkRelay)
   rpc.RegisterBlockServer(n.grpcSrv, blk)
   err = n.grpcSrv.Serve(lis)
   if err != nil {

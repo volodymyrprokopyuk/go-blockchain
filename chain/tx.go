@@ -30,7 +30,7 @@ func (t Tx) Hash() Hash {
 
 func (t Tx) String() string {
   return fmt.Sprintf(
-    "%.7s: %.7s -> %.7s %10d %5d", t.Hash(), t.From, t.To, t.Value, t.Nonce,
+    "Tx %.7s: %.7s -> %.7s %5d %5d", t.Hash(), t.From, t.To, t.Value, t.Nonce,
   )
 }
 
@@ -71,6 +71,6 @@ func NewSearchTx(tx SigTx, blkNumber uint64, blkHash Hash) SearchTx {
 
 func (t SearchTx) String() string {
   return fmt.Sprintf(
-    "%v     block: %4d, %.7s", t.SigTx.Tx, t.BlockNumber, t.BlockHash,
+    "%v    block: %5d, %.7s", t.SigTx.Tx, t.BlockNumber, t.BlockHash,
   )
 }

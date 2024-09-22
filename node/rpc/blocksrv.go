@@ -22,15 +22,18 @@ type BlockRelayer interface {
 type BlockSrv struct {
   UnimplementedBlockServer
   blockStoreDir string
+  evStreamer chain.EventStreamer
   blkApplier BlockApplier
   blkRelayer BlockRelayer
 }
 
 func NewBlockSrv(
-  blockStoreDir string, blkApplicer BlockApplier, blkRelayer BlockRelayer,
+  blockStoreDir string, evStreamer chain.EventStreamer,
+  blkApplicer BlockApplier, blkRelayer BlockRelayer,
 ) *BlockSrv {
   return &BlockSrv{
-    blockStoreDir: blockStoreDir, blkApplier: blkApplicer, blkRelayer: blkRelayer,
+    blockStoreDir: blockStoreDir, evStreamer: evStreamer,
+    blkApplier: blkApplicer, blkRelayer: blkRelayer,
   }
 }
 
@@ -75,6 +78,17 @@ func (s *BlockSrv) BlockSync(
   return nil
 }
 
+func (s *BlockSrv) publishBlock(blk chain.Block) {
+  jblk, _ := json.Marshal(blk)
+  event := chain.NewEvent(chain.EvBlock, "validated", jblk)
+  s.evStreamer.PublishEvent(event)
+  for _, tx := range blk.Txs {
+    jtx, _ := json.Marshal(tx)
+    event := chain.NewEvent(chain.EvTx, "validated", jtx)
+    s.evStreamer.PublishEvent(event)
+  }
+}
+
 func (s *BlockSrv) BlockReceive(
   stream grpc.ClientStreamingServer[BlockReceiveReq, BlockReceiveRes],
 ) error {
@@ -98,7 +112,7 @@ func (s *BlockSrv) BlockReceive(
       fmt.Println(err)
       continue
     }
-    fmt.Printf("* Block Receive\n%v\n", blk)
+    fmt.Printf("* Block received\n%v", blk)
     err = s.blkApplier.ApplyBlockToState(blk)
     if err != nil {
       fmt.Println(err)
@@ -110,6 +124,7 @@ func (s *BlockSrv) BlockReceive(
       continue
     }
     s.blkRelayer.RelayBlock(blk)
+    s.publishBlock(blk)
   }
 }
 

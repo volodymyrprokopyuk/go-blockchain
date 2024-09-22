@@ -52,8 +52,8 @@ func (p *blockProposer) proposeBlocks(maxPeriod time.Duration) {
         fmt.Println(err)
         continue
       }
-      fmt.Printf("* Proposed block: %v\n", blk)
       p.blkRelay.RelayBlock(blk)
+      fmt.Printf("* Block proposed: %v", blk)
     }
   }
 }

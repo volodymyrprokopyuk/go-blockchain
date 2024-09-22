@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	Node_PeerDiscover_FullMethodName = "/Node/PeerDiscover"
+	Node_EventStream_FullMethodName  = "/Node/EventStream"
 )
 
 // NodeClient is the client API for Node service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NodeClient interface {
 	PeerDiscover(ctx context.Context, in *PeerDiscoverReq, opts ...grpc.CallOption) (*PeerDiscoverRes, error)
+	EventStream(ctx context.Context, in *EventStreamReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[EventStreamRes], error)
 }
 
 type nodeClient struct {
@@ -47,11 +49,31 @@ func (c *nodeClient) PeerDiscover(ctx context.Context, in *PeerDiscoverReq, opts
 	return out, nil
 }
 
+func (c *nodeClient) EventStream(ctx context.Context, in *EventStreamReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[EventStreamRes], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Node_ServiceDesc.Streams[0], Node_EventStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[EventStreamReq, EventStreamRes]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Node_EventStreamClient = grpc.ServerStreamingClient[EventStreamRes]
+
 // NodeServer is the server API for Node service.
 // All implementations must embed UnimplementedNodeServer
 // for forward compatibility.
 type NodeServer interface {
 	PeerDiscover(context.Context, *PeerDiscoverReq) (*PeerDiscoverRes, error)
+	EventStream(*EventStreamReq, grpc.ServerStreamingServer[EventStreamRes]) error
 	mustEmbedUnimplementedNodeServer()
 }
 
@@ -64,6 +86,9 @@ type UnimplementedNodeServer struct{}
 
 func (UnimplementedNodeServer) PeerDiscover(context.Context, *PeerDiscoverReq) (*PeerDiscoverRes, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PeerDiscover not implemented")
+}
+func (UnimplementedNodeServer) EventStream(*EventStreamReq, grpc.ServerStreamingServer[EventStreamRes]) error {
+	return status.Errorf(codes.Unimplemented, "method EventStream not implemented")
 }
 func (UnimplementedNodeServer) mustEmbedUnimplementedNodeServer() {}
 func (UnimplementedNodeServer) testEmbeddedByValue()              {}
@@ -104,6 +129,17 @@ func _Node_PeerDiscover_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Node_EventStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(EventStreamReq)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(NodeServer).EventStream(m, &grpc.GenericServerStream[EventStreamReq, EventStreamRes]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Node_EventStreamServer = grpc.ServerStreamingServer[EventStreamRes]
+
 // Node_ServiceDesc is the grpc.ServiceDesc for Node service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -116,6 +152,12 @@ var Node_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Node_PeerDiscover_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "EventStream",
+			Handler:       _Node_EventStream_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "node.proto",
 }

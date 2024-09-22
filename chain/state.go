@@ -79,7 +79,7 @@ func (s *State) LastBlock() Block {
   return s.lastBlock
 }
 
-func (s *State) String() string {
+func (s State) String() string {
   s.mtx.RLock()
   defer s.mtx.RUnlock()
   var bld strings.Builder
@@ -92,7 +92,7 @@ func (s *State) String() string {
     bld.WriteString(fmt.Sprintf("  %.7s: %35d\n", acc, nonce))
   }
   bld.WriteString("Last block\n")
-  bld.WriteString(fmt.Sprintf("  %v", s.lastBlock))
+  bld.WriteString(fmt.Sprintf("%v", s.lastBlock))
   if s.Pending != nil && len(s.Pending.txs) > 0 {
     bld.WriteString("Pending txs\n")
     for _, tx := range s.Pending.txs {
