@@ -61,6 +61,10 @@ func (d *peerDiscovery) Peers() []string {
   return peers
 }
 
+func (d *peerDiscovery) SelfPeers() []string {
+  return append(d.Peers(), d.cfg.nodeAddr)
+}
+
 func (d *peerDiscovery) grpcPeerDiscover(peer string) ([]string, error) {
   conn, err := grpc.NewClient(
     peer, grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -82,19 +86,25 @@ func (d *peerDiscovery) discoverPeers(period time.Duration) {
   defer d.wg.Done()
   tick := time.NewTicker(5 * time.Second) // initial early peer discovery
   defer tick.Stop()
+  reset := false
   for {
     select {
     case <- d.ctx.Done():
       return
     case <- tick.C:
-      tick.Reset(period)
+      if !reset {
+        tick.Reset(period)
+        reset = true
+      }
       for _, peer := range d.Peers() {
-        peers, err := d.grpcPeerDiscover(peer)
-        if err != nil {
-          fmt.Println(err)
-          continue
+        if peer != d.cfg.nodeAddr {
+          peers, err := d.grpcPeerDiscover(peer)
+          if err != nil {
+            fmt.Println(err)
+            continue
+          }
+          d.AddPeers(peers...)
         }
-        d.AddPeers(peers...)
       }
       // fmt.Printf("* Peers discovered: %v => %v\n", d.cfg.nodeAddr, d.Peers())
     }

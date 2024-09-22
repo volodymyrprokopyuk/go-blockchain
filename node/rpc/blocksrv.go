@@ -93,6 +93,11 @@ func (s *BlockSrv) BlockReceive(
   stream grpc.ClientStreamingServer[BlockReceiveReq, BlockReceiveRes],
 ) error {
   for {
+    select {
+    case <- stream.Context().Done():
+      return nil
+    default:
+    }
     req, err := stream.Recv()
     if err == io.EOF {
       res := &BlockReceiveRes{}
@@ -100,11 +105,6 @@ func (s *BlockSrv) BlockReceive(
     }
     if err != nil {
       return err
-    }
-    select {
-    case <- stream.Context().Done():
-      return nil
-    default:
     }
     var blk chain.Block
     err = json.Unmarshal(req.Block, &blk)

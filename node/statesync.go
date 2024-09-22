@@ -207,6 +207,10 @@ func (s *stateSync) syncState() (*chain.State, error) {
     return nil, fmt.Errorf("invalid genesis signature")
   }
   s.state = chain.NewState(gen)
+  err = chain.InitBlockStore(s.cfg.BlockStoreDir)
+  if err != nil {
+    return nil, err
+  }
   err = s.readBlocks()
   if err != nil {
     return nil, err

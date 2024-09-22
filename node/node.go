@@ -69,8 +69,8 @@ func NewNode(cfg NodeCfg) *Node {
   }
   nd.peerDisc = newPeerDiscovery(nd.ctx, nd.wg, peerDiscCfg)
   nd.stateSync = newStateSync(nd.ctx, nd.cfg, nd.peerDisc)
-  nd.txRelay = newMsgRelay(nd.ctx, nd.wg, 100, nd.peerDisc, grpcTxRelay)
-  nd.blkRelay = newMsgRelay(nd.ctx, nd.wg, 10, nd.peerDisc, grpcBlockRelay)
+  nd.txRelay = newMsgRelay(nd.ctx, nd.wg, 100, false, nd.peerDisc, grpcTxRelay)
+  nd.blkRelay = newMsgRelay(nd.ctx, nd.wg, 10, false, nd.peerDisc, grpcBlockRelay)
   nd.blockProp = newBlockProposer(nd.ctx, nd.wg, nd.blkRelay)
   return nd
 }

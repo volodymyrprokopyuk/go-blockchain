@@ -14,6 +14,16 @@ import (
 
 const blocksFile = "blocks.store"
 
+func InitBlockStore(dir string) error {
+  path := filepath.Join(dir, blocksFile)
+  file, err := os.OpenFile(path, os.O_CREATE | os.O_RDONLY, 0600)
+  if err != nil {
+    return err
+  }
+  defer file.Close()
+  return nil
+}
+
 type Block struct {
   Number uint64 `json:"number"`
   Parent Hash `json:"parent"`

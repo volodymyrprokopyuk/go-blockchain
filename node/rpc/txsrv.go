@@ -80,6 +80,11 @@ func (s *TxSrv) TxReceive(
   stream grpc.ClientStreamingServer[TxReceiveReq, TxReceiveRes],
 ) error {
   for {
+    select {
+    case <- stream.Context().Done():
+      return nil
+    default:
+    }
     req, err := stream.Recv()
     if err == io.EOF {
       res := &TxReceiveRes{}
@@ -87,11 +92,6 @@ func (s *TxSrv) TxReceive(
     }
     if err != nil {
       return err
-    }
-    select {
-    case <- stream.Context().Done():
-      return nil
-    default:
     }
     var tx chain.SigTx
     err = json.Unmarshal(req.Tx, &tx)
