@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rpc"
@@ -16,8 +15,8 @@ import (
 type stateSync struct {
   cfg NodeCfg
   ctx context.Context
-  peerDisc *peerDiscovery
   state *chain.State
+  peerDisc *peerDiscovery
 }
 
 func newStateSync(
@@ -27,9 +26,21 @@ func newStateSync(
 }
 
 func (s *stateSync) createGenesis() (chain.SigGenesis, error) {
-  pass := []byte(s.cfg.Password)
-  if len(pass) < 5 {
-    return chain.SigGenesis{}, fmt.Errorf("password length is less than 5")
+  authPass := []byte(s.cfg.AuthPass)
+  if len(authPass) < 5 {
+    return chain.SigGenesis{}, fmt.Errorf("authpass length is less than 5")
+  }
+  auth, err := chain.NewAccount()
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  err = auth.Write(s.cfg.KeyStoreDir, authPass)
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  ownerPass := []byte(s.cfg.OwnerPass)
+  if len(ownerPass) < 5 {
+    return chain.SigGenesis{}, fmt.Errorf("ownerpass length is less than 5")
   }
   if s.cfg.Balance == 0 {
     return chain.SigGenesis{}, fmt.Errorf("balance must be positive")
@@ -38,13 +49,15 @@ func (s *stateSync) createGenesis() (chain.SigGenesis, error) {
   if err != nil {
     return chain.SigGenesis{}, err
   }
-  err = acc.Write(s.cfg.KeyStoreDir, pass)
-  s.cfg.Password = "erase"
+  err = acc.Write(s.cfg.KeyStoreDir, ownerPass)
+  s.cfg.OwnerPass = "erase"
   if err != nil {
     return chain.SigGenesis{}, err
   }
-  gen := chain.NewGenesis(s.cfg.Chain, acc.Address(), s.cfg.Balance)
-  sgen, err := acc.SignGen(gen)
+  gen := chain.NewGenesis(
+    s.cfg.Chain, auth.Address(), acc.Address(), s.cfg.Balance,
+  )
+  sgen, err := auth.SignGen(gen)
   if err != nil {
     return chain.SigGenesis{}, err
   }
@@ -99,10 +112,7 @@ func (s *stateSync) syncGenesis() (chain.SigGenesis, error) {
 func (s *stateSync) readBlocks() error {
   blocks, closeBlocks, err := chain.ReadBlocks(s.cfg.BlockStoreDir)
   if err != nil {
-    if _, assert := err.(*os.PathError); !assert {
-      return err
-    }
-    return nil
+    return err
   }
   defer closeBlocks()
   for err, blk := range blocks {
@@ -165,7 +175,8 @@ func (s *stateSync) syncBlocks() error {
       if err != nil {
         return err
       }
-      blk, err := chain.UnmarshalBlockBytes(jblk)
+      var blk chain.SigBlock
+      err = json.Unmarshal(jblk, &blk)
       if err != nil {
         return err
       }

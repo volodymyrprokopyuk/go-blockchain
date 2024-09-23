@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"google.golang.org/grpc"
@@ -121,37 +120,37 @@ func sendTxSearchRes(
   return nil
 }
 
-func (s *TxSrv) TxSearch(
-  req *TxSearchReq, stream grpc.ServerStreamingServer[TxSearchRes],
-) error {
-  blocks, closeBlocks, err := chain.ReadBlocks(s.blockStoreDir)
-  if err != nil {
-    return err
-  }
-  defer closeBlocks()
-  prefix := strings.HasPrefix
-  block: for err, blk := range blocks {
-    if err != nil {
-      return err
-    }
-    for _, tx := range blk.Txs {
-      if len(req.Hash) > 0 && prefix(tx.Tx.Hash().String(), req.Hash) {
-        err = sendTxSearchRes(blk, tx, stream)
-        if err != nil {
-          return err
-        }
-        break block
-      }
-      if len(req.From) > 0 && prefix(string(tx.From), req.From) ||
-        len(req.To) > 0 && prefix(string(tx.To), req.To) ||
-        len(req.Account) > 0 &&
-          (prefix(string(tx.From), req.From) || prefix(string(tx.To), req.To)) {
-        err := sendTxSearchRes(blk, tx, stream)
-        if err != nil {
-          return err
-        }
-      }
-    }
-  }
-  return nil
-}
+// func (s *TxSrv) TxSearch(
+//   req *TxSearchReq, stream grpc.ServerStreamingServer[TxSearchRes],
+// ) error {
+//   blocks, closeBlocks, err := chain.ReadBlocks(s.blockStoreDir)
+//   if err != nil {
+//     return err
+//   }
+//   defer closeBlocks()
+//   prefix := strings.HasPrefix
+//   block: for err, blk := range blocks {
+//     if err != nil {
+//       return err
+//     }
+//     for _, tx := range blk.Txs {
+//       if len(req.Hash) > 0 && prefix(tx.Tx.Hash().String(), req.Hash) {
+//         err = sendTxSearchRes(blk, tx, stream)
+//         if err != nil {
+//           return err
+//         }
+//         break block
+//       }
+//       if len(req.From) > 0 && prefix(string(tx.From), req.From) ||
+//         len(req.To) > 0 && prefix(string(tx.To), req.To) ||
+//         len(req.Account) > 0 &&
+//           (prefix(string(tx.From), req.From) || prefix(string(tx.To), req.To)) {
+//         err := sendTxSearchRes(blk, tx, stream)
+//         if err != nil {
+//           return err
+//         }
+//       }
+//     }
+//   }
+//   return nil
+// }

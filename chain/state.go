@@ -10,9 +10,10 @@ import (
 
 type State struct {
   mtx sync.RWMutex
+  authority Address
   balances map[Address]uint64
   nonces map[Address]uint64
-  lastBlock Block
+  lastBlock SigBlock
   genesisHash Hash
   txs map[Hash]SigTx
   Pending *State
@@ -20,11 +21,13 @@ type State struct {
 
 func NewState(gen SigGenesis) *State {
   return &State{
+    authority: gen.Authority,
     balances: maps.Clone(gen.Balances),
     nonces: make(map[Address]uint64),
     genesisHash: gen.Hash(),
     txs: make(map[Hash]SigTx),
     Pending: &State{
+      authority: gen.Authority,
       balances: maps.Clone(gen.Balances),
       nonces: make(map[Address]uint64),
       genesisHash: gen.Hash(),
@@ -37,6 +40,7 @@ func (s *State) Clone() *State {
   s.mtx.RLock()
   defer s.mtx.RUnlock()
   return &State{
+    authority: s.authority,
     balances: maps.Clone(s.balances),
     nonces: maps.Clone(s.nonces),
     lastBlock: s.lastBlock,
@@ -73,7 +77,7 @@ func (s *State) Nonce(acc Address) uint64 {
   return s.nonces[acc]
 }
 
-func (s *State) LastBlock() Block {
+func (s *State) LastBlock() SigBlock {
   s.mtx.RLock()
   defer s.mtx.RUnlock()
   return s.lastBlock
@@ -165,14 +169,23 @@ func (s *State) CreateBlock() Block {
   return NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
 }
 
-func (s *State) ApplyBlock(blk Block) error {
+func (s *State) ApplyBlock(blk SigBlock) error {
   // no need to lock/unlock as ApplyBlock is always executed on a clone
+  valid, err := VerifyBlock(blk, s.authority)
+  if err != nil {
+    return err
+  }
+  if !valid {
+    return fmt.Errorf("error: invalid block signature\n%v", blk)
+  }
   if blk.Number != s.lastBlock.Number + 1 {
     return fmt.Errorf("error: invalid block number\n%v", blk)
   }
-  hash := s.lastBlock.Hash()
+  var hash Hash
   if blk.Number == 1 {
     hash = s.genesisHash
+  } else {
+    hash = s.lastBlock.Hash()
   }
   if blk.Parent != hash {
     return fmt.Errorf("error: invalid parent hash\n%v", blk)
@@ -187,7 +200,7 @@ func (s *State) ApplyBlock(blk Block) error {
   return nil
 }
 
-func (s *State) ApplyBlockToState(blk Block) error {
+func (s *State) ApplyBlockToState(blk SigBlock) error {
   clone := s.Clone()
   err := clone.ApplyBlock(blk)
   if err != nil {

@@ -1,12 +1,10 @@
 package chain
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/dustinxie/ecc"
-	"golang.org/x/crypto/sha3"
 )
 
 type Tx struct {
@@ -22,10 +20,7 @@ func NewTx(from, to Address, value, nonce uint64) Tx {
 }
 
 func (t Tx) Hash() Hash {
-  jtx, _ := json.Marshal(t)
-  hash := make([]byte, 64)
-  sha3.ShakeSum256(hash, jtx)
-  return Hash(hash[:32])
+  return NewHash(t)
 }
 
 func (t Tx) String() string {
@@ -44,10 +39,7 @@ func NewSigTx(tx Tx, sig []byte) SigTx {
 }
 
 func (t SigTx) Hash() Hash {
-  jtx, _ := json.Marshal(t)
-  hash := make([]byte, 64)
-  sha3.ShakeSum256(hash, jtx)
-  return Hash(hash[:32])
+  return NewHash(t)
 }
 
 func VerifyTx(tx SigTx) (bool, error) {

@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/sha3"
+	"github.com/dustinxie/ecc"
 )
 
-const blocksFile = "blocks.store"
+const blocksFile = "block.store"
 
 func InitBlockStore(dir string) error {
   path := filepath.Join(dir, blocksFile)
@@ -27,25 +27,22 @@ func InitBlockStore(dir string) error {
 type Block struct {
   Number uint64 `json:"number"`
   Parent Hash `json:"parent"`
-  Time time.Time `json:"time"`
   Txs []SigTx `json:"txs"`
+  Time time.Time `json:"time"`
 }
 
 func NewBlock(number uint64, parent Hash, txs []SigTx) Block {
-  return Block{Number: number, Parent: parent, Time: time.Now(), Txs: txs}
+  return Block{Number: number, Parent: parent, Txs: txs, Time: time.Now()}
 }
 
 func (b Block) Hash() Hash {
-  jblk, _ := json.Marshal(b)
-  hash := make([]byte, 64)
-  sha3.ShakeSum256(hash, jblk)
-  return Hash(hash[:32])
+  return NewHash(b)
 }
 
 func (b Block) String() string {
   var bld strings.Builder
   bld.WriteString(
-    fmt.Sprintf("Block %4d: %.7s -> %.7s\n", b.Number, b.Hash(), b.Parent),
+    fmt.Sprintf("Blk %4d: %.7s -> %.7s\n", b.Number, b.Hash(), b.Parent),
   )
   for _, tx := range b.Txs {
     bld.WriteString(fmt.Sprintf("%v\n", tx))
@@ -53,29 +50,40 @@ func (b Block) String() string {
   return bld.String()
 }
 
-type storeBlock struct {
-  Hash Hash `json:"hash"`
-  Block Block `json:"block"`
+type SigBlock struct {
+  Block
+  Sig []byte `json:"sig"`
 }
 
-func (b Block) Write(dir string) error {
-  blk := storeBlock{Hash: b.Hash(), Block: b}
+func NewSigBlock(blk Block, sig []byte) SigBlock {
+  return SigBlock{Block: blk, Sig: sig}
+}
+
+func (b SigBlock) Hash() Hash {
+  return NewHash(b)
+}
+
+func VerifyBlock(blk SigBlock, authority Address) (bool, error) {
+  pub, err := ecc.RecoverPubkey("P-256k1", blk.Block.Hash().Bytes(), blk.Sig)
+  if err != nil {
+    return false, err
+  }
+  acc := NewAddress(pub)
+  return acc == authority, nil
+}
+
+func (b SigBlock) Write(dir string) error {
   path := filepath.Join(dir, blocksFile)
   file, err := os.OpenFile(path, os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0600)
   if err != nil {
     return err
   }
   defer file.Close()
-  err = json.NewEncoder(file).Encode(blk)
-  if err != nil {
-    return err
-  }
-  _, err = file.WriteString("\n")
-  return err
+  return json.NewEncoder(file).Encode(b)
 }
 
 func ReadBlocks(dir string) (
-  func(yield func(err error, blk Block) bool), func(), error,
+  func(yield func(err error, blk SigBlock) bool), func(), error,
 ) {
   path := filepath.Join(dir, blocksFile)
   file, err := os.Open(path)
@@ -85,26 +93,22 @@ func ReadBlocks(dir string) (
   close := func() {
     file.Close()
   }
-  blocks := func(yield func(err error, blk Block) bool) {
+  blocks := func(yield func(err error, blk SigBlock) bool) {
     sca := bufio.NewScanner(file)
     more := true
     for sca.Scan() && more {
       err := sca.Err()
       if err != nil {
-        yield(err, Block{})
+        yield(err, SigBlock{})
         return
       }
-      jblk := sca.Bytes()
-      if len(jblk) == 0 {
-        continue
-      }
-      var sblk storeBlock
-      err = json.Unmarshal(jblk, &sblk)
+      var blk SigBlock
+      err = json.Unmarshal(sca.Bytes(), &blk)
       if err != nil {
-        more = yield(err, Block{})
+        more = yield(err, SigBlock{})
         continue
       }
-      more = yield(nil, sblk.Block)
+      more = yield(nil, blk)
     }
   }
   return blocks, close, nil
@@ -130,21 +134,8 @@ func ReadBlocksBytes(dir string) (
         yield(err, nil)
         return
       }
-      jblk := sca.Bytes()
-      if len(jblk) == 0 {
-        continue
-      }
-      more = yield(nil, jblk)
+      more = yield(nil, sca.Bytes())
     }
   }
   return blocks, close, nil
-}
-
-func UnmarshalBlockBytes(jblk []byte) (Block, error) {
-  var sblk storeBlock
-  err := json.Unmarshal(jblk, &sblk)
-  if err != nil {
-    return Block{}, err
-  }
-  return sblk.Block, nil
 }

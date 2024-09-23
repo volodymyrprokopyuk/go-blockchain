@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rpc"
@@ -24,7 +24,8 @@ type NodeCfg struct {
   BlockStoreDir string
   // genesis
   Chain string
-  Password string
+  AuthPass string
+  OwnerPass string
   Balance uint64
 }
 
@@ -75,26 +76,77 @@ func NewNode(cfg NodeCfg) *Node {
   return nd
 }
 
+func (n *Node) createBlocks() error {
+  // genesis
+  gen, err := chain.ReadGenesis(n.cfg.BlockStoreDir)
+  if err != nil {
+    return err
+  }
+  // authority
+  path := filepath.Join(n.cfg.KeyStoreDir, string(gen.Authority))
+  auth, err := chain.ReadAccount(path, []byte(n.cfg.AuthPass))
+  if err != nil {
+    return err
+  }
+  // owner
+  addr := "23309c0c52fe0bef535ddd439fa6ffe63363337d92f530a84137f752a524a4e7"
+  path = filepath.Join(n.cfg.KeyStoreDir, addr)
+  acc, err := chain.ReadAccount(path, []byte(n.cfg.OwnerPass))
+  if err != nil {
+    return err
+  }
+  parentHash := gen.Hash()
+  // blocks
+  for i := range 4 {
+    tx := chain.NewTx(
+      chain.Address(addr), chain.Address("beneficiary"), 12, uint64(i + 1),
+    )
+    stx, err := acc.SignTx(tx)
+    if err != nil {
+      return err
+    }
+    txs := make([]chain.SigTx, 0, 1)
+    txs = append(txs, stx)
+    blk := chain.NewBlock(uint64(i + 1), parentHash, txs)
+    sblk, err := auth.SignBlock(blk)
+    if err != nil {
+      return err
+    }
+    parentHash = sblk.Hash()
+    err = sblk.Write(n.cfg.BlockStoreDir)
+    if err != nil {
+      return err
+    }
+  }
+  return nil
+}
+
 func (n *Node) Start() error {
   defer n.ctxCancel()
-  n.wg.Add(1)
-  go n.evStream.StreamEvents()
+
+  // err := n.createBlocks()
+  // if err != nil {
+  //   return err
+  // }
+
+  // n.wg.Add(1)
+  // go n.evStream.StreamEvents()
   state, err := n.stateSync.syncState()
   if err != nil {
     return err
   }
   n.state = state
-  n.blockProp.state = n.state
+  // n.blockProp.state = n.state
   n.wg.Add(1)
   go n.servegRPC()
-  n.wg.Add(1)
-  go n.peerDisc.discoverPeers(30 * time.Second)
-  n.wg.Add(1)
-  go n.txRelay.relayMsgs(10 * time.Second)
-  n.wg.Add(1)
-  go n.blockProp.proposeBlocks(10 * time.Second)
-  n.wg.Add(1)
-  go n.blkRelay.relayMsgs(10 * time.Second)
+  // n.wg.Add(1)
+  // go n.peerDisc.discoverPeers(30 * time.Second)
+  // n.wg.Add(1)
+  // go n.txRelay.relayMsgs(10 * time.Second)
+  // n.wg.Add(1)
+  // go n.blockProp.proposeBlocks(10 * time.Second)
+  // n.wg.Add(1)
+  // go n.blkRelay.relayMsgs(10 * time.Second)
   select {
   case <- n.ctx.Done():
   case err = <- n.chErr:

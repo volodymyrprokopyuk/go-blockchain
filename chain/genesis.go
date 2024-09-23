@@ -7,28 +7,27 @@ import (
 	"time"
 
 	"github.com/dustinxie/ecc"
-	"golang.org/x/crypto/sha3"
 )
 
 const genesisFile = "genesis.json"
 
 type Genesis struct {
   Chain string `json:"chain"`
-  Time time.Time `json:"time"`
+  Authority Address `json:"authority"`
   Balances map[Address]uint64 `json:"balances"`
+  Time time.Time `json:"time"`
 }
 
-func NewGenesis(name string, acc Address, balance uint64) Genesis {
+func NewGenesis(name string, authority, acc Address, balance uint64) Genesis {
   balances := make(map[Address]uint64, 1)
   balances[acc] = balance
-  return Genesis{Chain: name, Time: time.Now(), Balances: balances}
+  return Genesis{
+    Chain: name, Authority: authority, Balances: balances, Time: time.Now(),
+  }
 }
 
 func (g Genesis) Hash() Hash {
-  jgen, _ := json.Marshal(g)
-  hash := make([]byte, 64)
-  sha3.ShakeSum256(hash, jgen)
-  return Hash(hash[:32])
+  return NewHash(g)
 }
 
 type SigGenesis struct {
@@ -41,10 +40,7 @@ func NewSigGenesis(gen Genesis, sig []byte) SigGenesis {
 }
 
 func (g SigGenesis) Hash() Hash {
-  jgen, _ := json.Marshal(g)
-  hash := make([]byte, 64)
-  sha3.ShakeSum256(hash, jgen)
-  return Hash(hash[:32])
+  return NewHash(g)
 }
 
 func (g SigGenesis) Write(dir string) error {
@@ -66,8 +62,9 @@ func VerifyGen(gen SigGenesis) (bool, error) {
     return false, err
   }
   acc := NewAddress(pub)
-  _, exist := gen.Balances[acc]
-  return exist, nil
+  return acc == Address(gen.Authority), nil
+  // _, exist := gen.Balances[acc]
+  // return exist, nil
 }
 
 func ReadGenesis(dir string) (SigGenesis, error) {

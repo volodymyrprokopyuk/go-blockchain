@@ -31,7 +31,9 @@ func nodeStartCmd(_ context.Context) *cobra.Command {
       bootstrap, _ := cmd.Flags().GetBool("bootstrap")
       seedAddr, _ := cmd.Flags().GetString("seed")
       if !bootstrap && len(seedAddr) == 0 {
-        return fmt.Errorf("either --bootstrap or --seed <node> must be provided")
+        return fmt.Errorf(
+          "either --bootstrap or --seed host:port must be provided",
+        )
       }
       if !bootstrap && !reAddr.MatchString(seedAddr) {
         return fmt.Errorf("expected --seed host:port, got %v", seedAddr)
@@ -47,26 +49,29 @@ func nodeStartCmd(_ context.Context) *cobra.Command {
         blockStoreDir = ".blockstore" + port
       }
       name, _ := cmd.Flags().GetString("chain")
-      pass, _ := cmd.Flags().GetString("password")
-      bal, _ := cmd.Flags().GetUint64("balance")
+      authPass, _ := cmd.Flags().GetString("authpass")
+      ownerPass, _ := cmd.Flags().GetString("ownerpass")
+      balance, _ := cmd.Flags().GetUint64("balance")
       cfg := node.NodeCfg{
         NodeAddr: nodeAddr, Bootstrap: bootstrap, SeedAddr: seedAddr,
         KeyStoreDir: keyStoreDir, BlockStoreDir: blockStoreDir,
-        Chain: name, Password: pass, Balance: bal,
+        Chain: name, AuthPass: authPass, OwnerPass: ownerPass, Balance: balance,
       }
       nd := node.NewNode(cfg)
       return nd.Start()
     },
   }
-  cmd.Flags().Bool("bootstrap", false, "peer discovery bootstrap node")
-  cmd.Flags().String("seed", "", "peer discovery seed address host:port")
+  cmd.Flags().Bool("bootstrap", false, "bootstrap node and authority node")
+  cmd.Flags().String("seed", "", "seed address host:port")
   cmd.MarkFlagsMutuallyExclusive("bootstrap", "seed")
   cmd.MarkFlagsOneRequired("bootstrap", "seed")
   cmd.Flags().String("keystore", "", "key store directory")
   cmd.Flags().String("blockstore", "", "block store directory")
   cmd.Flags().String("chain", "blockchain", "name of the blockchain")
-  cmd.Flags().String("password", "", "password for the genesis account")
+  cmd.Flags().String("authpass", "", "password for the authority account")
+  cmd.Flags().String("ownerpass", "", "password for the genesis account")
   cmd.Flags().Uint64("balance", 0, "initial balance for the genesis account")
-  cmd.MarkFlagsRequiredTogether("password", "balance")
+  cmd.MarkFlagsRequiredTogether("bootstrap", "authpass")
+  cmd.MarkFlagsRequiredTogether("ownerpass", "balance")
   return cmd
 }

@@ -1,9 +1,11 @@
 #!/usr/bin/env fish
 
+set -g node localhost:1122
 set -g pass password
 
-# ./bcn node start --node localhost:1122 --bootstrap --password $pass --balance 1000
-# ./bcn account create --node localhost:1122 --password $pass
+# ./bcn node start --node $node --bootstrap --authpass $pass \
+#   --ownerpass $pass --balance 1000
+# ./bcn account create --node $node --ownerpass $pass
 # ./bcn node start --node localhost:1123 --seed localhost:1122
 
 function txSignAndSend -a node pass from to value
@@ -14,12 +16,11 @@ function txSignAndSend -a node pass from to value
   echo $hash
 end
 
-set -l node localhost:1122
-set -l own d8a05ac9b2aa10baf70e611cd6019d317e9983f3d680a770ddc726e6d65311f1
-set -l ben fd29d489ac7887eeafe6e81b060f913b70ea26bb792036067926f315d6057b86
+# set -l own d8a05ac9b2aa10baf70e611cd6019d317e9983f3d680a770ddc726e6d65311f1
+# set -l ben fd29d489ac7887eeafe6e81b060f913b70ea26bb792036067926f315d6057b86
 
-txSignAndSend $node $pass $own $ben 2
-txSignAndSend $node $pass $ben $own 1
+# txSignAndSend $node $pass $own $ben 2
+# txSignAndSend $node $pass $ben $own 1
 
 # ./bcn account balance --node $node --account $own
 # ./bcn account balance --node $node --account $ben

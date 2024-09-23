@@ -3,8 +3,6 @@ package rpc
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"strings"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
@@ -12,7 +10,7 @@ import (
 )
 
 type BlockApplier interface {
-  ApplyBlockToState(blk chain.Block) error
+  ApplyBlockToState(blk chain.SigBlock) error
 }
 
 type BlockRelayer interface {
@@ -29,11 +27,11 @@ type BlockSrv struct {
 
 func NewBlockSrv(
   blockStoreDir string, evStreamer chain.EventStreamer,
-  blkApplicer BlockApplier, blkRelayer BlockRelayer,
+  blkApplier BlockApplier, blkRelayer BlockRelayer,
 ) *BlockSrv {
   return &BlockSrv{
     blockStoreDir: blockStoreDir, evStreamer: evStreamer,
-    blkApplier: blkApplicer, blkRelayer: blkRelayer,
+    blkApplier: blkApplier, blkRelayer: blkRelayer,
   }
 }
 
@@ -84,39 +82,39 @@ func (s *BlockSrv) publishBlock(blk chain.Block) {
   }
 }
 
-func (s *BlockSrv) BlockReceive(
-  stream grpc.ClientStreamingServer[BlockReceiveReq, BlockReceiveRes],
-) error {
-  for {
-    req, err := stream.Recv()
-    if err == io.EOF {
-      res := &BlockReceiveRes{}
-      return stream.SendAndClose(res)
-    }
-    if err != nil {
-      return err
-    }
-    var blk chain.Block
-    err = json.Unmarshal(req.Block, &blk)
-    if err != nil {
-      fmt.Println(err)
-      continue
-    }
-    fmt.Printf("* Block received\n%v", blk)
-    err = s.blkApplier.ApplyBlockToState(blk)
-    if err != nil {
-      fmt.Println(err)
-      continue
-    }
-    err = blk.Write(s.blockStoreDir)
-    if err != nil {
-      fmt.Println(err)
-      continue
-    }
-    s.blkRelayer.RelayBlock(blk)
-    s.publishBlock(blk)
-  }
-}
+// func (s *BlockSrv) BlockReceive(
+//   stream grpc.ClientStreamingServer[BlockReceiveReq, BlockReceiveRes],
+// ) error {
+//   for {
+//     req, err := stream.Recv()
+//     if err == io.EOF {
+//       res := &BlockReceiveRes{}
+//       return stream.SendAndClose(res)
+//     }
+//     if err != nil {
+//       return err
+//     }
+//     var blk chain.Block
+//     err = json.Unmarshal(req.Block, &blk)
+//     if err != nil {
+//       fmt.Println(err)
+//       continue
+//     }
+//     fmt.Printf("* Block received\n%v", blk)
+//     err = s.blkApplier.ApplyBlockToState(blk)
+//     if err != nil {
+//       fmt.Println(err)
+//       continue
+//     }
+//     err = blk.Write(s.blockStoreDir)
+//     if err != nil {
+//       fmt.Println(err)
+//       continue
+//     }
+//     s.blkRelayer.RelayBlock(blk)
+//     s.publishBlock(blk)
+//   }
+// }
 
 func (s *BlockSrv) BlockSearch(
   req *BlockSearchReq, stream grpc.ServerStreamingServer[BlockSearchRes],

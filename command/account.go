@@ -19,7 +19,9 @@ func accountCmd(ctx context.Context) *cobra.Command {
   return cmd
 }
 
-func grpcAccountCreate(ctx context.Context, addr, pass string) (string, error) {
+func grpcAccountCreate(
+  ctx context.Context, addr, ownerPass string,
+) (string, error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -28,7 +30,7 @@ func grpcAccountCreate(ctx context.Context, addr, pass string) (string, error) {
   }
   defer conn.Close()
   cln := rpc.NewAccountClient(conn)
-  req := &rpc.AccountCreateReq{Password: pass}
+  req := &rpc.AccountCreateReq{Password: ownerPass}
   res, err := cln.AccountCreate(ctx, req)
   if err != nil {
     return "", err
@@ -42,8 +44,8 @@ func accountCreateCmd(ctx context.Context) *cobra.Command {
     Short: "Creates an account protected with a password",
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
-      pass, _ := cmd.Flags().GetString("password")
-      acc, err := grpcAccountCreate(ctx, addr, pass)
+      ownerPass, _ := cmd.Flags().GetString("ownerpass")
+      acc, err := grpcAccountCreate(ctx, addr, ownerPass)
       if err != nil {
         return err
       }
@@ -51,8 +53,8 @@ func accountCreateCmd(ctx context.Context) *cobra.Command {
       return nil
     },
   }
-  cmd.Flags().String("password", "", "password to encrypt the account private key")
-  _ = cmd.MarkFlagRequired("password")
+  cmd.Flags().String("ownerpass", "", "password to encrypt the account private key")
+  _ = cmd.MarkFlagRequired("ownerpass")
   return cmd
 }
 

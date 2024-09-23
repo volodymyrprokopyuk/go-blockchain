@@ -30,6 +30,13 @@ func NewAddress(pub *ecdsa.PublicKey) Address {
 
 type Hash [32]byte
 
+func NewHash(val any) Hash {
+  jval, _ := json.Marshal(val)
+  hash := make([]byte, 64)
+  sha3.ShakeSum256(hash, jval)
+  return Hash(hash[:32])
+}
+
 func (h Hash) String() string {
   return hex.EncodeToString(h[:])
 }
