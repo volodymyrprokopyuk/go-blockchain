@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rpc"
@@ -139,8 +140,8 @@ func (n *Node) Start() error {
   // n.blockProp.state = n.state
   n.wg.Add(1)
   go n.servegRPC()
-  // n.wg.Add(1)
-  // go n.peerDisc.discoverPeers(30 * time.Second)
+  n.wg.Add(1)
+  go n.peerDisc.discoverPeers(10 * time.Second)
   // n.wg.Add(1)
   // go n.txRelay.relayMsgs(10 * time.Second)
   // n.wg.Add(1)

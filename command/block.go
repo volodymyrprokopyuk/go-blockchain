@@ -24,7 +24,7 @@ func blockCmd(ctx context.Context) *cobra.Command {
 
 func grpcBlockSearch(
   ctx context.Context, addr string, number uint64, hash, parent string,
-) (func(yield func(err error, blk chain.Block) bool), func(), error) {
+) (func(yield func(err error, blk chain.SigBlock) bool), func(), error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -41,20 +41,20 @@ func grpcBlockSearch(
     return nil, nil, err
   }
   more := true
-  blocks := func(yield func(err error, blk chain.Block) bool) {
+  blocks := func(yield func(err error, blk chain.SigBlock) bool) {
     for more {
       res, err := stream.Recv()
       if err == io.EOF {
         return
       }
       if err != nil {
-        yield(err, chain.Block{})
+        yield(err, chain.SigBlock{})
         return
       }
-      var blk chain.Block
+      var blk chain.SigBlock
       err = json.Unmarshal(res.Block, &blk)
       if err != nil {
-        yield(err, chain.Block{})
+        yield(err, chain.SigBlock{})
         return
       }
       more = yield(nil, blk)

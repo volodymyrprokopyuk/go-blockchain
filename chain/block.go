@@ -39,17 +39,6 @@ func (b Block) Hash() Hash {
   return NewHash(b)
 }
 
-func (b Block) String() string {
-  var bld strings.Builder
-  bld.WriteString(
-    fmt.Sprintf("Blk %4d: %.7s -> %.7s\n", b.Number, b.Hash(), b.Parent),
-  )
-  for _, tx := range b.Txs {
-    bld.WriteString(fmt.Sprintf("%v\n", tx))
-  }
-  return bld.String()
-}
-
 type SigBlock struct {
   Block
   Sig []byte `json:"sig"`
@@ -61,6 +50,17 @@ func NewSigBlock(blk Block, sig []byte) SigBlock {
 
 func (b SigBlock) Hash() Hash {
   return NewHash(b)
+}
+
+func (b SigBlock) String() string {
+  var bld strings.Builder
+  bld.WriteString(
+    fmt.Sprintf("blk %4d: %.7s -> %.7s\n", b.Number, b.Hash(), b.Parent),
+  )
+  for _, tx := range b.Txs {
+    bld.WriteString(fmt.Sprintf("%v\n", tx))
+  }
+  return bld.String()
 }
 
 func VerifyBlock(blk SigBlock, authority Address) (bool, error) {

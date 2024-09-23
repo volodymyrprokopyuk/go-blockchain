@@ -23,12 +23,6 @@ func (t Tx) Hash() Hash {
   return NewHash(t)
 }
 
-func (t Tx) String() string {
-  return fmt.Sprintf(
-    "Tx %.7s: %.7s -> %.7s %8d %8d", t.Hash(), t.From, t.To, t.Value, t.Nonce,
-  )
-}
-
 type SigTx struct {
   Tx
   Sig []byte `json:"sig"`
@@ -40,6 +34,12 @@ func NewSigTx(tx Tx, sig []byte) SigTx {
 
 func (t SigTx) Hash() Hash {
   return NewHash(t)
+}
+
+func (t SigTx) String() string {
+  return fmt.Sprintf(
+    "tx %.7s: %.7s -> %.7s %8d %8d", t.Hash(), t.From, t.To, t.Value, t.Nonce,
+  )
 }
 
 func VerifyTx(tx SigTx) (bool, error) {
@@ -63,6 +63,6 @@ func NewSearchTx(tx SigTx, blkNumber uint64, blkHash Hash) SearchTx {
 
 func (t SearchTx) String() string {
   return fmt.Sprintf(
-    "%v    block: %5d, %.7s", t.SigTx.Tx, t.BlockNumber, t.BlockHash,
+    "%v    blk: %5d    %.7s", t.SigTx, t.BlockNumber, t.BlockHash,
   )
 }

@@ -106,7 +106,7 @@ func (d *peerDiscovery) discoverPeers(period time.Duration) {
           d.AddPeers(peers...)
         }
       }
-      // fmt.Printf("* Peers discovered: %v => %v\n", d.cfg.nodeAddr, d.Peers())
+      // fmt.Printf("* Peers: %v => %v\n", d.cfg.nodeAddr, d.Peers())
     }
   }
 }

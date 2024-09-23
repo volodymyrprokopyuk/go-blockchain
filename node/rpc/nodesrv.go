@@ -25,6 +25,7 @@ func (s *NodeSrv) PeerDiscover(
   if s.peerDisc.Bootstrap() {
     s.peerDisc.AddPeers(req.Peer)
   }
-  res := &PeerDiscoverRes{Peers: s.peerDisc.Peers()}
+  peers := s.peerDisc.Peers()
+  res := &PeerDiscoverRes{Peers: peers}
   return res, nil
 }

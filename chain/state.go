@@ -89,11 +89,11 @@ func (s State) String() string {
   var bld strings.Builder
   bld.WriteString("* Balances\n")
   for acc, bal := range s.balances {
-    bld.WriteString(fmt.Sprintf("Acc %.7s: %26d\n", acc, bal))
+    bld.WriteString(fmt.Sprintf("acc %.7s: %26d\n", acc, bal))
   }
   bld.WriteString("* Nonces\n")
   for acc, nonce := range s.nonces {
-    bld.WriteString(fmt.Sprintf("Acc %.7s: %35d\n", acc, nonce))
+    bld.WriteString(fmt.Sprintf("acc %.7s: %35d\n", acc, nonce))
   }
   bld.WriteString("* Last block\n")
   bld.WriteString(fmt.Sprintf("%v", s.lastBlock))
@@ -106,13 +106,13 @@ func (s State) String() string {
   if s.Pending != nil && len(s.Pending.balances) > 0 {
     bld.WriteString("* Pending balances\n")
     for acc, bal := range s.Pending.balances {
-      bld.WriteString(fmt.Sprintf("Acc %.7s: %26d\n", acc, bal))
+      bld.WriteString(fmt.Sprintf("acc %.7s: %26d\n", acc, bal))
     }
   }
   if s.Pending != nil && len(s.Pending.nonces) > 0 {
     bld.WriteString("* Pending nonces\n")
     for acc, nonce := range s.Pending.nonces {
-      bld.WriteString(fmt.Sprintf("Acc %.7s: %35d\n", acc, nonce))
+      bld.WriteString(fmt.Sprintf("acc %.7s: %35d\n", acc, nonce))
     }
   }
   return bld.String()

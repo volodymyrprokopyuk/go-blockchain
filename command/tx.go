@@ -23,7 +23,7 @@ func txCmd(ctx context.Context) *cobra.Command {
 }
 
 func grpcTxSign(
-  ctx context.Context, addr, from, to string, value uint64, pass string,
+  ctx context.Context, addr, from, to string, value uint64, ownerPass string,
 ) ([]byte, error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -33,7 +33,7 @@ func grpcTxSign(
   }
   defer conn.Close()
   cln := rpc.NewTxClient(conn)
-  req := &rpc.TxSignReq{From: from, To: to, Value: value, Password: pass}
+  req := &rpc.TxSignReq{From: from, To: to, Value: value, Password: ownerPass}
   res, err := cln.TxSign(ctx, req)
   if err != nil {
     return nil, err
@@ -47,11 +47,11 @@ func txSignCmd(ctx context.Context) *cobra.Command {
     Short: "Signs a transaction",
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
-      pass, _ := cmd.Flags().GetString("password")
+      ownerPass, _ := cmd.Flags().GetString("ownerpass")
       from, _ := cmd.Flags().GetString("from")
       to, _ := cmd.Flags().GetString("to")
       value, _ := cmd.Flags().GetUint64("value")
-      jtx, err := grpcTxSign(ctx, addr, from, to, value, pass)
+      jtx, err := grpcTxSign(ctx, addr, from, to, value, ownerPass)
       if err != nil {
         return err
       }
@@ -59,8 +59,8 @@ func txSignCmd(ctx context.Context) *cobra.Command {
       return nil
     },
   }
-  cmd.Flags().String("password", "", "password of debtor account")
-  _ = cmd.MarkFlagRequired("password")
+  cmd.Flags().String("ownerpass", "", "password of debtor account")
+  _ = cmd.MarkFlagRequired("ownerpass")
   cmd.Flags().String("from", "", "debtor address")
   _ = cmd.MarkFlagRequired("from")
   cmd.Flags().String("to", "", "creditor address")

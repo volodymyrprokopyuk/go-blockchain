@@ -46,7 +46,7 @@ func (s *AccountSrv) AccountBalance(
   _ context.Context, req *AccountBalanceReq,
 ) (*AccountBalanceRes, error) {
   acc := req.Address
-  bal := s.balChecker.Balance(chain.Address(acc))
-  res := &AccountBalanceRes{Balance: bal}
+  balance := s.balChecker.Balance(chain.Address(acc))
+  res := &AccountBalanceRes{Balance: balance}
   return res, nil
 }
