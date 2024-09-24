@@ -71,6 +71,10 @@ func (s *State) Balance(acc Address) uint64 {
   return s.balances[acc]
 }
 
+func (s *State) Authority() Address {
+  return s.authority
+}
+
 func (s *State) Nonce(acc Address) uint64 {
   s.mtx.RLock()
   defer s.mtx.RUnlock()
@@ -83,7 +87,7 @@ func (s *State) LastBlock() SigBlock {
   return s.lastBlock
 }
 
-func (s State) String() string {
+func (s *State) String() string {
   s.mtx.RLock()
   defer s.mtx.RUnlock()
   var bld strings.Builder
@@ -126,13 +130,13 @@ func (s *State) ApplyTx(tx SigTx) error {
     return err
   }
   if !valid {
-    return fmt.Errorf("error: invalid signature\n%v", tx)
+    return fmt.Errorf("error: invalid signature\n%v\n", tx)
   }
   if tx.Nonce != s.nonces[tx.From] + 1 {
-    return fmt.Errorf("error: invalid nonce\n%v", tx)
+    return fmt.Errorf("error: invalid nonce\n%v\n", tx)
   }
   if s.balances[tx.From] < tx.Value {
-    return fmt.Errorf("error: insufficient funds\n%v", tx)
+    return fmt.Errorf("error: insufficient funds\n%v\n", tx)
   }
   s.balances[tx.From] -= tx.Value
   s.balances[tx.To] += tx.Value
@@ -141,7 +145,7 @@ func (s *State) ApplyTx(tx SigTx) error {
   return nil
 }
 
-func (s *State) CreateBlock() Block {
+func (s *State) CreateBlock(authority Account) (SigBlock, error) {
   // no need to lock/unlock as CreateBlock is always executed on a clone
   pndTxs := make([]SigTx, 0, len(s.Pending.txs))
   for _, tx := range s.Pending.txs {
@@ -163,10 +167,13 @@ func (s *State) CreateBlock() Block {
     }
     txs = append(txs, tx)
   }
+  var blk Block
   if s.lastBlock.Number == 0 {
-    return NewBlock(s.lastBlock.Number + 1, s.genesisHash, txs)
+    blk = NewBlock(s.lastBlock.Number + 1, s.genesisHash, txs)
+  } else {
+    blk = NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
   }
-  return NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
+  return authority.SignBlock(blk)
 }
 
 func (s *State) ApplyBlock(blk SigBlock) error {

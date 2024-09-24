@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -13,13 +14,14 @@ import (
 type blockProposer struct {
   ctx context.Context
   wg *sync.WaitGroup
+  authority chain.Account
   state *chain.State
-  blkRelay *msgRelay[chain.Block, grpcMsgRelay[chain.Block]]
+  blkRelay *msgRelay[chain.SigBlock, grpcMsgRelay[chain.SigBlock]]
 }
 
 func newBlockProposer(
   ctx context.Context, wg *sync.WaitGroup,
-  blkRelay *msgRelay[chain.Block, grpcMsgRelay[chain.Block]],
+  blkRelay *msgRelay[chain.SigBlock, grpcMsgRelay[chain.SigBlock]],
 ) *blockProposer {
   return &blockProposer{ctx: ctx, wg: wg, blkRelay: blkRelay}
 }
@@ -40,19 +42,23 @@ func (p *blockProposer) proposeBlocks(maxPeriod time.Duration) {
       return
     case <- randPropose.C:
       randPropose.Reset(randPeriod(maxPeriod))
-      // clone := p.state.Clone()
-      // blk := clone.CreateBlock()
-      // if len(blk.Txs) == 0 {
-      //   continue
-      // }
-      // clone = p.state.Clone()
-      // err := clone.ApplyBlock(blk)
-      // if err != nil {
-      //   fmt.Println(err)
-      //   continue
-      // }
-      // p.blkRelay.RelayBlock(blk)
-      // fmt.Printf("* Block proposed: %v", blk)
+      clone := p.state.Clone()
+      blk, err := clone.CreateBlock(p.authority)
+      if err != nil {
+        fmt.Println(err)
+        continue
+      }
+      if len(blk.Txs) == 0 {
+        continue
+      }
+      clone = p.state.Clone()
+      err = clone.ApplyBlock(blk)
+      if err != nil {
+        fmt.Println(err)
+        continue
+      }
+      p.blkRelay.RelayBlock(blk)
+      fmt.Printf("* Block proposed: %v", blk)
     }
   }
 }

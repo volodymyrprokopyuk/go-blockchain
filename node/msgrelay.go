@@ -49,8 +49,8 @@ var grpcTxRelay grpcMsgRelay[chain.SigTx] = func(
   }
 }
 
-var grpcBlockRelay grpcMsgRelay[chain.Block] = func(
-  ctx context.Context, conn *grpc.ClientConn, chRelay chan chain.Block,
+var grpcBlockRelay grpcMsgRelay[chain.SigBlock] = func(
+  ctx context.Context, conn *grpc.ClientConn, chRelay chan chain.SigBlock,
 ) error {
   cln := rpc.NewBlockClient(conn)
   stream, err := cln.BlockReceive(context.Background())
@@ -160,7 +160,7 @@ func (r *msgRelay[Msg, Relay]) peerRelay(peer string) chan Msg {
 func (r *msgRelay[Msg, Relay]) relayMsgs() {
   defer r.wg.Done()
   r.wgRelays.Add(1)
-  go r.addPeers(30 * time.Second)
+  go r.addPeers(10 * time.Second)
   chRelays := make(map[string]chan Msg)
   closeRelays := func() {
     for _, chRelay := range chRelays {
@@ -178,7 +178,7 @@ func (r *msgRelay[Msg, Relay]) relayMsgs() {
       if exist {
         continue
       }
-      fmt.Printf("* Peer TxRelay: %v\n", peer)
+      fmt.Printf("* Peer Relay: %v\n", peer)
       chRelay := r.peerRelay(peer)
       chRelays[peer] = chRelay
     case peer := <- r.chPeerRem:
