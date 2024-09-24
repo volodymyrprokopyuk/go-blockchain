@@ -71,8 +71,8 @@ func NewNode(cfg NodeCfg) *Node {
   }
   nd.peerDisc = newPeerDiscovery(nd.ctx, nd.wg, peerDiscCfg)
   nd.stateSync = newStateSync(nd.ctx, nd.cfg, nd.peerDisc)
-  nd.txRelay = newMsgRelay(nd.ctx, nd.wg, 100, false, nd.peerDisc, grpcTxRelay)
-  nd.blkRelay = newMsgRelay(nd.ctx, nd.wg, 10, false, nd.peerDisc, grpcBlockRelay)
+  nd.txRelay = newMsgRelay(nd.ctx, nd.wg, 100, grpcTxRelay, false, nd.peerDisc)
+  nd.blkRelay = newMsgRelay(nd.ctx, nd.wg, 10, grpcBlockRelay, false, nd.peerDisc)
   nd.blockProp = newBlockProposer(nd.ctx, nd.wg, nd.blkRelay)
   return nd
 }
@@ -141,9 +141,9 @@ func (n *Node) Start() error {
   n.wg.Add(1)
   go n.servegRPC()
   n.wg.Add(1)
-  go n.peerDisc.discoverPeers(10 * time.Second)
-  // n.wg.Add(1)
-  // go n.txRelay.relayMsgs(10 * time.Second)
+  go n.peerDisc.discoverPeers(30 * time.Second)
+  n.wg.Add(1)
+  go n.txRelay.relayMsgs()
   // n.wg.Add(1)
   // go n.blockProp.proposeBlocks(10 * time.Second)
   // n.wg.Add(1)
@@ -153,7 +153,9 @@ func (n *Node) Start() error {
   case err = <- n.chErr:
   }
   n.ctxCancel() // restore default signal handling
+  fmt.Println("GracefulStop")
   n.grpcSrv.GracefulStop()
+  fmt.Println("GracefulStop 2")
   n.wg.Wait()
   return err
 }
