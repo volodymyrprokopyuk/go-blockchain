@@ -84,7 +84,7 @@ func (d *peerDiscovery) grpcPeerDiscover(peer string) ([]string, error) {
 
 func (d *peerDiscovery) discoverPeers(period time.Duration) {
   defer d.wg.Done()
-  tick := time.NewTicker(5 * time.Second) // initial early peer discovery
+  tick := time.NewTicker(4 * time.Second) // initial early peer discovery
   defer tick.Stop()
   reset := false
   for {

@@ -21,18 +21,17 @@ var grpcTxRelay grpcMsgRelay[chain.SigTx] = func(
   ctx context.Context, conn *grpc.ClientConn, chRelay chan chain.SigTx,
 ) error {
   cln := rpc.NewTxClient(conn)
-  stream, err := cln.TxReceive(ctx)
+  stream, err := cln.TxReceive(context.Background())
   if err != nil {
     return err
   }
+  defer stream.CloseAndRecv()
   for {
     select {
     case <- ctx.Done():
-      _, _ = stream.CloseAndRecv()
       return nil
     case tx, open := <- chRelay:
       if !open {
-        _, _ = stream.CloseAndRecv()
         return nil
       }
       jtx, err := json.Marshal(tx)
@@ -54,18 +53,17 @@ var grpcBlockRelay grpcMsgRelay[chain.Block] = func(
   ctx context.Context, conn *grpc.ClientConn, chRelay chan chain.Block,
 ) error {
   cln := rpc.NewBlockClient(conn)
-  stream, err := cln.BlockReceive(ctx)
+  stream, err := cln.BlockReceive(context.Background())
   if err != nil {
     return err
   }
+  defer stream.CloseAndRecv()
   for {
     select {
     case <- ctx.Done():
-      _, _ = stream.CloseAndRecv()
       return nil
     case blk, open := <- chRelay:
       if !open {
-        _, _ = stream.CloseAndRecv()
         return nil
       }
       jblk, err := json.Marshal(blk)
@@ -116,13 +114,18 @@ func (r *msgRelay[Msg, Relay]) RelayBlock(blk Msg) {
 
 func (r *msgRelay[Msg, Relay]) addPeers(period time.Duration) {
   defer r.wgRelays.Done()
-  tick := time.NewTicker(period)
+  tick := time.NewTicker(6 * time.Second) // initial early add peers
   defer tick.Stop()
+  reset := false
   for {
     select {
     case <- r.ctx.Done():
       return
     case <- tick.C:
+      if !reset {
+        tick.Reset(period)
+        reset = true
+      }
       for _, peer := range r.peerDisc.Peers() {
         r.chPeerAdd <- peer
       }
@@ -157,7 +160,7 @@ func (r *msgRelay[Msg, Relay]) peerRelay(peer string) chan Msg {
 func (r *msgRelay[Msg, Relay]) relayMsgs() {
   defer r.wg.Done()
   r.wgRelays.Add(1)
-  go r.addPeers(5 * time.Second)
+  go r.addPeers(30 * time.Second)
   chRelays := make(map[string]chan Msg)
   closeRelays := func() {
     for _, chRelay := range chRelays {
@@ -175,6 +178,7 @@ func (r *msgRelay[Msg, Relay]) relayMsgs() {
       if exist {
         continue
       }
+      fmt.Printf("* Peer TxRelay: %v\n", peer)
       chRelay := r.peerRelay(peer)
       chRelays[peer] = chRelay
     case peer := <- r.chPeerRem:

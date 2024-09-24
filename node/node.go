@@ -151,11 +151,10 @@ func (n *Node) Start() error {
   select {
   case <- n.ctx.Done():
   case err = <- n.chErr:
+    fmt.Println(err)
   }
   n.ctxCancel() // restore default signal handling
-  fmt.Println("GracefulStop")
   n.grpcSrv.GracefulStop()
-  fmt.Println("GracefulStop 2")
   n.wg.Wait()
   return err
 }
