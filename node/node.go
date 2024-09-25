@@ -62,7 +62,7 @@ func NewNode(cfg NodeCfg) *Node {
   nd.wg = new(sync.WaitGroup)
   nd.chErr = make(chan error, 1)
   // events
-  nd.evStream = newEventStream(nd.ctx, nd.wg)
+  nd.evStream = newEventStream(nd.ctx, nd.wg, 100)
   // components
   peerDiscCfg := peerDiscoveryCfg{
     nodeAddr: nd.cfg.NodeAddr,
@@ -130,8 +130,8 @@ func (n *Node) Start() error {
   //   return err
   // }
 
-  // n.wg.Add(1)
-  // go n.evStream.StreamEvents()
+  n.wg.Add(1)
+  go n.evStream.streamEvents()
   state, err := n.stateSync.syncState()
   if err != nil {
     return err

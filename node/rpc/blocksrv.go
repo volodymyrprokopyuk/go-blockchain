@@ -22,17 +22,17 @@ type BlockRelayer interface {
 type BlockSrv struct {
   UnimplementedBlockServer
   blockStoreDir string
-  evStreamer chain.EventStreamer
+  eventPub chain.EventPublisher
   blkApplier BlockApplier
   blkRelayer BlockRelayer
 }
 
 func NewBlockSrv(
-  blockStoreDir string, evStreamer chain.EventStreamer,
+  blockStoreDir string, eventPub chain.EventPublisher,
   blkApplier BlockApplier, blkRelayer BlockRelayer,
 ) *BlockSrv {
   return &BlockSrv{
-    blockStoreDir: blockStoreDir, evStreamer: evStreamer,
+    blockStoreDir: blockStoreDir, eventPub: eventPub,
     blkApplier: blkApplier, blkRelayer: blkRelayer,
   }
 }
@@ -76,11 +76,11 @@ func (s *BlockSrv) BlockSync(
 func (s *BlockSrv) publishBlock(blk chain.SigBlock) {
   jblk, _ := json.Marshal(blk)
   event := chain.NewEvent(chain.EvBlock, "validated", jblk)
-  s.evStreamer.PublishEvent(event)
+  s.eventPub.PublishEvent(event)
   for _, tx := range blk.Txs {
     jtx, _ := json.Marshal(tx)
     event := chain.NewEvent(chain.EvTx, "validated", jtx)
-    s.evStreamer.PublishEvent(event)
+    s.eventPub.PublishEvent(event)
   }
 }
 
@@ -114,7 +114,7 @@ func (s *BlockSrv) BlockReceive(
       continue
     }
     s.blkRelayer.RelayBlock(blk)
-    // s.publishBlock(blk)
+    s.publishBlock(blk)
   }
 }
 

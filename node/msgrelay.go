@@ -126,7 +126,13 @@ func (r *msgRelay[Msg, Relay]) addPeers(period time.Duration) {
         tick.Reset(period)
         reset = true
       }
-      for _, peer := range r.peerDisc.Peers() {
+      var peers []string
+      if r.selfRelay {
+        peers = r.peerDisc.SelfPeers()
+      } else {
+        peers = r.peerDisc.Peers()
+      }
+      for _, peer := range peers {
         r.chPeerAdd <- peer
       }
     }

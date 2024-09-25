@@ -16,11 +16,11 @@ const (
 func (t EventType) String() string {
   switch t {
   case EvTx:
-    return "Tx"
+    return "tx"
   case EvBlock:
-    return "Block"
+    return "blk"
   default:
-    return "Event"
+    return "ev"
   }
 }
 
@@ -44,7 +44,7 @@ func (e Event) String() string {
     }
     return fmt.Sprintf("%v %v\n%v", e.Type, e.Action, tx)
   case EvBlock:
-    var blk Block
+    var blk SigBlock
     err := json.Unmarshal(e.Body, &blk)
     if err != nil {
       return err.Error()
@@ -55,6 +55,6 @@ func (e Event) String() string {
   }
 }
 
-type EventStreamer interface {
+type EventPublisher interface {
   PublishEvent(event Event)
 }
