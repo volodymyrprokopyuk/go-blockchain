@@ -2,11 +2,17 @@ package command
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"regexp"
 
 	"github.com/spf13/cobra"
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/node"
+	"github.com/volodymyrprokopyuk/go-blockchain/node/rpc"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func nodeCmd(ctx context.Context) *cobra.Command {
@@ -14,7 +20,7 @@ func nodeCmd(ctx context.Context) *cobra.Command {
     Use: "node",
     Short: "Manages the blockchain node",
   }
-  cmd.AddCommand(nodeStartCmd(ctx))
+  cmd.AddCommand(nodeStartCmd(ctx), nodeSubscribeCmd(ctx))
   return cmd
 }
 
@@ -73,5 +79,75 @@ func nodeStartCmd(_ context.Context) *cobra.Command {
   cmd.Flags().Uint64("balance", 0, "initial balance for the genesis account")
   cmd.MarkFlagsRequiredTogether("bootstrap", "authpass")
   cmd.MarkFlagsRequiredTogether("ownerpass", "balance")
+  return cmd
+}
+
+func grpcStreamSubscribe(
+  ctx context.Context, addr string, evTypesStr []string,
+) (func(yield func(err error, event chain.Event) bool), func(), error) {
+  conn, err := grpc.NewClient(
+    addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
+  )
+  if err != nil {
+    return nil, nil, err
+  }
+  close := func() {
+    conn.Close()
+  }
+  cln := rpc.NewNodeClient(conn)
+  evTypes := make([]uint64, len(evTypesStr))
+  for i, evTypeStr := range evTypesStr {
+    evTypes[i] = uint64(chain.NewEventType(evTypeStr))
+  }
+  req := &rpc.StreamSubscribeReq{EventTypes: evTypes}
+  stream, err := cln.StreamSubscribe(ctx, req)
+  if err != nil {
+    return nil, nil, err
+  }
+  more := true
+  events := func(yield func(err error, event chain.Event) bool) {
+    for more {
+      res, err := stream.Recv()
+      if err == io.EOF {
+        return
+      }
+      if err != nil {
+        yield(err, chain.Event{})
+        return
+      }
+      var event chain.Event
+      err = json.Unmarshal(res.Event, &event)
+      if err != nil {
+        yield(err, chain.Event{})
+        return
+      }
+      more = yield(nil, event)
+    }
+  }
+  return events, close, nil
+}
+
+func nodeSubscribeCmd(ctx context.Context) *cobra.Command {
+  cmd := &cobra.Command{
+    Use: "subscribe",
+    Short: "Subscribes to selected set of event types",
+    RunE: func(cmd *cobra.Command, _ []string) error {
+      addr, _ := cmd.Flags().GetString("node")
+      evTypesStr, _ := cmd.Flags().GetStringSlice("events")
+      events, closeEvents, err := grpcStreamSubscribe(ctx, addr, evTypesStr)
+      if err != nil {
+        return err
+      }
+      defer closeEvents()
+      for err, event := range events {
+        if err != nil {
+          return err
+        }
+        fmt.Printf("%v\n", event)
+      }
+      return nil
+    },
+  }
+  cmd.Flags().StringSlice("events", []string{"all"}, "event types of interest")
   return cmd
 }

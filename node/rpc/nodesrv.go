@@ -48,20 +48,28 @@ func (s *NodeSrv) StreamSubscribe(
 ) error {
   sub := fmt.Sprint(rand.Intn(999999))
   chStream := s.evStreamer.AddSubscriber(sub)
-  for event := range chStream {
-    if slices.Contains(req.EventTypes, uint64(event.Type)) {
-      jev, err := json.Marshal(event)
-      if err != nil {
-        fmt.Println(err)
-        continue
+  defer s.evStreamer.RemoveSubscriber(sub)
+  for {
+    select {
+    case <- stream.Context().Done():
+      return nil
+    case event, open := <- chStream:
+      if !open {
+        return nil
       }
-      res := &StreamSubscribeRes{Event: jev}
-      err = stream.Send(res)
-      if err != nil {
-        return err
+      if slices.Contains(req.EventTypes, uint64(0)) ||
+        slices.Contains(req.EventTypes, uint64(event.Type)) {
+        jev, err := json.Marshal(event)
+        if err != nil {
+          fmt.Println(err)
+          continue
+        }
+        res := &StreamSubscribeRes{Event: jev}
+        err = stream.Send(res)
+        if err != nil {
+          return err
+        }
       }
     }
   }
-  s.evStreamer.RemoveSubscriber(sub)
-  return nil
 }

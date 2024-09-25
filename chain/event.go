@@ -13,6 +13,19 @@ const (
   EvBlock EventType = 2
 )
 
+func NewEventType(eventStr string) EventType {
+  switch eventStr {
+  case "all":
+    return EvAll
+  case "tx":
+    return EvTx
+  case "blk", "block":
+    return EvBlock
+  default:
+    panic(fmt.Sprintf("unsupported event type: %v", eventStr))
+  }
+}
+
 func (t EventType) String() string {
   switch t {
   case EvTx:
