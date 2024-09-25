@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-type EventType uint32
+type EventType uint64
 
 const (
   EvAll EventType = 0

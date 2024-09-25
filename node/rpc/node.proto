@@ -10,25 +10,15 @@ message PeerDiscoverRes {
   repeated string Peers = 1;
 }
 
-// enum EventType {
-//   EV_ALL = 0;
-//   EV_TX = 1;
-//   EV_BLOCK = 2;
-// }
-
-message EventStreamReq {
-  // repeated EventType EventTypes = 1;
-  repeated uint32 EventTypes = 1;
+message StreamSubscribeReq {
+  repeated uint64 EventTypes = 1;
 }
 
-message EventStreamRes {
-  // EventType EventType = 1;
-  // string Action = 2;
-  // bytes Body = 3;
+message StreamSubscribeRes {
   bytes Event = 1;
 }
 
 service Node {
   rpc PeerDiscover(PeerDiscoverReq) returns (PeerDiscoverRes);
-  rpc EventStream(EventStreamReq) returns (stream EventStreamRes);
+  rpc StreamSubscribe(StreamSubscribeReq) returns (stream StreamSubscribeRes);
 }

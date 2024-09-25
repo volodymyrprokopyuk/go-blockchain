@@ -177,7 +177,7 @@ func (n *Node) servegRPC() {
   defer lis.Close()
   fmt.Printf("* gRPC %v\n", n.cfg.NodeAddr)
   n.grpcSrv = grpc.NewServer()
-  node := rpc.NewNodeSrv(n.peerDisc)
+  node := rpc.NewNodeSrv(n.peerDisc, n.evStream)
   rpc.RegisterNodeServer(n.grpcSrv, node)
   acc := rpc.NewAccountSrv(n.cfg.KeyStoreDir, n.state)
   rpc.RegisterAccountServer(n.grpcSrv, acc)

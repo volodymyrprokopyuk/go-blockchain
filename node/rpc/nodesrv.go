@@ -2,6 +2,13 @@ package rpc
 
 import (
 	context "context"
+	"encoding/json"
+	"fmt"
+	"math/rand"
+	"slices"
+
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
+	grpc "google.golang.org/grpc"
 )
 
 type PeerDiscoverer interface {
@@ -10,13 +17,19 @@ type PeerDiscoverer interface {
   Peers() []string;
 }
 
+type EventStreamer interface {
+  AddSubscriber(sub string) chan chain.Event
+  RemoveSubscriber(sub string)
+}
+
 type NodeSrv struct {
   UnimplementedNodeServer
   peerDisc PeerDiscoverer
+  evStreamer EventStreamer
 }
 
-func NewNodeSrv(peerDisc PeerDiscoverer) *NodeSrv {
-  return &NodeSrv{peerDisc: peerDisc}
+func NewNodeSrv(peerDisc PeerDiscoverer, evStreamer EventStreamer) *NodeSrv {
+  return &NodeSrv{peerDisc: peerDisc, evStreamer: evStreamer}
 }
 
 func (s *NodeSrv) PeerDiscover(
@@ -28,4 +41,27 @@ func (s *NodeSrv) PeerDiscover(
   peers := s.peerDisc.Peers()
   res := &PeerDiscoverRes{Peers: peers}
   return res, nil
+}
+
+func (s *NodeSrv) StreamSubscribe(
+  req *StreamSubscribeReq, stream grpc.ServerStreamingServer[StreamSubscribeRes],
+) error {
+  sub := fmt.Sprint(rand.Intn(999999))
+  chStream := s.evStreamer.AddSubscriber(sub)
+  for event := range chStream {
+    if slices.Contains(req.EventTypes, uint64(event.Type)) {
+      jev, err := json.Marshal(event)
+      if err != nil {
+        fmt.Println(err)
+        continue
+      }
+      res := &StreamSubscribeRes{Event: jev}
+      err = stream.Send(res)
+      if err != nil {
+        return err
+      }
+    }
+  }
+  s.evStreamer.RemoveSubscriber(sub)
+  return nil
 }
