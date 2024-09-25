@@ -1,11 +1,41 @@
 package chain
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/dustinxie/ecc"
+	"golang.org/x/crypto/sha3"
 )
+
+type Hash [32]byte
+
+func NewHash(val any) Hash {
+  jval, _ := json.Marshal(val)
+  hash := make([]byte, 64)
+  sha3.ShakeSum256(hash, jval)
+  return Hash(hash[:32])
+}
+
+func (h Hash) String() string {
+  return hex.EncodeToString(h[:])
+}
+
+func (h Hash) Bytes() []byte {
+  hash := [32]byte(h)
+  return hash[:]
+}
+
+func (h Hash) MarshalText() ([]byte, error) {
+  return []byte(hex.EncodeToString(h[:])), nil
+}
+
+func (h *Hash) UnmarshalText(hash []byte) error {
+  _, err := hex.Decode(h[:], hash)
+  return err
+}
 
 type Tx struct {
   From Address `json:"from"`

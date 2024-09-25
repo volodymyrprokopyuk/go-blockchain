@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"math/big"
 	"os"
@@ -12,18 +13,29 @@ import (
 
 	"github.com/dustinxie/ecc"
 	"golang.org/x/crypto/argon2"
+	"golang.org/x/crypto/sha3"
 )
 
 const encKeyLen = uint32(32)
 
+type p256k1PublicKey struct {
+  Curve string `json:"curve"`
+  X *big.Int `json:"x"`
+  Y *big.Int `json:"y"`
+}
+
+func newP256k1PublicKey(pub *ecdsa.PublicKey) p256k1PublicKey {
+  return p256k1PublicKey{Curve: "P-256k1", X: pub.X, Y: pub.Y}
+}
+
 type p256k1PrivateKey struct {
-  P256k1PublicKey
+  p256k1PublicKey
   D *big.Int `json:"d"`
 }
 
 func newP256k1PrivateKey(prv *ecdsa.PrivateKey) p256k1PrivateKey {
   return p256k1PrivateKey{
-    P256k1PublicKey: NewP256k1PublicKey(&prv.PublicKey), D: prv.D,
+    p256k1PublicKey: newP256k1PublicKey(&prv.PublicKey), D: prv.D,
   }
 }
 
@@ -33,6 +45,15 @@ func (k *p256k1PrivateKey) publicKey() *ecdsa.PublicKey {
 
 func (k *p256k1PrivateKey) privateKey() *ecdsa.PrivateKey {
   return &ecdsa.PrivateKey{PublicKey: *k.publicKey(), D: k.D}
+}
+
+type Address string
+
+func NewAddress(pub *ecdsa.PublicKey) Address {
+  jpub, _ := json.Marshal(newP256k1PublicKey(pub))
+  hash := make([]byte, 64)
+  sha3.ShakeSum256(hash, jpub)
+  return Address(hex.EncodeToString(hash[:32]))
 }
 
 type Account struct {
