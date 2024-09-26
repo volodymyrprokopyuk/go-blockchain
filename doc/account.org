@@ -12,48 +12,36 @@
 Account components
 - *Private key* is a /large randomly generated secret number/ used to control
   assets on the blockchain by signing transactions
-- *Public address* is a /hash of a public key/ (derived from a private key) that
-  uniquely identifies an account on the blockchain
+- *Public address* is a /hash of the public key/ (derived from the private key)
+  that uniquely identifies an account on the blockchain
 - *Current balance* is the /amount of divisible cryptocurrency/ or /indivisible
-  tokens/ controlled by a private key of an account
+  tokens/ controlled by the private key of an account
 - *Transactions* is a time-ordered /list of debit and credit transactions/
   involving an account
 
 Operations on an account
 - *Create an account*, derive a public address, and store a password-protected
   private key
-- *Sign a transaction* with the account private key
-- *Verify a signed transaction* against the public address on the signing
+- *Sign a transaction* with the private key of an account
+- *Verify a transaction signature* against the public address of the signing
   account
 - *Check the current balance* of cryptocurrency and tokens
-- *List transactions* enumerate debit and credit transactions associated with an
+- *List transactions* enumerate debit and credit transactions involving an
   account
 
 *** Private and public key pair
 
-Accounts on the blockchain are represented by private and public key pairs
+Accounts on the blockchain are represented by key pairs each consisting of a
+private and a public key
 
 - Private key :: A private key is a /large randomly generated secret number/
-  that is used to derive a public key and /digitally sign transactions/. A
-  private key must be kept in secret to /preserve account authenticity/ and
-  /control account assets/
+  that is used to /derive a public key/ and /digitally sign transactions/. A
+  private key *must be kept in secret* to /preserve account authenticity/ and
+  /control account assets/ on the blockchain
 - Public key :: A public key is a /pair of large numbers/ derived from a private
   key. A public key is used to /identify an account/ on the blockchain and
-  /verify transactions/ signed with the corresponding private key
-
-*** Signing and verifying transactions
-
-- Sign transaction :: A hash of an encoded /transaction is signed with a private
-  key/. The sign operation produces a signature that is used to verify the
-  signed transaction
-- Verify transaction :: A /public key is recovered/ from the hash of an encoded
-  transaction and the associated signature. An account address derived from the
-  recovered public key is compared with the =From= address of the signed
-  transaction. If both addresses match, the signature is valid. A valid
-  signatures guarantees /integrity of the transaction/ (the transaction has not
-  been tampered with) and /authenticity of the transaction/ (the transaction has
-  been signed by the owner of the =From= account) if the account private key has
-  not been compromised
+  /verify transactions/ signed with the corresponding private key. A public key
+  *can be safely shared* with any participant on the blockchain
 
 ** Design and implementation
 
@@ -61,7 +49,7 @@ Accounts on the blockchain are represented by private and public key pairs
 
 The implementation of this blockchain uses the *elliptic-curve cryptography*
 (*ECC*). Specifically, the *Secp256k1 elliptic curve* is used for generation of
-key pairs for the blockchain accounts and signing and verification of
+key pairs for accounts on the blockchain, as well as signing and verification of
 transactions on the blockchain
 
 - Secp256k1 public key :: The public key holds the name =P-256k1= of the =Curve=
@@ -109,10 +97,10 @@ and retrieval of accounts on the blockchain
 *** Account address with the Keccak256 hash function
 
 - Account address :: An account address uniquely identifies an account on the
-  blockchain. An account address is the /Keccak256 hash of an encoded public
-  key/ associated with the account. The account =Address= is implemented as a
-  type alias to a =string=. An account address is calculated from a
-  =*ecdsa.PublicKey=
+  blockchain and can be safely shared with any participant on the blockchain. An
+  account address is the /Keccak256 hash of an encoded public key/ associated
+  with the account. The account =Address= is implemented as a type alias to a
+  =string=. An account address is calculated from a =*ecdsa.PublicKey=
   #+BEGIN_SRC go
 type Address string
 
@@ -146,14 +134,16 @@ func NewAccount() (Account, error) {
   #+END_SRC
 
 A private key is the only piece of information required to re-create an account
-after persistence to a secured file controlled by the owner of the account.
+after persistence to a secured file controlled by the owner of an account.
 Accounts on this blockchain are persisted to files with restricted access. A
-private key is encrypted with a password before being persisted to a file
+private key is encrypted with a password before being persisted to a file. Only
+the owner of an account can re-create and use a persisted account by providing
+the password
 
-- Account persistence :: The account persistence process starts with /encoding
-  the private key to JSON/, then /encrypts the JSON/ with an /owner-provided
-  password/, and, finally, /writes the ciphertext/ to a file with restricted
-  access
+- Account persistence :: The account persistence process
+  - Encode a key pair to JSON
+  - Encrypt the encoded key pair with the owner-provided password
+  - Write the encrypted key pair to a file with restricted access
   #+BEGIN_SRC go
 func (a Account) Write(dir string, pass []byte) error {
   jprv, err := a.encodePrivateKey()
@@ -173,7 +163,7 @@ func (a Account) Write(dir string, pass []byte) error {
 }
   #+END_SRC
 
-The encoded key pair before encryption
+The JSON encoded key pair before encryption has the following form
 #+BEGIN_SRC json
 {
   "curve":"P-256k1",
@@ -183,11 +173,11 @@ The encoded key pair before encryption
 }
 #+END_SRC
 
-- Account reading :: A persisted account is re-created by reading its private
-  key encrypted with an owner-provided password from a file with restricted
-  access. The reading process starts with /reading the ciphertext/, then
-  /decrypts a private key/ with an /owner-provided password/, and, finally,
-  /constructs the account/ with the address using the private key
+- Account reading :: The account re-creation process
+  - Read the encrypted key pair from a file
+  - Decrypt the the encrypted key pair with the owner-provided password
+  - Decode the encoded key pair to a private key
+  - Re-create the account from the decoded private key
   #+BEGIN_SRC go
 func ReadAccount(path string, pass []byte) (Account, error) {
   cprv, err := os.ReadFile(path)
@@ -202,8 +192,74 @@ func ReadAccount(path string, pass []byte) (Account, error) {
 }
   #+END_SRC
 
-*** AES-GCM encryption with Argon2 KDF of Secp256k1 private keys
+*** AES-GCM encryption with Argon2 KDF of Secp256k1 key pairs
 
-*** ECC signing and verification of transactions
+- AES-GCM encryption with Argon2 KDF :: The encryption process
+  - *Argon2 key derivation function* (*KDF*) derives a cryptographically strong
+    encryption key from the owner-provided password and a randomly generated
+    salt
+  - Create the *AES block cipher* that uses the derived cryptographically strong
+    encryption key
+  - Create the *AES-GCM encryption mode* from the AES block cipher
+  - AES-GCM encrypts the encoded key pair with the randomly generated nonce
+  - Pack the random salt, the random nonce, and the ciphertext all together into
+    a slice of bytes to be written to a file. Both the salt for the Argon2 KDF
+    and the nonce for the AES-GCM are public, but must be unique
+    #+BEGIN_SRC go
+  func encryptWithPassword(msg, pass []byte) ([]byte, error) {
+    salt := make([]byte, encKeyLen)
+    _, err := rand.Read(salt)
+    if err != nil {
+      return nil, err
+    }
+    key := argon2.IDKey(pass, salt, 1, 256, 1, encKeyLen)
+    blk, err := aes.NewCipher(key)
+    if err != nil {
+      return nil, err
+    }
+    gcm, err := cipher.NewGCM(blk)
+    if err != nil {
+      return nil, err
+    }
+    nonce := make([]byte, gcm.NonceSize())
+    _, err = rand.Read(nonce)
+    if err != nil {
+      return nil, err
+    }
+    ciph := gcm.Seal(nonce, nonce, msg, nil)
+    ciph = append(salt, ciph...)
+    return ciph, nil
+  }
+    #+END_SRC
+
+- AES-GCM decryption with Argon2 KDF :: The decryption process
+  - *Argon2 KDF* derives the encryption key from the owner-provided password and
+    the random salt extracted from the ciphertext
+  - Create the *AES block cipher* that uses the derived cryptographically strong
+    encryption key
+  - Create the *AES-GCM encryption mode* from the AES block cipher
+  - AES-GCM decrypts the encoded key pair using the ciphertext and the random
+    nonce extracted from the ciphertext
+    #+BEGIN_SRC go
+  func decryptWithPassword(ciph, pass []byte) ([]byte, error) {
+    salt, ciph := ciph[:encKeyLen], ciph[encKeyLen:]
+    key := argon2.IDKey(pass, salt, 1, 256, 1, encKeyLen)
+    blk, err := aes.NewCipher(key)
+    if err != nil {
+      return nil, err
+    }
+    gcm, err := cipher.NewGCM(blk)
+    if err != nil {
+      return nil, err
+    }
+    nonceLen := gcm.NonceSize()
+    nonce, ciph := ciph[:nonceLen], ciph[nonceLen:]
+    msg, err := gcm.Open(nil, nonce, ciph, nil)
+    if err != nil {
+      return nil, err
+    }
+    return msg, nil
+  }
+    #+END_SRC
 
 ** Usage and improvements

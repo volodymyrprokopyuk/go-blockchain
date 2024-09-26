@@ -1,0 +1,17 @@
+* Transaction
+
+*** Signing and verifying transactions
+
+- Sign transaction :: A hash of an encoded /transaction is signed with a private
+  key/. The sign operation produces a signature that is used to verify the
+  signed transaction
+- Verify transaction :: A /public key is recovered/ from the hash of an encoded
+  transaction and the associated signature. An account address derived from the
+  recovered public key is compared with the =From= address of the signed
+  transaction. If both addresses match, the signature is valid. A valid
+  signatures guarantees /integrity of the transaction/ (the transaction has not
+  been tampered with) and /authenticity of the transaction/ (the transaction has
+  been signed by the owner of the =From= account) if the account private key has
+  not been compromised
+
+*** ECC signing and verification of transactions
