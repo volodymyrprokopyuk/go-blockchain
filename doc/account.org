@@ -1,0 +1,113 @@
+* Account
+
+** Concepts and purpose
+
+*** Account
+
+- Account :: An account represents a /digital identity/ on the blockchain. An
+  account represents /user's ownership of assets/ on the blockchain. An account
+  can hold, send and receive cryptocurrency and tokens. An account has an
+  associated /digital ledger/ of transactions and the /current balance/
+
+Account components
+- *Private key* is a /large randomly generated secret number/ used to control
+  assets on the blockchain by signing transactions
+- *Public address* is a /hash of a public key/ (derived from a private key) that
+  uniquely identifies an account on the blockchain
+- *Current balance* is the /amount of divisible cryptocurrency/ or /indivisible
+  tokens/ controlled by a private key of an account
+- *Transactions* is a time-ordered /list of debit and credit transactions/
+  involving an account
+
+Operations on an account
+- *Create an account*, derive a public address, and store a password-protected
+  private key
+- *Sign a transaction* with the account private key
+- *Verify a signed transaction* against the public address on the signing
+  account
+- *Check the current balance* of cryptocurrency and tokens
+- *List transactions* enumerate debit and credit transactions associated with an
+  account
+
+*** Private and public key pair
+
+Accounts on the blockchain are represented by private and public key pairs
+
+- Private key :: A private key is a /large randomly generated secret number/
+  that is used to derive a public key and /digitally sign transactions/. A
+  private key must be kept in secret to /preserve account authenticity/ and
+  /control account assets/
+- Public key :: A public key is a /pair of large numbers/ derived from a private
+  key. A public key is used to /identify an account/ on the blockchain and
+  /verify transactions/ signed with the corresponding private key
+
+*** Signing and verifying transactions
+
+- Sign transaction :: A hash of an encoded /transaction is signed with a private
+  key/. The sign operation produces a signature that is used to verify the
+  signed transaction
+- Verify transaction :: A /public key is recovered/ from the hash of an encoded
+  transaction and the associated signature. An account address derived from the
+  recovered public key is compared with the =From= address of the signed
+  transaction. If both addresses match, the signature is valid. A valid
+  signatures guarantees /integrity of the transaction/ (the transaction has not
+  been tampered with) and /authenticity of the transaction/ (the transaction has
+  been signed by the owner of the =From= account) if the account private key has
+  not been compromised
+
+** Design and implementation
+
+*** Elliptic-curve cryptography Secp256k1 key pair
+
+The implementation of this blockchain uses the *elliptic-curve crypgography*
+(*ECC*). Specifically, the *Secp256k1* elliptic curve is used for generation of
+key pairs for the blockchain accounts and signing and verification of
+transactions on the blockchain
+
+- Secp256k1 public key :: The public key holds the name =P-256k1= of the =Curve=
+  and two large numbers =X= and =Y= derived from the corresponding private key
+  #+BEGIN_SRC go
+type p256k1PublicKey struct {
+  Curve string `json:"curve"`
+  X *big.Int `json:"x"`
+  Y *big.Int `json:"y"`
+}
+
+func newP256k1PublicKey(pub *ecdsa.PublicKey) p256k1PublicKey {
+  return p256k1PublicKey{Curve: "P-256k1", X: pub.X, Y: pub.Y}
+}
+  #+END_SRC
+- Secp256k1 private key :: The private key holds the large secret number =D= and
+  embeds the derived public key =p256k1PublicKey=. The ~*ecdsa.PublicKey~ and
+  =*ecdsa.PrivateKey= components can be retrieved from a =p256k1PrivateKey=
+  instance
+  #+BEGIN_SRC go
+type p256k1PrivateKey struct {
+  p256k1PublicKey
+  D *big.Int `json:"d"`
+}
+
+func newP256k1PrivateKey(prv *ecdsa.PrivateKey) p256k1PrivateKey {
+  return p256k1PrivateKey{
+    p256k1PublicKey: newP256k1PublicKey(&prv.PublicKey), D: prv.D,
+  }
+}
+
+func (k *p256k1PrivateKey) publicKey() *ecdsa.PublicKey {
+  return &ecdsa.PublicKey{Curve: ecc.P256k1(), X: k.X, Y: k.Y}
+}
+
+func (k *p256k1PrivateKey) privateKey() *ecdsa.PrivateKey {
+  return &ecdsa.PrivateKey{PublicKey: *k.publicKey(), D: k.D}
+}
+  #+END_SRC
+
+The =p256k1PublicKey= and =p256k1PrivateKey= types are used for encoding and
+decoding of private and public keys which, in turn, is used for persistence and
+retrieval of accounts on the blockchain
+
+*** ECC signing and verification of transactions
+
+*** Encryption and decryption of private keys
+
+** Usage and improvements
