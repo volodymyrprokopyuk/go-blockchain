@@ -1,3 +1,3 @@
 * Go blockchain
 
-- [[/blob/main/doc/account.org][Account]]
+- [[/doc/account.org][Account]]

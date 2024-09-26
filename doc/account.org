@@ -59,8 +59,8 @@ Accounts on the blockchain are represented by private and public key pairs
 
 *** Elliptic-curve cryptography Secp256k1 key pair
 
-The implementation of this blockchain uses the *elliptic-curve crypgography*
-(*ECC*). Specifically, the *Secp256k1* elliptic curve is used for generation of
+The implementation of this blockchain uses the *elliptic-curve cryptography*
+(*ECC*). Specifically, the *Secp256k1 elliptic curve* is used for generation of
 key pairs for the blockchain accounts and signing and verification of
 transactions on the blockchain
 
@@ -109,7 +109,7 @@ and retrieval of accounts on the blockchain
 *** Account address with the Keccak256 hash function
 
 - Account address :: An account address uniquely identifies an account on the
-  blockchain. An account address is the /*Keccak256* hash of an encoded public
+  blockchain. An account address is the /Keccak256 hash of an encoded public
   key/ associated with the account. The account =Address= is implemented as a
   type alias to a =string=. An account address is calculated from a
   =*ecdsa.PublicKey=
@@ -124,8 +124,86 @@ func NewAddress(pub *ecdsa.PublicKey) Address {
 }
   #+END_SRC
 
-*** ECC signing and verification of transactions
+*** Account with the Secp256k1 key pair
 
-*** Encryption and decryption of private keys
+- Account :: An account contains a /Secp256k1 private key/ =prv= and an /account
+  address/ =addr= derived from the corresponding Secp256k1 public key. A new
+  Secp256k1 key pair is generated when a =NewAccount= is created
+  #+BEGIN_SRC go
+type Account struct {
+  prv *ecdsa.PrivateKey
+  addr Address // derived
+}
+
+func NewAccount() (Account, error) {
+  prv, err := ecdsa.GenerateKey(ecc.P256k1(), rand.Reader)
+  if err != nil {
+    return Account{}, err
+  }
+  addr := NewAddress(&prv.PublicKey)
+  return Account{prv: prv, addr: addr}, nil
+}
+  #+END_SRC
+
+A private key is the only piece of information required to re-create an account
+after persistence to a secured file controlled by the owner of the account.
+Accounts on this blockchain are persisted to files with restricted access. A
+private key is encrypted with a password before being persisted to a file
+
+- Account persistence :: The account persistence process starts with /encoding
+  the private key to JSON/, then /encrypts the JSON/ with an /owner-provided
+  password/, and, finally, /writes the ciphertext/ to a file with restricted
+  access
+  #+BEGIN_SRC go
+func (a Account) Write(dir string, pass []byte) error {
+  jprv, err := a.encodePrivateKey()
+  if err != nil {
+    return err
+  }
+  cprv, err := encryptWithPassword(jprv, pass)
+  if err != nil {
+    return err
+  }
+  err = os.MkdirAll(dir, 0700)
+  if err != nil {
+    return err
+  }
+  path := filepath.Join(dir, string(a.Address()))
+  return os.WriteFile(path, cprv, 0600)
+}
+  #+END_SRC
+
+The encoded key pair before encryption
+#+BEGIN_SRC json
+{
+  "curve":"P-256k1",
+  "x":76146145399705616720589739763260279141573762368317905858350098027838154138247,
+  "y":38666865918508785210169373834294899085353404099611077977239116930574874120850,
+  "d":4551610683346874789776802044583374602892654338372126162371523966290596962565
+}
+#+END_SRC
+
+- Account reading :: A persisted account is re-created by reading its private
+  key encrypted with an owner-provided password from a file with restricted
+  access. The reading process starts with /reading the ciphertext/, then
+  /decrypts a private key/ with an /owner-provided password/, and, finally,
+  /constructs the account/ with the address using the private key
+  #+BEGIN_SRC go
+func ReadAccount(path string, pass []byte) (Account, error) {
+  cprv, err := os.ReadFile(path)
+  if err != nil {
+    return Account{}, err
+  }
+  jprv, err := decryptWithPassword(cprv, pass)
+  if err != nil {
+    return Account{}, err
+  }
+  return decodePrivateKey(jprv)
+}
+  #+END_SRC
+
+*** AES-GCM encryption with Argon2 KDF of Secp256k1 private keys
+
+*** ECC signing and verification of transactions
 
 ** Usage and improvements

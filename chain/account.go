@@ -58,7 +58,7 @@ func NewAddress(pub *ecdsa.PublicKey) Address {
 
 type Account struct {
   prv *ecdsa.PrivateKey
-  addr Address // derived prv => pub => addr
+  addr Address // derived
 }
 
 func NewAccount() (Account, error) {
