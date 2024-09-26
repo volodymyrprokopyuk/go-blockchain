@@ -102,9 +102,27 @@ func (k *p256k1PrivateKey) privateKey() *ecdsa.PrivateKey {
 }
   #+END_SRC
 
-The =p256k1PublicKey= and =p256k1PrivateKey= types are used for encoding and
-decoding of private and public keys which, in turn, is used for persistence and
-retrieval of accounts on the blockchain
+The =p256k1PublicKey= and =p256k1PrivateKey= types are used for JSON encoding
+and decoding of private and public keys, which, in turn, is used for persistence
+and retrieval of accounts on the blockchain
+
+*** Account address with the Keccak256 hash function
+
+- Account address :: An account address uniquely identifies an account on the
+  blockchain. An account address is the /*Keccak256* hash of an encoded public
+  key/ associated with the account. The account =Address= is implemented as a
+  type alias to a =string=. An account address is calculated from a
+  =*ecdsa.PublicKey=
+  #+BEGIN_SRC go
+type Address string
+
+func NewAddress(pub *ecdsa.PublicKey) Address {
+  jpub, _ := json.Marshal(newP256k1PublicKey(pub))
+  hash := make([]byte, 64)
+  sha3.ShakeSum256(hash, jpub)
+  return Address(hex.EncodeToString(hash[:32]))
+}
+  #+END_SRC
 
 *** ECC signing and verification of transactions
 
