@@ -49,7 +49,7 @@ func accountCreateCmd(ctx context.Context) *cobra.Command {
       if err != nil {
         return err
       }
-      fmt.Printf("%v\n", acc)
+      fmt.Printf("acc: %v\n", acc)
       return nil
     },
   }

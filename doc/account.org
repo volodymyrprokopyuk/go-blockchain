@@ -2,7 +2,7 @@
 
 ** Concepts and purpose
 
-*** Account
+*** Account components and operations
 
 - Account :: An account represents a /digital identity/ on the blockchain. An
   account represents /user's ownership of assets/ on the blockchain. An account
@@ -29,7 +29,7 @@ Operations on an account
 - *List transactions* enumerate debit and credit transactions involving an
   account
 
-*** Private and public key pair
+*** Private and public keys
 
 Accounts on the blockchain are represented by key pairs each consisting of a
 private and a public key
@@ -94,7 +94,7 @@ The =p256k1PublicKey= and =p256k1PrivateKey= types are used for JSON encoding
 and decoding of private and public keys, which, in turn, is used for persistence
 and retrieval of accounts on the blockchain
 
-*** Account address with the Keccak256 hash function
+*** Account address with Keccak256 hash function
 
 - Account address :: An account address uniquely identifies an account on the
   blockchain and can be safely shared with any participant on the blockchain. An
@@ -112,7 +112,7 @@ func NewAddress(pub *ecdsa.PublicKey) Address {
 }
   #+END_SRC
 
-*** Account with the Secp256k1 key pair
+*** Account with Secp256k1 key pair
 
 - Account :: An account contains a /Secp256k1 private key/ =prv= and an /account
   address/ =addr= derived from the corresponding Secp256k1 public key. A new
@@ -173,7 +173,7 @@ The JSON encoded key pair before encryption has the following form
 }
 #+END_SRC
 
-- Account reading :: The account re-creation process
+- Account re-creation :: The account re-creation process
   - Read the encrypted key pair from a file
   - Decrypt the the encrypted key pair with the owner-provided password
   - Decode the encoded key pair to a private key
@@ -262,4 +262,57 @@ func ReadAccount(path string, pass []byte) (Account, error) {
   }
     #+END_SRC
 
-** Usage and improvements
+** Testing and usage
+
+*** Testing account persistence and re-creation
+
+The =TestAccountWriteReadSignTxVerifyTx= testing process
+- Create a new account
+- Persist the account to a file
+- Re-create the account from a file
+- Verify that the re-created account correctly signs and verifies transactions
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run AccountWriteRead
+#+END_SRC
+
+*** Testing gRPC =AccountCreate= method
+
+The blockchain node exposes the gRPC service to manage accounts on the
+blockchain. The ProtoBuf definition of the gRPC service
+#+BEGIN_SRC protobuf
+message AccountCreateReq {
+  string Password = 1;
+}
+
+message AccountCreateRes {
+  string Address = 1;
+}
+
+service Account {
+  rpc AccountCreate(AccountCreateReq) returns (AccountCreateRes);
+}
+#+END_SRC
+
+The =TestAccountCreate= testing process
+- Set up the gRPC =Account= service and the gRPC =Account= client
+- Call the gRPC =AccountCreate= method with the owner-provided password to
+  create a new account on the blockchain
+- Verify that the returned account address length is correct
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run AccountCreate
+#+END_SRC
+
+*** Using =account create= CLI command
+
+The gRPC =AccountCreate= method is exposed through the CLI. To create an account
+on the blockchain and store its key pair on the blockchain node run the
+following commands in a terminal
+- Start a blockchain node
+#+BEGIN_SRC fish
+./bcn node start --node localhost:1122 --bootstrap --authpass password
+#+END_SRC
+- Create a new account (in a new terminal)
+#+BEGIN_SRC fish
+./bcn account create --node localhost:1122 --ownerpass password
+acc: 1a053079e900a3aedc0f67dcfc60376777ae675d1ec03722abea77c7793ecf34
+#+END_SRC
