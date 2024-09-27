@@ -1,6 +1,48 @@
 * Transaction
 
-*** Signing and verifying transactions
+** Concepts and purpose
+
+*** Cryptographic hash function
+
+- Hash function :: A cryptographic hash function produces a /random looking,
+  fixed length, unpredictable output/ (a random oracle) from an arbitrary large
+  input. A hash function is /deterministic/: the same input produces the same
+  output. A tiny change in the input produces a completely different output.
+- Hash function and digital signature :: A hash function is used to check data
+  integrity of a message and its copy. The hash of a message is a unique
+  identifier of the message. Digitally signing a hash of a message is as secure
+  as signing the message itself, but much faster
+
+Security properties of a hash function
+- *Pre-image resistance*. A hash function is a /one-way function/: given a hash,
+  it is almost impossible to find the original input
+- *Second pre-image resistance*. Given an input and its hash, it is almost
+  impossible to find another input that has the same hash
+- *Collision resistance*. It is almost impossible to find two different inputs
+  that have the same hash. Collisions are inevitable because the output length
+  is fixed, while the input is arbitrary large
+
+*** Transactions between accounts on the blockchain
+
+- Transaction :: A transaction between accounts on the blockchain represents a
+  /transfer of value/ from a sender account to a recipient account. Every
+  transaction must be digitally signed by the sender account that authorizes the
+  transfer of value and authenticates the transaction. Multiple transactions are
+  included in a block, which, in turn, is added to the blockchain once a
+  consensus agreement is reached between participants. Confirmed /transactions
+  are irreversible/. Confirmed /transactions are immutable/: It is almost
+  impossible to change the order or content of confirmed transactions
+- Double spending problem :: The situation when the same digital asset can be
+  spent more then once. Only one of multiple transactions spending the same
+  asset should be accepted while others must be rejected. This blockchain
+  prevents the double spending problem by tracking in the blockchain both: the
+  account balance to check for availability of funds, and the per-account nonce
+  to order transactions from an account
+- Transaction nonce :: A transaction nonce is a unique number used once per
+  account to prevent the double spending problem, replay attacks, and ensure
+  that each transaction from an account is processed in order
+
+*** Digital signatures and verification of transactions
 
 - Sign transaction :: A hash of an encoded /transaction is signed with a private
   key/. The sign operation produces a signature that is used to verify the
@@ -14,4 +56,12 @@
   been signed by the owner of the =From= account) if the account private key has
   not been compromised
 
+** Design and implementation
+
+*** Keccak256 hash function
+
+- Keccak256 hash function ::
+
 *** ECC signing and verification of transactions
+
+** Testing and usage

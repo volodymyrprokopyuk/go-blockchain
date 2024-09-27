@@ -2,9 +2,10 @@ package rpc
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type BalanceChecker interface {
@@ -28,7 +29,9 @@ func (s *AccountSrv) AccountCreate(
 ) (*AccountCreateRes, error) {
   pass := []byte(req.Password)
   if len(pass) < 5 {
-    return nil, fmt.Errorf("password length is less than 5")
+    return nil, status.Errorf(
+      codes.InvalidArgument, "password length is less than 5",
+    )
   }
   acc, err := chain.NewAccount()
   if err != nil {
