@@ -64,7 +64,8 @@ func (b SigBlock) String() string {
 }
 
 func VerifyBlock(blk SigBlock, authority Address) (bool, error) {
-  pub, err := ecc.RecoverPubkey("P-256k1", blk.Block.Hash().Bytes(), blk.Sig)
+  hash := blk.Block.Hash().Bytes()
+  pub, err := ecc.RecoverPubkey("P-256k1", hash, blk.Sig)
   if err != nil {
     return false, err
   }

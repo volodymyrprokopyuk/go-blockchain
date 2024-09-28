@@ -104,7 +104,8 @@ func ReadAccount(path string, pass []byte) (Account, error) {
 }
 
 func (a Account) SignGen(gen Genesis) (SigGenesis, error) {
-  sig, err := ecc.SignBytes(a.prv, gen.Hash().Bytes(), ecc.LowerS | ecc.RecID)
+  hash := gen.Hash().Bytes()
+  sig, err := ecc.SignBytes(a.prv, hash, ecc.LowerS | ecc.RecID)
   if err != nil {
     return SigGenesis{}, err
   }
@@ -113,7 +114,8 @@ func (a Account) SignGen(gen Genesis) (SigGenesis, error) {
 }
 
 func (a Account) SignTx(tx Tx) (SigTx, error) {
-  sig, err := ecc.SignBytes(a.prv, tx.Hash().Bytes(), ecc.LowerS | ecc.RecID)
+  hash := tx.Hash().Bytes()
+  sig, err := ecc.SignBytes(a.prv, hash, ecc.LowerS | ecc.RecID)
   if err != nil {
     return SigTx{}, err
   }
@@ -122,7 +124,8 @@ func (a Account) SignTx(tx Tx) (SigTx, error) {
 }
 
 func (a Account) SignBlock(blk Block) (SigBlock, error) {
-  sig, err := ecc.SignBytes(a.prv, blk.Hash().Bytes(), ecc.LowerS | ecc.RecID)
+  hash := blk.Hash().Bytes()
+  sig, err := ecc.SignBytes(a.prv, hash, ecc.LowerS | ecc.RecID)
   if err != nil {
     return SigBlock{}, err
   }

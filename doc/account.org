@@ -47,7 +47,7 @@ private and a public key
 
 *** Elliptic-curve cryptography Secp256k1 key pair
 
-The implementation of this blockchain uses the *elliptic-curve cryptography*
+The implementation of this blockchain uses the *Elliptic-Curve Cryptography*
 (*ECC*). Specifically, the *Secp256k1 elliptic curve* is used for generation of
 key pairs for accounts on the blockchain, as well as signing and verification of
 transactions on the blockchain
@@ -262,20 +262,7 @@ func ReadAccount(path string, pass []byte) (Account, error) {
   }
     #+END_SRC
 
-** Testing and usage
-
-*** Testing account persistence and re-creation
-
-The =TestAccountWriteReadSignTxVerifyTx= testing process
-- Create a new account
-- Persist the account to a file
-- Re-create the account from a file
-- Verify that the re-created account correctly signs and verifies transactions
-#+BEGIN_SRC fish
-go test -v -cover -coverprofile=coverage.cov ./... -run AccountWriteRead
-#+END_SRC
-
-*** Testing gRPC =AccountCreate= method
+*** gRPC =AccountCreate= method
 
 The blockchain node exposes the gRPC service to manage accounts on the
 blockchain. The ProtoBuf definition of the gRPC service
@@ -293,6 +280,21 @@ service Account {
 }
 #+END_SRC
 
+** Testing and usage
+
+*** Testing account persistence and re-creation
+
+The =TestAccountWriteReadSignTxVerifyTx= testing process
+- Create a new account
+- Persist the account to a file
+- Re-create the account from a file
+- Verify that the re-created account correctly signs and verifies transactions
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run AccountWriteRead
+#+END_SRC
+
+*** Testing gRPC =AccountCreate= method
+
 The =TestAccountCreate= testing process
 - Set up the gRPC =Account= service and the gRPC =Account= client
 - Call the gRPC =AccountCreate= method with the owner-provided password to
@@ -307,11 +309,15 @@ go test -v -cover -coverprofile=coverage.cov ./... -run AccountCreate
 The gRPC =AccountCreate= method is exposed through the CLI. To create an account
 on the blockchain and store its key pair on the blockchain node run the
 following commands in a terminal
-- Start a blockchain node
+- Start a blockchain node by providing the =--node= address, making the node
+  =--bootstrap= node for the initial peer discovery and also the authority node
+  for the PoA consensus, and providing the =--authpass= password for the
+  authority account to sign the genesis and blocks on the blockchain
 #+BEGIN_SRC fish
 ./bcn node start --node localhost:1122 --bootstrap --authpass password
 #+END_SRC
-- Create a new account (in a new terminal)
+- Create a new account (in a new terminal) by providing the =--node= address and
+  the =--ownerpass= password for the owner account
 #+BEGIN_SRC fish
 ./bcn account create --node localhost:1122 --ownerpass password
 acc: 1a053079e900a3aedc0f67dcfc60376777ae675d1ec03722abea77c7793ecf34

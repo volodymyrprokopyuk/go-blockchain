@@ -73,7 +73,8 @@ func (t SigTx) String() string {
 }
 
 func VerifyTx(tx SigTx) (bool, error) {
-  pub, err := ecc.RecoverPubkey("P-256k1", tx.Tx.Hash().Bytes(), tx.Sig)
+  hash := tx.Tx.Hash().Bytes()
+  pub, err := ecc.RecoverPubkey("P-256k1", hash, tx.Sig)
   if err != nil {
     return false, err
   }

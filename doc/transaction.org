@@ -44,24 +44,171 @@ Security properties of a hash function
 
 *** Digital signatures and verification of transactions
 
-- Sign transaction :: A hash of an encoded /transaction is signed with a private
+- Digital signature :: A /private signing key/ is used to produce a digital
+  signature of a message. The corresponding /public verifying key/ is used to
+  verify the digital signature. The digital signature proves /authenticity of a
+  sender/ (origin authentication), /non-repudiation of a sender/, and /integrity
+  of a message/ (message authentication)
+- Sign transaction :: A hash of an /encoded transaction is signed with a private
   key/. The sign operation produces a signature that is used to verify the
   signed transaction
 - Verify transaction :: A /public key is recovered/ from the hash of an encoded
   transaction and the associated signature. An account address derived from the
   recovered public key is compared with the =From= address of the signed
   transaction. If both addresses match, the signature is valid. A valid
-  signatures guarantees /integrity of the transaction/ (the transaction has not
-  been tampered with) and /authenticity of the transaction/ (the transaction has
-  been signed by the owner of the =From= account) if the account private key has
-  not been compromised
+  signature guarantees
+  - *Authenticity of the sender*. The transaction has been signed by the owner
+    of the =From= account, if the account private key has not been compromised
+  - *Non-repudiation of the sender*. The sender cannot deny the act of sending
+    the transaction, as the transaction must have been signed with the account
+    private key
+  - *Integrity of the transaction* The transaction content is immutable since
+    creation and has not been tampered with
 
 ** Design and implementation
 
 *** Keccak256 hash function
 
-- Keccak256 hash function ::
+Keccak256 hash function is used in this blockchain for hashing and signing of
+transactions and blocks
 
-*** ECC signing and verification of transactions
+- Keccak256 hash function :: The =Hash= type is an alias to a byte array of
+  length 32. The Keccak256 hash function is implemented as the =NewHash(val
+  any)= constructor function on the =Hash= type. To hash a value of specific
+  type, this implementation requires the type to have defined JSON serialization
+  that is used to encode the value before hashing. The =Hash= type defines
+  string and byte slice representations of a hash, as well as JSON text marshal
+  and unmarshal serialization methods
+  #+BEGIN_SRC go
+type Hash [32]byte
+
+func NewHash(val any) Hash {
+  jval, _ := json.Marshal(val)
+  hash := make([]byte, 64)
+  sha3.ShakeSum256(hash, jval)
+  return Hash(hash[:32])
+}
+
+func (h Hash) String() string {
+  return hex.EncodeToString(h[:])
+}
+
+func (h Hash) Bytes() []byte {
+  hash := [32]byte(h)
+  return hash[:]
+}
+
+func (h Hash) MarshalText() ([]byte, error) {
+  return []byte(hex.EncodeToString(h[:])), nil
+}
+
+func (h *Hash) UnmarshalText(hash []byte) error {
+  _, err := hex.Decode(h[:], hash)
+  return err
+}
+  #+END_SRC
+
+*** Transaction and signed transaction types
+
+This implementation makes distinction between an initial transaction type =Tx=
+before signing and a signed transaction type =SigTx= after signing. The =Tx=
+type is only used for initial creation of a transaction, signing of a new
+transaction, and verification of a signed transaction. Most of the blockchain
+components work exclusively with the =SigTx= type
+
+- =Tx= type :: The =Tx= type represents a transaction on the blockchain. The
+  transaction defines the address of a sender account =From=, the address of a
+  recipient account =To=, the =Value= amount to be transferred, the per account
+  =Nonce= to prevent replay attacks, the double spending problem, and process
+  transaction from an account in order, and, finally, the =Time= of transaction
+  signing. All transaction fields participate in producing the hash of a
+  transaction that is used to sign a transaction
+  #+BEGIN_SRC go
+type Tx struct {
+  From Address `json:"from"`
+  To Address `json:"to"`
+  Value uint64 `json:"value"`
+  Nonce uint64 `json:"nonce"`
+  Time time.Time `json:"time"`
+}
+
+func NewTx(from, to Address, value, nonce uint64) Tx {
+  return Tx{From: from, To: to, Value: value, Nonce: nonce, Time: time.Now()}
+}
+
+func (t Tx) Hash() Hash {
+  return NewHash(t)
+}
+  #+END_SRC
+- =SigTx= type :: The =SigTx= type embeds the =Tx= type and defines the
+  signature byte slice =Sig= that holds the transaction signature. The string
+  representation of the =SigTx= is defined to present a transaction to end users
+  #+BEGIN_SRC go
+type SigTx struct {
+  Tx
+  Sig []byte `json:"sig"`
+}
+
+func NewSigTx(tx Tx, sig []byte) SigTx {
+  return SigTx{Tx: tx, Sig: sig}
+}
+
+func (t SigTx) Hash() Hash {
+  return NewHash(t)
+}
+
+func (t SigTx) String() string {
+  return fmt.Sprintf(
+    "tx %.7s: %.7s -> %.7s %8d %8d", t.Hash(), t.From, t.To, t.Value, t.Nonce,
+  )
+}
+  #+END_SRC
+
+*** ECDSA signing and verification of transactions
+
+This blockchain uses the *Elliptic Curve Digital Signature Algorithm* (*ECDSA*)
+for signing and verification of transactions. Specifically, the *Secp256k1
+elliptic curve* is used for for signing and verification of transactions
+
+- Secp256k1 transaction signing :: The transaction signing process requires the
+  owner-provided password and is performed from the =Account= instance. The
+  transaction signing process
+  - Produce the Keccak256 hash of the input transaction =Tx=
+  - Sign the Keccak256 hash of the transaction using the ECDSA algorithm on the
+    Secp256k1 elliptic curve
+  - Construct a signed transaction =SigTx= by adding the produced digital
+    signature to the input transaction =Tx=
+  #+BEGIN_SRC go
+func (a Account) SignTx(tx Tx) (SigTx, error) {
+  hash := tx.Hash().Bytes()
+  sig, err := ecc.SignBytes(a.prv, hash, ecc.LowerS | ecc.RecID)
+  if err != nil {
+    return SigTx{}, err
+  }
+  stx := NewSigTx(tx, sig)
+  return stx, nil
+}
+  #+END_SRC
+
+- Secp256k1 transaction verification :: The transaction verification process
+  does not require any external information like the owner-provided password.
+  The signed transaction instance contains all the necessary information to
+  verify a signed transaction.  The transaction verification process
+  - Recover the public key from the hash of the transaction =Tx= and the
+    transaction signature
+  - Construct the account address from the recovered public key
+  - If the constructed account address is equal to the =From= account address of
+    the signed transaction, then the transaction signature is valid
+  #+BEGIN_SRC go
+func VerifyTx(tx SigTx) (bool, error) {
+  hash := tx.Tx.Hash().Bytes()
+  pub, err := ecc.RecoverPubkey("P-256k1", hash, tx.Sig)
+  if err != nil {
+    return false, err
+  }
+  acc := NewAddress(pub)
+  return acc == tx.From, nil
+}
+  #+END_SRC
 
 ** Testing and usage

@@ -57,14 +57,13 @@ func (g SigGenesis) Write(dir string) error {
 }
 
 func VerifyGen(gen SigGenesis) (bool, error) {
-  pub, err := ecc.RecoverPubkey("P-256k1", gen.Genesis.Hash().Bytes(), gen.Sig)
+  hash := gen.Genesis.Hash().Bytes()
+  pub, err := ecc.RecoverPubkey("P-256k1", hash, gen.Sig)
   if err != nil {
     return false, err
   }
   acc := NewAddress(pub)
   return acc == Address(gen.Authority), nil
-  // _, exist := gen.Balances[acc]
-  // return exist, nil
 }
 
 func ReadGenesis(dir string) (SigGenesis, error) {
