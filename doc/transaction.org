@@ -211,4 +211,86 @@ func VerifyTx(tx SigTx) (bool, error) {
 }
   #+END_SRC
 
+*** gRPC =TxSign= method
+
+The gRPC =Tx= service provides the =TxSign= method to digitally sign new
+transactions before sending them to the blockchain network. The interface of the
+service
+#+BEGIN_SRC protobuf
+message TxSignReq {
+  string From = 1;
+  string To = 2;
+  uint64 Value = 3;
+  string Password = 4;
+}
+
+message TxSignRes {
+  bytes Tx = 1;
+}
+
+service Tx {
+  rpc TxSign(TxSignReq) returns (TxSignRes);
+}
+#+END_SRC
+
+The implementation of the =TxSign= method
+- Re-create the owner account using the owner-provided password
+- Construct a new transaction =Tx= from the request arguments: the sender
+  address =From=, the recipient address =To=, the value amount =Value=
+- Request from the blockchain state and increment by 1 the current value of
+  nonce for the sender account
+- Sign the transaction with the sender account private key
+- Encode the signed transaction
+- Return the encoded signed transaction to a client
+#+BEGIN_SRC go
+func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
+  path := filepath.Join(s.keyStoreDir, req.From)
+  acc, err := chain.ReadAccount(path, []byte(req.Password))
+  if err != nil {
+    return nil, err
+  }
+  tx := chain.NewTx(
+    chain.Address(req.From), chain.Address(req.To), req.Value,
+    s.txApplier.Nonce(chain.Address(req.From)) + 1,
+  )
+  stx, err := acc.SignTx(tx)
+  if err != nil {
+    return nil, err
+  }
+  jtx, err := json.Marshal(stx)
+  if err != nil {
+    return nil, err
+  }
+  res := &TxSignRes{Tx: jtx}
+  return res, nil
+}
+#+END_SRC
+
 ** Testing and usage
+
+*** Testing transaction signing and verification
+
+The =TestAccountWriteReadSignTxVerifyTx= testing process
+- Create a new account
+- Persist the account to a file
+- Re-create the account from a file
+- Create a new transaction
+- Sign the new transaction
+- Verify the signature of the signed transaction
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run AccountWriteRead
+#+END_SRC
+
+*** Testing gRPC =TxSign= method
+
+The =TestTxSign= testing process
+- Create the =Genesis= and the blockchain =State=
+- Create a new owner account protected with the owner-provided password
+- Set up the gRPC =TX= service and the gRPC =Tx= client
+- Sign the transaction with the owner-provided password
+- Verify the signature of the signed transaction
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run TxSign
+#+END_SRC
+
+*** Using =tx sign= CLI command

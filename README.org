@@ -1,6 +1,7 @@
 * Go blockchain
 
-- Blockchain state
+** Contents
+*** Blockchain state
   - [[/doc/account.org][Account]]
   - [[/doc/transaction.org][Transaction]]
-- Blockchain node
+*** Blockchain node

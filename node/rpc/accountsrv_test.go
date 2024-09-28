@@ -114,18 +114,18 @@ func TestAccountBalance(t *testing.T) {
     t.Fatal(err)
   }
   state := chain.NewState(gen)
-  conn := grpcClientConn(t, func(grpcSrv *grpc.Server) {
-    acc := rpc.NewAccountSrv(keyStoreDir, state)
-    rpc.RegisterAccountServer(grpcSrv, acc)
-  })
-  defer os.RemoveAll(keyStoreDir)
-  defer os.RemoveAll(blockStoreDir)
   var ownAcc chain.Address
   var ownBalance uint64
   for acc, bal := range gen.Balances {
     ownAcc, ownBalance = acc, bal
     break
   }
+  defer os.RemoveAll(keyStoreDir)
+  defer os.RemoveAll(blockStoreDir)
+  conn := grpcClientConn(t, func(grpcSrv *grpc.Server) {
+    acc := rpc.NewAccountSrv(keyStoreDir, state)
+    rpc.RegisterAccountServer(grpcSrv, acc)
+  })
   ctx := context.Background()
   cln := rpc.NewAccountClient(conn)
   t.Run("balance exists", func(t *testing.T) {

@@ -205,32 +205,32 @@ func ReadAccount(path string, pass []byte) (Account, error) {
   - Pack the random salt, the random nonce, and the ciphertext all together into
     a slice of bytes to be written to a file. Both the salt for the Argon2 KDF
     and the nonce for the AES-GCM are public, but must be unique
-    #+BEGIN_SRC go
-  func encryptWithPassword(msg, pass []byte) ([]byte, error) {
-    salt := make([]byte, encKeyLen)
-    _, err := rand.Read(salt)
-    if err != nil {
-      return nil, err
-    }
-    key := argon2.IDKey(pass, salt, 1, 256, 1, encKeyLen)
-    blk, err := aes.NewCipher(key)
-    if err != nil {
-      return nil, err
-    }
-    gcm, err := cipher.NewGCM(blk)
-    if err != nil {
-      return nil, err
-    }
-    nonce := make([]byte, gcm.NonceSize())
-    _, err = rand.Read(nonce)
-    if err != nil {
-      return nil, err
-    }
-    ciph := gcm.Seal(nonce, nonce, msg, nil)
-    ciph = append(salt, ciph...)
-    return ciph, nil
+  #+BEGIN_SRC go
+func encryptWithPassword(msg, pass []byte) ([]byte, error) {
+  salt := make([]byte, encKeyLen)
+  _, err := rand.Read(salt)
+  if err != nil {
+    return nil, err
   }
-    #+END_SRC
+  key := argon2.IDKey(pass, salt, 1, 256, 1, encKeyLen)
+  blk, err := aes.NewCipher(key)
+  if err != nil {
+    return nil, err
+  }
+  gcm, err := cipher.NewGCM(blk)
+  if err != nil {
+    return nil, err
+  }
+  nonce := make([]byte, gcm.NonceSize())
+  _, err = rand.Read(nonce)
+  if err != nil {
+    return nil, err
+  }
+  ciph := gcm.Seal(nonce, nonce, msg, nil)
+  ciph = append(salt, ciph...)
+  return ciph, nil
+}
+  #+END_SRC
 
 - AES-GCM decryption with Argon2 KDF :: The decryption process
   - *Argon2 KDF* derives the encryption key from the owner-provided password and
@@ -240,27 +240,27 @@ func ReadAccount(path string, pass []byte) (Account, error) {
   - Create the *AES-GCM encryption mode* from the AES block cipher
   - AES-GCM decrypts the encoded key pair using the ciphertext and the random
     nonce extracted from the ciphertext
-    #+BEGIN_SRC go
-  func decryptWithPassword(ciph, pass []byte) ([]byte, error) {
-    salt, ciph := ciph[:encKeyLen], ciph[encKeyLen:]
-    key := argon2.IDKey(pass, salt, 1, 256, 1, encKeyLen)
-    blk, err := aes.NewCipher(key)
-    if err != nil {
-      return nil, err
-    }
-    gcm, err := cipher.NewGCM(blk)
-    if err != nil {
-      return nil, err
-    }
-    nonceLen := gcm.NonceSize()
-    nonce, ciph := ciph[:nonceLen], ciph[nonceLen:]
-    msg, err := gcm.Open(nil, nonce, ciph, nil)
-    if err != nil {
-      return nil, err
-    }
-    return msg, nil
+  #+BEGIN_SRC go
+func decryptWithPassword(ciph, pass []byte) ([]byte, error) {
+  salt, ciph := ciph[:encKeyLen], ciph[encKeyLen:]
+  key := argon2.IDKey(pass, salt, 1, 256, 1, encKeyLen)
+  blk, err := aes.NewCipher(key)
+  if err != nil {
+    return nil, err
   }
-    #+END_SRC
+  gcm, err := cipher.NewGCM(blk)
+  if err != nil {
+    return nil, err
+  }
+  nonceLen := gcm.NonceSize()
+  nonce, ciph := ciph[:nonceLen], ciph[nonceLen:]
+  msg, err := gcm.Open(nil, nonce, ciph, nil)
+  if err != nil {
+    return nil, err
+  }
+  return msg, nil
+}
+  #+END_SRC
 
 *** gRPC =AccountCreate= method
 
@@ -409,18 +409,29 @@ and provides the same gRPC services as a peer-to-peer blockchain network
   genesis and blocks on the blockchain, providing the =--ownerpass= password and
   the initial =--balance= for the first owner account on the blockchain.
   Initialize a bootstrap and authority blockchain node with the below command
-#+BEGIN_SRC fish
+- Initialization of a bootstrap and authority blockchain node :: The parameters
+  to initialize a bootstrap and authority blockchain node
+  - =--node= specifies the node address
+  - =--bootstrap= makes the node a bootstrap node for the initial peer discovery
+    and also makes the node the authority node for the PoA consensus
+  - =--authpass= provides a password for the authority account to sign the
+    genesis and blocks on the blockchain
+  - =--ownerpass= provides a password for the first owner account on the
+    blockchain.
+  - =--balance= specifies the balance for the first owner account on the
+    blockchain.
+  Initialize a bootstrap and authority blockchain node with the below command
+  #+BEGIN_SRC fish
 ./bcn node start --node $node --bootstrap --authpass $authpass \
   --ownerpass $ownerpass --balance 1000
-TODO output
-#+END_SRC
+  #+END_SRC
 - Start of an initialized bootstrap and authority blockchain node :: An already
   initialized bootstrap and authority blockchain node is started with the
   following command
-#+BEGIN_SRC fish
+  #+BEGIN_SRC fish
 ./bcn node start --node $node --bootstrap --authpass $authpass
 TODO output
-#+END_SRC
+  #+END_SRC
 
 *** Using =account create= CLI command
 
@@ -428,15 +439,15 @@ The gRPC =AccountCreate= method is exposed through the CLI. To create a new
 account on the blockchain and store its key pair on the blockchain node run the
 following commands in a terminal
 - Start a blockchain node
-#+BEGIN_SRC fish
+  #+BEGIN_SRC fish
 ./bcn node start --node $node --bootstrap --authpass $authpass
-#+END_SRC
+  #+END_SRC
 - Create a new account (in a new terminal) by providing the =--node= address and
   the =--ownerpass= password for the new owner account
-#+BEGIN_SRC fish
+  #+BEGIN_SRC fish
 ./bcn account create --node $node --ownerpass $ownerpass
 acc: 596cd4370df451aa9403dddf7febc949fa729eab8f2bdceebbc24477d6f4c80f
-#+END_SRC
+  #+END_SRC
 
 *** Using =account balance= CLI command
 
@@ -444,12 +455,12 @@ The gRPC =AccountBalance= method is exposed through the CLI. To check the
 balance of an initial owner account or an account that have already transacted
 on the blockchain run the following command in a terminal
 - Start a blockchain node
-#+BEGIN_SRC fish
+  #+BEGIN_SRC fish
 ./bcn node start --node $node --bootstrap --authpass $authpass
-#+END_SRC
+  #+END_SRC
 - Get the account address of the initial owner from the genesis file at
   =.keystore<port>/genesis.json= that has the below structure
-#+BEGIN_SRC json
+  #+BEGIN_SRC json
 {
   "chain": "blockchain",
   "authority": "f562ef45023a56a62a0a700d4f347affc0b0401dc77ab69cd8b0ac40b9c79249",
@@ -459,10 +470,10 @@ on the blockchain run the following command in a terminal
   "time": "2024-09-28T14:40:34.749369849+02:00",
   "sig": "yVlFB9LImlegWJ9XzLZ4Wslr+zTWBUQ1hanrzdABShN4KTZeYlc/jQbQerV68EKeqvpf8BmWOdmXhlRXA1wsOAA="
 }
-#+END_SRC
+  #+END_SRC
 - Get the balnace of the initial owner account from the genesis file with the
   following command
-#+BEGIN_SRC fish
+  #+BEGIN_SRC fish
 ./bcn account balance --node $node --account d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7
 d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7: 1000
-#+END_SRC
+  #+END_SRC
