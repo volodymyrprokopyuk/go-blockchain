@@ -65,10 +65,11 @@ func (s *State) Apply(state *State) {
   }
 }
 
-func (s *State) Balance(acc Address) uint64 {
+func (s *State) Balance(acc Address) (uint64, bool) {
   s.mtx.RLock()
   defer s.mtx.RUnlock()
-  return s.balances[acc]
+  balance, exist := s.balances[acc]
+  return balance, exist
 }
 
 func (s *State) Authority() Address {

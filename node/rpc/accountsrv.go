@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"google.golang.org/grpc/codes"
@@ -9,7 +10,7 @@ import (
 )
 
 type BalanceChecker interface {
-  Balance(acc chain.Address) uint64
+  Balance(acc chain.Address) (uint64, bool)
 }
 
 type AccountSrv struct {
@@ -49,7 +50,14 @@ func (s *AccountSrv) AccountBalance(
   _ context.Context, req *AccountBalanceReq,
 ) (*AccountBalanceRes, error) {
   acc := req.Address
-  balance := s.balChecker.Balance(chain.Address(acc))
+  balance, exist := s.balChecker.Balance(chain.Address(acc))
+  if !exist {
+    return nil, status.Errorf(
+      codes.NotFound, fmt.Sprintf(
+        "account %v does not exist or has not yet transacted", acc,
+      ),
+    )
+  }
   res := &AccountBalanceRes{Balance: balance}
   return res, nil
 }
