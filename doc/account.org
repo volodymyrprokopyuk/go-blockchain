@@ -264,8 +264,8 @@ func ReadAccount(path string, pass []byte) (Account, error) {
 
 *** gRPC =AccountCreate= method
 
-the gRPC =Account= service provides the =AccountCreate= method to create new
-accounts on the blockchain.
+The gRPC =Account= service provides the =AccountCreate= method to create new
+accounts on the blockchain. The interface of the service
 #+BEGIN_SRC protobuf
 message AccountCreateReq {
   string Password = 1;
@@ -309,6 +309,45 @@ func (s *AccountSrv) AccountCreate(
 
 *** gRPC =AccountBalance= method
 
+The gRPC =Account= service provides the =AccountBalance= method to check the
+balance of an account. The interface of the service
+#+BEGIN_SRC protobuf
+message AccountBalanceReq {
+  string Address = 1;
+}
+
+message AccountBalanceRes {
+  uint64 Balance = 1;
+}
+
+service Account {
+  rpc AccountBalance(AccountBalanceReq) returns (AccountBalanceRes);
+}
+#+END_SRC
+
+The implementation of the =AccountBalance= method
+- Check the balance of the requested account if the balance entry exists in the
+  blockchain state. The account can be created, but the balance entry in the
+  blockchain state will be included only after the first transaction involving
+  the account
+#+BEGIN_SRC go
+func (s *AccountSrv) AccountBalance(
+  _ context.Context, req *AccountBalanceReq,
+) (*AccountBalanceRes, error) {
+  acc := req.Address
+  balance, exist := s.balChecker.Balance(chain.Address(acc))
+  if !exist {
+    return nil, status.Errorf(
+      codes.NotFound, fmt.Sprintf(
+        "account %v does not exist or has not yet transacted", acc,
+      ),
+    )
+  }
+  res := &AccountBalanceRes{Balance: balance}
+  return res, nil
+}
+#+END_SRC
+
 ** Testing and usage
 
 *** Testing account persistence and re-creation
@@ -331,6 +370,22 @@ The =TestAccountCreate= testing process
 - Verify that the returned account address length is correct
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run AccountCreate
+#+END_SRC
+
+*** Testing gRPC =AccountBalance= method
+
+The =TestAccountBalance= testing process
+- Create the =Genesis= and the blockchain =State=
+- Set up the gRPC =Account= service and the gRPC =Account= client
+- Check balance of an existing account
+  - Call the gRPC =AccountBalance= method with the account address of the
+    initial owner from the genesis
+  - Verify that the correct balance is returned
+- Check balance of a non-existing account
+  - Call the gRPC =AccountBalance= method with a non-existing account address
+  - Verify that the not found error is returned
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run AccountBalance
 #+END_SRC
 
 *** Initializing and starting a blockchain node
