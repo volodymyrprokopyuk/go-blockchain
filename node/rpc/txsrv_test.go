@@ -59,6 +59,6 @@ func TestTxSign(t *testing.T) {
     t.Fatal(err)
   }
   if !valid {
-    t.Errorf("invalid tx signature")
+    t.Errorf("invalid transaction signature")
   }
 }

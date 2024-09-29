@@ -2,8 +2,7 @@
 
 ** Concepts and purpose
 
-
-*** Blockchain accounts
+*** Accounts on the blockchain
 
 - Account :: An account represents a /digital identity/ on the blockchain. An
   account represents /user's ownership of assets/ on the blockchain. An account
@@ -46,7 +45,7 @@ private and a public key
 
 ** Design and implementation
 
-*** Elliptic-curve cryptography Secp256k1 key pair
+*** Secp256k1 key pair
 
 The implementation of this blockchain uses the *Elliptic-Curve Cryptography*
 (*ECC*). Specifically, the *Secp256k1 elliptic curve* is used for generation of

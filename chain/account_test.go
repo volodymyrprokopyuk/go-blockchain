@@ -1,39 +1,47 @@
-package chain
+package chain_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 )
 
-const keyStoreDir = ".keystoretest"
-var ownerPass = []byte("password")
+const (
+  keyStoreDir = ".keystoretest"
+  blockStoreDir = ".keystoretest"
+  chainName = "testblockchain"
+  authPass = "password"
+  ownerPass = "password"
+  ownerBalance = 1000
+)
 
 func TestAccountWriteReadSignTxVerifyTx(t *testing.T) {
-  acc, err := NewAccount()
-  if err != nil {
-    t.Fatal(err)
-  }
-  err = acc.Write(keyStoreDir, ownerPass)
-  if err != nil {
-    t.Fatal(err)
-  }
   defer os.RemoveAll(keyStoreDir)
-  path := filepath.Join(keyStoreDir, string(acc.Address()))
-  acc, err = ReadAccount(path, ownerPass)
+  acc, err := chain.NewAccount()
   if err != nil {
     t.Fatal(err)
   }
-  tx := NewTx(acc.Address(), Address("to"), 12, 1)
+  err = acc.Write(keyStoreDir, []byte(ownerPass))
+  if err != nil {
+    t.Fatal(err)
+  }
+  path := filepath.Join(keyStoreDir, string(acc.Address()))
+  acc, err = chain.ReadAccount(path, []byte(ownerPass))
+  if err != nil {
+    t.Fatal(err)
+  }
+  tx := chain.NewTx(acc.Address(), chain.Address("to"), 12, 1)
   stx, err := acc.SignTx(tx)
   if err != nil {
     t.Fatal(err)
   }
-  valid, err := VerifyTx(stx)
+  valid, err := chain.VerifyTx(stx)
   if err != nil {
     t.Fatal(err)
   }
   if !valid {
-    t.Errorf("invalid tx signature")
+    t.Errorf("invalid transaction signature")
   }
 }

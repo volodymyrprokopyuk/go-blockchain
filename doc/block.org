@@ -91,6 +91,101 @@ func (g SigGenesis) Hash() Hash {
   #+END_SRC
 
 *** ECDSA signing and verification of genesis
+
+This blockchain uses the *Elliptic Curve Digital Signature Algorithm* (*ECDSA*)
+for signing and verification of the genesis. Specifically, the *Secp256k1
+elliptic curve* is used for for signing and verification of the genesis
+
+- Secp256k1 genesis signing :: The genesis signing process requires the
+  owner-provided password and is performed from the =Account= instance. The
+  signing signing process
+  - Produce the Keccak256 hash of the genesis
+  - Sign the Keccak256 hash of the genesis using the ECDSA algorithm on the
+    Secp256k1 elliptic curve
+  - Construct a signed genesis by adding the produced digital signature to
+    the genesis
+  #+BEGIN_SRC go
+func (a Account) SignGen(gen Genesis) (SigGenesis, error) {
+  hash := gen.Hash().Bytes()
+  sig, err := ecc.SignBytes(a.prv, hash, ecc.LowerS | ecc.RecID)
+  if err != nil {
+    return SigGenesis{}, err
+  }
+  sgen := NewSigGenesis(gen, sig)
+  return sgen, nil
+}
+  #+END_SRC
+
+- Secp256k1 genesis verification :: The genesis verification process
+  does not require any external information like the owner-provided password.
+  The signed genesis instance contains all the necessary information to
+  verify the signed genesis. The genesis verification process
+  - Recover the public key from the hash of the original embedded genesis and
+    the genesis signature
+  - Construct the account address from the recovered public key
+  - If the constructed account address is equal to the account address of the
+    authority that signed the genesis, then the genesis signature is valid
+  #+BEGIN_SRC go
+func VerifyGen(gen SigGenesis) (bool, error) {
+  hash := gen.Genesis.Hash().Bytes()
+  pub, err := ecc.RecoverPubkey("P-256k1", hash, gen.Sig)
+  if err != nil {
+    return false, err
+  }
+  acc := NewAddress(pub)
+  return acc == Address(gen.Authority), nil
+}
+  #+END_SRC
+
 *** Persistence and re-creation of genesis
 
+- Genesis persistence :: The genesis persistence process
+  - Encode the genesis to JSON
+  - Write the encoded genesis to a file
+  #+BEGIN_SRC go
+func (g SigGenesis) Write(dir string) error {
+  jgen, err := json.Marshal(g)
+  if err != nil {
+    return err
+  }
+  err = os.MkdirAll(dir, 0700)
+  if err != nil {
+    return err
+  }
+  path := filepath.Join(dir, genesisFile)
+  return os.WriteFile(path, jgen, 0600)
+}
+  #+END_SRC
+- Genesis re-creation :: The genesis re-creation process
+  - Read the encoded genesis from a file
+  - Decode the genesis from JSON
+  #+BEGIN_SRC go
+func ReadGenesis(dir string) (SigGenesis, error) {
+  path := filepath.Join(dir, genesisFile)
+  jgen, err := os.ReadFile(path)
+  if err != nil {
+    return SigGenesis{}, err
+  }
+  var gen SigGenesis
+  err = json.Unmarshal(jgen, &gen)
+  return gen, err
+}
+  #+END_SRC
+
 ** Testing and usage
+
+*** Testing genesis signing and verification
+
+The =TestGenesisWriteReadSignGenVerifyGen= testing process
+- Create and persist the authority account to sign the genesis
+- Create and persist the initial owner account for the initial balance in the
+  genesis
+- Create the genesis by providing the name of the blockchain the authority
+  account address, the initial owner account address and balance
+- Sign the genesis from the authority account
+- Persist the genesis to a file
+- Read the genesis from a file
+- Verify the signature of the signed genesis
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run SignGenVerifyGen
+#+END_SRC

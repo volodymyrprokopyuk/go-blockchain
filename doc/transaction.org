@@ -199,7 +199,7 @@ func (a Account) SignTx(tx Tx) (SigTx, error) {
 - Secp256k1 transaction verification :: The transaction verification process
   does not require any external information like the owner-provided password.
   The signed transaction instance contains all the necessary information to
-  verify a signed transaction.  The transaction verification process
+  verify the signed transaction. The transaction verification process
   - Recover the public key from the hash of the original embedded transaction
     and the transaction signature
   - Construct the account address from the recovered public key
