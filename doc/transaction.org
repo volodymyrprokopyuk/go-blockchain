@@ -2,7 +2,7 @@
 
 ** Concepts and purpose
 
-*** Cryptographic hash function
+*** Cryptographic hash functions
 
 - Hash function :: A cryptographic hash function produces a /random looking,
   fixed length, unpredictable output/ (a random oracle) from an arbitrary large
@@ -72,7 +72,7 @@ Security properties of a hash function
 Keccak256 hash function is used in this blockchain for hashing and signing of
 transactions and blocks
 
-- Keccak256 hash function :: The =Hash= type is an alias to =[32]byte=. The
+- Keccak256 hash function :: The =Hash= type is a type alias to =[32]byte=. The
   Keccak256 hash function is implemented as the constructor function on the
   =Hash= type. To hash a value of specific type, this implementation requires
   the type to have defined JSON serialization that is used to encode the value
@@ -145,9 +145,8 @@ func (t Tx) Hash() Hash {
 }
   #+END_SRC
 - =SigTx= type :: The =SigTx= type embeds the =Tx= type and includes the
-  signature byte slice that holds the transaction signature. The string
-  representation of the signed transaction is defined to present a transaction
-  to end users
+  transaction signature. The string representation of the signed transaction is
+  defined to present a transaction to end users
   | ~Tx~         | Original transaction                          |
   | ~Sig []byte~ | Digital signature of the original transaction |
   #+BEGIN_SRC go
@@ -330,6 +329,7 @@ set ownerpass password
   "to":"recipient",
   "value":12,
   "nonce":1,
-  "time":"2024-09-29T09:57:28.65978649+02:00", "sig":"Cz+qV8DaD+sCnaLnTR2S49a/9nwsYbe2EF8Y6Upa/vYoGY7P9qSmzDSBBHQolg6KdxIiS/NrXvcevLiSYJpbvQE="
+  "time":"2024-09-29T09:57:28.65978649+02:00",
+  "sig":"Cz+qV8DaD+sCnaLnTR2S49a/9nwsYbe2EF8Y6Upa/vYoGY7P9qSmzDSBBHQolg6KdxIiS/NrXvcevLiSYJpbvQE="
 }
   #+END_SRC

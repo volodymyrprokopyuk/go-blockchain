@@ -2,7 +2,8 @@
 
 ** Concepts and purpose
 
-*** Account components and operations
+
+*** Blockchain accounts
 
 - Account :: An account represents a /digital identity/ on the blockchain. An
   account represents /user's ownership of assets/ on the blockchain. An account

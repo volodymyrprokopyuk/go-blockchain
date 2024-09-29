@@ -4,4 +4,5 @@
 *** Blockchain state
   - [[/doc/account.org][Account]]
   - [[/doc/transaction.org][Transaction]]
+  - [[/doc/block.org][Block]]
 *** Blockchain node

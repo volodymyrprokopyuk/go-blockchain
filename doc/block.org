@@ -1,0 +1,96 @@
+* Block
+
+** Concepts and purpose
+
+*** Genesis and blocks
+
+- Genesis :: The genesis file is used to initialize a blockchain. The genesis
+  file contains /initial configuration parameters of the blockchain/ e.g. the
+  name of the blockchain, the time of initiation of the blockchain; and the
+  /initial balances of owner accounts/. The genesis file may contain other
+  blockchain configuration parameters like the address of the authority account
+  that signs the genesis and all blocks on the blockchain
+- Block :: A block on the blockchain /contains a list of transactions/, acts as
+  a /node of a linked list/ of all blocks on the blockchain, and is a /unit of
+  integrity/ checking on the blockchain. A block represents a /unit of
+  consensus agreement/ between nodes on the blockchain. Blocks of transactions
+  are created and proposed by one nodes and validated and voted by other nodes.
+  Blocks can be digitally signed by proposing, validating, and voting nodes. A
+  block must be either validated and added to the blockchain with all listed
+  transactions or rejected completely even if some transactions are valid
+
+*** Chain of blocks and immutability
+
+- Chain of blocks :: Blocks on the blockchain are organized into a /linked list
+  of blocks/ where every blocks acts as a node of the linked list. Each block
+  has a reference that contains the /hash of the parent block/. The parent hash
+  of every block is the /linking and integrity checking mechanism/ that ensures
+  /immutability/ of all blocks and contained transactions, /ordering/ of all
+  blocks and contained transactions. A minimal change in content or ordering of
+  blocks or contained transactions immediately results in a different hash of
+  the modified block and breakage of the parent hash linking mechanism of the
+  blockchain. The parent hash of the first block is the hash of the genesis
+
+** Design and implementation
+
+*** Genesis and signed genesis types
+
+The implementation makes distinction between the =Genesis= type that contains on
+the initial configuration of the blockchain and the =SigGenesis= type that also
+contains the signature of the genesis by the authority account. Most of the
+blockchain components work exclusively with the =SigGenesis= type
+
+- =Genesis= type :: The =Genesis= type contains the initial configuration of the
+  blockchain. Specifically the blockchain name, the authority account address
+  that signs the genesis and all blocks, the initial balances on the blockchain
+  that create the initial amount of money from thin air, the creation time the
+  genesis
+  | ~Chain string~                | Blockchain name           |
+  | ~Authority Address~           | Authority account address |
+  | ~Balances map[Address]uint64~ | Initial balances          |
+  | ~Time time.Time~              | Creation time             |
+  #+BEGIN_SRC go
+type Genesis struct {
+  Chain string `json:"chain"`
+  Authority Address `json:"authority"`
+  Balances map[Address]uint64 `json:"balances"`
+  Time time.Time `json:"time"`
+}
+
+func NewGenesis(name string, authority, acc Address, balance uint64) Genesis {
+  balances := make(map[Address]uint64, 1)
+  balances[acc] = balance
+  return Genesis{
+    Chain: name, Authority: authority, Balances: balances, Time: time.Now(),
+  }
+}
+
+func (g Genesis) Hash() Hash {
+  return NewHash(g)
+}
+  #+END_SRC
+
+- =SigGenesis= type :: The =SigGenesis= type embeds the =Genesis= type and
+  includes the genesis signature. After the genesis is created and signed by the
+  authority account, the genesis is immediately written to the genesis file
+  | ~Genesis~    | Genesis content |
+  | ~Sig []byte~ | Genesis signature |
+  #+BEGIN_SRC go
+type SigGenesis struct {
+  Genesis
+  Sig []byte `json:"sig"`
+}
+
+func NewSigGenesis(gen Genesis, sig []byte) SigGenesis {
+  return SigGenesis{Genesis: gen, Sig: sig}
+}
+
+func (g SigGenesis) Hash() Hash {
+  return NewHash(g)
+}
+  #+END_SRC
+
+*** ECDSA signing and verification of genesis
+*** Persistence and re-creation of genesis
+
+** Testing and usage

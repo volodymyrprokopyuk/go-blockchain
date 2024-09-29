@@ -63,16 +63,6 @@ func (b SigBlock) String() string {
   return bld.String()
 }
 
-func VerifyBlock(blk SigBlock, authority Address) (bool, error) {
-  hash := blk.Block.Hash().Bytes()
-  pub, err := ecc.RecoverPubkey("P-256k1", hash, blk.Sig)
-  if err != nil {
-    return false, err
-  }
-  acc := NewAddress(pub)
-  return acc == authority, nil
-}
-
 func (b SigBlock) Write(dir string) error {
   path := filepath.Join(dir, blocksFile)
   file, err := os.OpenFile(path, os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0600)
@@ -81,6 +71,16 @@ func (b SigBlock) Write(dir string) error {
   }
   defer file.Close()
   return json.NewEncoder(file).Encode(b)
+}
+
+func VerifyBlock(blk SigBlock, authority Address) (bool, error) {
+  hash := blk.Block.Hash().Bytes()
+  pub, err := ecc.RecoverPubkey("P-256k1", hash, blk.Sig)
+  if err != nil {
+    return false, err
+  }
+  acc := NewAddress(pub)
+  return acc == authority, nil
 }
 
 func ReadBlocks(dir string) (
