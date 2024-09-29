@@ -62,7 +62,7 @@ Security properties of a hash function
   - *Non-repudiation of the sender*. The sender cannot deny the act of sending
     the transaction, as the transaction must have been signed with the account
     private key
-  - *Integrity of the transaction* The transaction content is immutable since
+  - *Integrity of the transaction*. The transaction content is immutable since
     creation and has not been tampered with
 
 ** Design and implementation
@@ -72,13 +72,12 @@ Security properties of a hash function
 Keccak256 hash function is used in this blockchain for hashing and signing of
 transactions and blocks
 
-- Keccak256 hash function :: The =Hash= type is an alias to a byte array of
-  length 32. The Keccak256 hash function is implemented as the =NewHash(val
-  any)= constructor function on the =Hash= type. To hash a value of specific
-  type, this implementation requires the type to have defined JSON serialization
-  that is used to encode the value before hashing. The =Hash= type defines
-  string and byte slice representations of a hash, as well as JSON text marshal
-  and unmarshal serialization methods
+- Keccak256 hash function :: The =Hash= type is an alias to =[32]byte=. The
+  Keccak256 hash function is implemented as the constructor function on the
+  =Hash= type. To hash a value of specific type, this implementation requires
+  the type to have defined JSON serialization that is used to encode the value
+  before hashing. The =Hash= type defines string and byte slice representations
+  of a hash, as well as JSON text marshal and unmarshal serialization methods
   #+BEGIN_SRC go
 type Hash [32]byte
 
@@ -117,12 +116,17 @@ transaction, and verification of a signed transaction. Most of the blockchain
 components work exclusively with the =SigTx= type
 
 - =Tx= type :: The =Tx= type represents a transaction on the blockchain. The
-  transaction defines the address of a sender account =From=, the address of a
-  recipient account =To=, the =Value= amount to be transferred, the per account
-  =Nonce= to prevent replay attacks, the double spending problem, and process
-  transaction from an account in order, and, finally, the =Time= of transaction
+  transaction defines the address of a sender account, the address of a
+  recipient account, the value amount to be transferred, the per account
+  nonce to prevent replay attacks, the double spending problem, and process
+  transaction from an account in order, and, finally, the time of transaction
   signing. All transaction fields participate in producing the hash of a
   transaction that is used to sign a transaction
+  | ~From Address~   | Address of a sender account    |
+  | ~To Address~     | Address of a recipient account |
+  | ~Value uint64~   | Value amount to be transferred |
+  | ~Nonce uint64~   | Per account nonce              |
+  | ~Time time.Time~ | time of transaction signing    |
   #+BEGIN_SRC go
 type Tx struct {
   From Address `json:"from"`
@@ -140,9 +144,12 @@ func (t Tx) Hash() Hash {
   return NewHash(t)
 }
   #+END_SRC
-- =SigTx= type :: The =SigTx= type embeds the =Tx= type and defines the
-  signature byte slice =Sig= that holds the transaction signature. The string
-  representation of the =SigTx= is defined to present a transaction to end users
+- =SigTx= type :: The =SigTx= type embeds the =Tx= type and includes the
+  signature byte slice that holds the transaction signature. The string
+  representation of the signed transaction is defined to present a transaction
+  to end users
+  | ~Tx~         | Original transaction                          |
+  | ~Sig []byte~ | Digital signature of the original transaction |
   #+BEGIN_SRC go
 type SigTx struct {
   Tx
@@ -173,11 +180,11 @@ elliptic curve* is used for for signing and verification of transactions
 - Secp256k1 transaction signing :: The transaction signing process requires the
   owner-provided password and is performed from the =Account= instance. The
   transaction signing process
-  - Produce the Keccak256 hash of the input transaction =Tx=
+  - Produce the Keccak256 hash of the input transaction
   - Sign the Keccak256 hash of the transaction using the ECDSA algorithm on the
     Secp256k1 elliptic curve
-  - Construct a signed transaction =SigTx= by adding the produced digital
-    signature to the input transaction =Tx=
+  - Construct a signed transaction by adding the produced digital signature to
+    the input transaction
   #+BEGIN_SRC go
 func (a Account) SignTx(tx Tx) (SigTx, error) {
   hash := tx.Hash().Bytes()
@@ -194,8 +201,8 @@ func (a Account) SignTx(tx Tx) (SigTx, error) {
   does not require any external information like the owner-provided password.
   The signed transaction instance contains all the necessary information to
   verify a signed transaction.  The transaction verification process
-  - Recover the public key from the hash of the transaction =Tx= and the
-    transaction signature
+  - Recover the public key from the hash of the original embedded transaction
+    and the transaction signature
   - Construct the account address from the recovered public key
   - If the constructed account address is equal to the =From= account address of
     the signed transaction, then the transaction signature is valid
@@ -235,8 +242,10 @@ service Tx {
 
 The implementation of the =TxSign= method
 - Re-create the owner account using the owner-provided password
-- Construct a new transaction =Tx= from the request arguments: the sender
-  address =From=, the recipient address =To=, the value amount =Value=
+- Construct a new transaction from the request arguments
+  - =From= specifies the sender address
+  - =To= specifies the recipient address
+  - =Value= the value amount to be transferred
 - Request from the blockchain state and increment by 1 the current value of
   nonce for the sender account
 - Sign the transaction with the sender account private key
@@ -278,15 +287,15 @@ The =TestAccountWriteReadSignTxVerifyTx= testing process
 - Sign the new transaction
 - Verify the signature of the signed transaction
 #+BEGIN_SRC fish
-go test -v -cover -coverprofile=coverage.cov ./... -run AccountWriteRead
+go test -v -cover -coverprofile=coverage.cov ./... -run SignTxVerifyTx
 #+END_SRC
 
 *** Testing gRPC =TxSign= method
 
 The =TestTxSign= testing process
-- Create the =Genesis= and the blockchain =State=
+- Create the genesis= and the blockchain state
 - Create a new owner account protected with the owner-provided password
-- Set up the gRPC =TX= service and the gRPC =Tx= client
+- Set up the gRPC transaction service and the gRPC transaction client
 - Sign the transaction with the owner-provided password
 - Verify the signature of the signed transaction
 #+BEGIN_SRC fish
@@ -295,24 +304,26 @@ go test -v -cover -coverprofile=coverage.cov ./... -run TxSign
 
 *** Using =tx sign= CLI command
 
-The gRPC =TxSign= method is exposed through the CLI. The parameters to create
-and sign a transaction
-- =--node= specifies the node address
-- =--from= defines the sender account address
-- =--value= defines the recipient account address
-- =--ownerpass= provides the sender account password to sign the transaction
-To create and sign a new transaction run the following commands in a terminal
+The gRPC =TxSign= method is exposed through the CLI. Create and sign a new
+transaction on a blockchain node
 - Start a blockchain node
   #+BEGIN_SRC fish
+set node localhost:1122
+set authpass password
 ./bcn node start --node $node --bootstrap --authpass $authpass
   #+END_SRC
-- Create and sign a new transaction
+- Create and sign a new transaction (in a new terminal)
+  - =--node= specifies the node address
+  - =--from= defines the sender account address
+  - =--value= defines the recipient account address
+  - =--ownerpass= provides the sender account password to sign the transaction
   #+BEGIN_SRC fish
-set -g sender d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7
+set sender d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7
+set ownerpass password
 ./bcn tx sign --node $node --from $sender --to recipient --value 12 \
   --ownerpass $ownerpass
   #+END_SRC
-  Structure of the signed transaction
+  Structure of the signed encoded transaction
   #+BEGIN_SRC json
 {
   "from":"d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7",

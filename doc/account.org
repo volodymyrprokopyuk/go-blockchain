@@ -52,8 +52,11 @@ The implementation of this blockchain uses the *Elliptic-Curve Cryptography*
 key pairs for accounts on the blockchain, as well as signing and verification of
 transactions on the blockchain
 
-- Secp256k1 public key :: The public key holds the name =P-256k1= of the =Curve=
-  and two large numbers =X= and =Y= derived from the corresponding private key
+- Secp256k1 public key :: The public key holds the name =P-256k1= of the
+  elliptic curve and two large numbers =X= and =Y= derived from the
+  corresponding private key
+  | ~Curve string~  | Secp256k1 curve name. Always =P-256k1= |
+  | ~X, Y *big.int~ | Two large derived numbers              |
   #+BEGIN_SRC go
 type p256k1PublicKey struct {
   Curve string `json:"curve"`
@@ -65,10 +68,12 @@ func newP256k1PublicKey(pub *ecdsa.PublicKey) p256k1PublicKey {
   return p256k1PublicKey{Curve: "P-256k1", X: pub.X, Y: pub.Y}
 }
   #+END_SRC
-- Secp256k1 private key :: The private key holds the large secret number =D= and
-  embeds the derived public key =p256k1PublicKey=. The ~*ecdsa.PublicKey~ and
-  =*ecdsa.PrivateKey= components can be retrieved from a =p256k1PrivateKey=
-  instance
+- Secp256k1 private key :: The private key holds the large random secret number
+  =D= and embeds the derived public key =p256k1PublicKey=. The
+  ~*ecdsa.PublicKey~ and =*ecdsa.PrivateKey= components can be retrieved from a
+  =p256k1PrivateKey= instance
+  | ~p256k1PublicKey~ | Embedded public key        |
+  | ~D *big.Int~      | Large random secret number |
   #+BEGIN_SRC go
 type p256k1PrivateKey struct {
   p256k1PublicKey
@@ -165,7 +170,7 @@ func (a Account) Write(dir string, pass []byte) error {
 }
   #+END_SRC
 
-The JSON encoded key pair before encryption has the following form
+The structure of a JSON encoded key pair before encryption
 #+BEGIN_SRC json
 {
   "curve":"P-256k1",
@@ -366,7 +371,7 @@ go test -v -cover -coverprofile=coverage.cov ./... -run AccountWriteRead
 *** Testing gRPC =AccountCreate= method
 
 The =TestAccountCreate= testing process
-- Set up the gRPC =Account= service and the gRPC =Account= client
+- Set up the gRPC account service and the gRPC account client
 - Call the gRPC =AccountCreate= method with the owner-provided password to
   create a new account on the blockchain
 - Verify that the returned account address length is correct
@@ -377,8 +382,8 @@ go test -v -cover -coverprofile=coverage.cov ./... -run AccountCreate
 *** Testing gRPC =AccountBalance= method
 
 The =TestAccountBalance= testing process
-- Create the =Genesis= and the blockchain =State=
-- Set up the gRPC =Account= service and the gRPC =Account= client
+- Create the genesis and the blockchain state
+- Set up the gRPC account service and the gRPC account client
 - Check balance of an existing account
   - Call the gRPC =AccountBalance= method with the account address of the
     initial owner from the genesis
@@ -392,51 +397,54 @@ go test -v -cover -coverprofile=coverage.cov ./... -run AccountBalance
 
 *** Initializing and starting a blockchain node
 
-This blockchain consists of an in-memory =State= that holds balances and nonces
-of all accounts, a reference to the last confirmed block, and pending
-transactions sent by external clients or relayed by other nodes that are not yet
-validated and packed into a confirmed block. Every confirmed block is
-immediately appended to the =block.store= file. A blockchain =Node= manages the
-blockchain =State= and interactions with other blockchain nodes connected
-through a peer-to-peer network. All interactions between blockchain nodes and
-with external blockchain clients are performed at any blockchain node through
-the *gRPC interface*. A single blockchain node is autonomous, self-contained,
-and provides the same gRPC services as a peer-to-peer blockchain network
+This blockchain consists of an in-memory state that holds balances and nonces of
+all accounts, a reference to the last confirmed block, and pending transactions
+sent by external clients or relayed by other nodes that are not yet validated
+and packed into a confirmed block. Every confirmed block is immediately appended
+to the block store file. A blockchain node manages the blockchain State and
+interactions with other blockchain nodes connected through a peer-to-peer
+network. All interactions between blockchain nodes and with external blockchain
+clients are performed at any blockchain node through the gRPC interface. A
+single blockchain node is autonomous, self-contained, and provides the same gRPC
+services as a peer-to-peer blockchain network
 
-- Initialization of a bootstrap and authority blockchain node :: The parameters
-  to initialize a bootstrap and authority blockchain node
-  - =--node= specifies the node address
-  - =--bootstrap= makes the node a bootstrap node for the initial peer discovery
-    and also makes the node the authority node for the PoA consensus
-  - =--authpass= provides a password for the authority account to sign the
-    genesis and blocks on the blockchain
-  - =--ownerpass= provides a password for the first owner account on the
-    blockchain.
-  - =--balance= specifies the balance for the first owner account on the
-    blockchain.
-  Initialize a bootstrap and authority blockchain node with the below command
-  #+BEGIN_SRC fish
+*Initialization of a bootstrap and authority blockchain node*. The parameters to
+initialize a bootstrap and authority blockchain node
+- =--node= specifies the node address
+- =--bootstrap= makes the node a bootstrap node for the initial peer discovery
+  and also makes the node the authority node for the PoA consensus
+- =--authpass= provides a password for the authority account to sign the genesis
+  and blocks on the blockchain
+- =--ownerpass= provides a password for the first owner account on the
+  blockchain
+- =--balance= specifies the balance for the first owner account on the
+  blockchain
+Initialize a bootstrap and authority blockchain node
+#+BEGIN_SRC fish
+set node localhost:1122
+set authpass password
+set ownerpass password
 ./bcn node start --node $node --bootstrap --authpass $authpass \
   --ownerpass $ownerpass --balance 1000
-  #+END_SRC
-- Start of an initialized bootstrap and authority blockchain node :: An already
-  initialized bootstrap and authority blockchain node is started with the
-  following command
-  #+BEGIN_SRC fish
+#+END_SRC
+
+*Start of an initialized bootstrap and authority blockchain node*. Start an
+already initialized bootstrap and authority blockchain node
+#+BEGIN_SRC fish
 ./bcn node start --node $node --bootstrap --authpass $authpass
-  #+END_SRC
+#+END_SRC
 
 *** Using =account create= CLI command
 
-The gRPC =AccountCreate= method is exposed through the CLI. To create a new
-account on the blockchain and store its key pair on the blockchain node run the
-following commands in a terminal
+The gRPC =AccountCreate= method is exposed through the CLI. Create a new
+account on the blockchain and store its key pair on the blockchain node
 - Start a blockchain node
   #+BEGIN_SRC fish
 ./bcn node start --node $node --bootstrap --authpass $authpass
   #+END_SRC
-- Create a new account (in a new terminal) by providing the =--node= address and
-  the =--ownerpass= password for the new owner account
+- Create a new account (in a new terminal)
+  - =--node= specifies the node address
+  - =--ownerpass= provides the password for the new account
   #+BEGIN_SRC fish
 ./bcn account create --node $node --ownerpass $ownerpass
 acc: 596cd4370df451aa9403dddf7febc949fa729eab8f2bdceebbc24477d6f4c80f
@@ -444,15 +452,15 @@ acc: 596cd4370df451aa9403dddf7febc949fa729eab8f2bdceebbc24477d6f4c80f
 
 *** Using =account balance= CLI command
 
-The gRPC =AccountBalance= method is exposed through the CLI. To check the
-balance of an initial owner account or an account that have already transacted
-on the blockchain run the following command in a terminal
+The gRPC =AccountBalance= method is exposed through the CLI. Check the balance
+of an initial owner account or an account that have already transacted on the
+blockchain
 - Start a blockchain node
   #+BEGIN_SRC fish
 ./bcn node start --node $node --bootstrap --authpass $authpass
   #+END_SRC
 - Get the account address of the initial owner from the genesis file at
-  =.keystore<port>/genesis.json= that has the below structure
+  =.keystore<port>/genesis.json=
   #+BEGIN_SRC json
 {
   "chain": "blockchain",
@@ -464,9 +472,9 @@ on the blockchain run the following command in a terminal
   "sig": "yVlFB9LImlegWJ9XzLZ4Wslr+zTWBUQ1hanrzdABShN4KTZeYlc/jQbQerV68EKeqvpf8BmWOdmXhlRXA1wsOAA="
 }
   #+END_SRC
-- Get the balnace of the initial owner account from the genesis file with the
-  following command
+- Get the balance of the initial owner account from the genesis file
   #+BEGIN_SRC fish
-./bcn account balance --node $node --account d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7
+set account d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7
+./bcn account balance --node $node --account $account
 d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7: 1000
   #+END_SRC
