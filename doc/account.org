@@ -114,9 +114,12 @@ func NewAddress(pub *ecdsa.PublicKey) Address {
 
 *** Account with Secp256k1 key pair
 
-- Account :: An account contains a /Secp256k1 private key/ =prv= and an /account
-  address/ =addr= derived from the corresponding Secp256k1 public key. A new
-  Secp256k1 key pair is generated when a =NewAccount= is created
+- Account :: An account contains a /Secp256k1 private key/ and an /account
+  address/ derived from the corresponding Secp256k1 public key. A new Secp256k1
+  key pair is generated when a new account is created
+  |----------------------------------+-------------------------|
+  | src_go { prv *ecdsa.PrivateKey } | Secp256k1 private key   |
+  | src_go { addr Address }          | Derived account address |
   #+BEGIN_SRC go
 type Account struct {
   prv *ecdsa.PrivateKey
@@ -401,14 +404,6 @@ with external blockchain clients are performed at any blockchain node through
 the *gRPC interface*. A single blockchain node is autonomous, self-contained,
 and provides the same gRPC services as a peer-to-peer blockchain network
 
-- Initialization of a bootstrap and authority blockchain node :: The
-  initialization of a bootstrap and authority blockchain node requires providing
-  the =--node= address, making the node =--bootstrap= node for the initial peer
-  discovery and also making the node the authority node for the PoA consensus,
-  providing the =--authpass= password for the authority account to sign the
-  genesis and blocks on the blockchain, providing the =--ownerpass= password and
-  the initial =--balance= for the first owner account on the blockchain.
-  Initialize a bootstrap and authority blockchain node with the below command
 - Initialization of a bootstrap and authority blockchain node :: The parameters
   to initialize a bootstrap and authority blockchain node
   - =--node= specifies the node address
@@ -430,7 +425,6 @@ and provides the same gRPC services as a peer-to-peer blockchain network
   following command
   #+BEGIN_SRC fish
 ./bcn node start --node $node --bootstrap --authpass $authpass
-TODO output
   #+END_SRC
 
 *** Using =account create= CLI command

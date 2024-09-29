@@ -294,3 +294,31 @@ go test -v -cover -coverprofile=coverage.cov ./... -run TxSign
 #+END_SRC
 
 *** Using =tx sign= CLI command
+
+The gRPC =TxSign= method is exposed through the CLI. The parameters to create
+and sign a transaction
+- =--node= specifies the node address
+- =--from= defines the sender account address
+- =--value= defines the recipient account address
+- =--ownerpass= provides the sender account password to sign the transaction
+To create and sign a new transaction run the following commands in a terminal
+- Start a blockchain node
+  #+BEGIN_SRC fish
+./bcn node start --node $node --bootstrap --authpass $authpass
+  #+END_SRC
+- Create and sign a new transaction
+  #+BEGIN_SRC fish
+set -g sender d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7
+./bcn tx sign --node $node --from $sender --to recipient --value 12 \
+  --ownerpass $ownerpass
+  #+END_SRC
+  Structure of the signed transaction
+  #+BEGIN_SRC json
+{
+  "from":"d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7",
+  "to":"recipient",
+  "value":12,
+  "nonce":1,
+  "time":"2024-09-29T09:57:28.65978649+02:00", "sig":"Cz+qV8DaD+sCnaLnTR2S49a/9nwsYbe2EF8Y6Upa/vYoGY7P9qSmzDSBBHQolg6KdxIiS/NrXvcevLiSYJpbvQE="
+}
+  #+END_SRC

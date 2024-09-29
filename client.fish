@@ -9,8 +9,8 @@ set -g pass password
 # ./bcn node start --node localhost:1123 --seed localhost:1122
 
 function txSignAndSend -a node pass from to value
-  set -l tx (./bcn tx sign --node $node --ownerpass $pass \
-    --from $from --to $to --value $value)
+  set -l tx (./bcn tx sign --node $node --from $from --to $to --value $value \
+    --ownerpass $pass)
   echo $tx
   set -l hash (./bcn tx send --node $node --sigtx $tx)
   echo $hash
