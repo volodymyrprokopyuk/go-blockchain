@@ -171,7 +171,8 @@ func (s *State) CreateBlock(authority Account) (SigBlock, error) {
 }
 
 func (s *State) ApplyBlock(blk SigBlock) error {
-  // no need to lock/unlock as ApplyBlock is always executed on a clone
+  s.mtx.Lock()
+  defer s.mtx.Unlock()
   valid, err := VerifyBlock(blk, s.authority)
   if err != nil {
     return err

@@ -5,56 +5,61 @@
 *** State balances and nonces
 
 - State :: The blockchain state is the central in-memory data structure
-  maintained on each blockchain node that tracks and reflects the current state
-  of the blockchain. The state contains a mapping between account address and
-  their balances. Account balances cannot be negative at any moment. The is no
-  debt in the blockchain. The state contains a mapping between account addresses
-  and the latest nonce used in the last transaction of each account. The nonce
-  is a per account counter that increments with every new signed transaction.
-  The nonce prevents replay attacks when a valid signed transaction in
-  intercepted and replayed to the blockchain network multiple times with the
-  objective to perform multiple transfers of funds from the sender account. The
-  nonce resolves the double spending problem by making each transaction from the
-  sender account unique, so the same funds cannot be spent more than one time.
-  The nonce ensures that transactions from an account are processed strictly in
-  order on increasing nonce values making replay attacks and double spending
-  impossible. The state contains a copy of the last confirmed block that is used
-  to validate the next block that will be added to the blockchain
+  maintained on each blockchain node that tracks and reflects the confirmed and
+  pending states of the blockchain. The state contains a mapping between account
+  address and their /balances/. Account balances cannot be negative at any
+  moment. There is no debt in the blockchain. The state contains a mapping
+  between account addresses and the /nonce/ used in the last transaction of each
+  account. The nonce is a per account counter that increments with every new
+  transaction signed from the account. The nonce /prevents replay attacks/ when
+  a valid signed transaction in intercepted and replayed to the blockchain
+  network multiple times with the objective to perform multiple transfers of
+  funds from the sender account. The nonce /resolves the double spending
+  problem/ by making each transaction from the sender account unique, so the
+  same funds cannot be spent more than one time. The nonce ensures that
+  transactions from an account are /processed strictly in order/ of increasing
+  nonce values making replay attacks and double spending impossible. The state
+  contains a copy of the /last confirmed block/ that is used to validate the
+  next block that will be added to the blockchain
 
 *** Confirmed state vs pending state
 
 - Confirmed state vs pending state :: The blockchain state has two facets: the
   confirmed state and the pending state. The pending state continuously and
-  progressively becomes the confirmed state. The cycle starts by creating the
-  pending state as a copy of the latest confirmed state. Then new transactions
-  are applied to the pending state. The transaction application process
-  validates a new transaction against the pending state balances and nonces. If
-  the new transaction is valid, it is added to the list of pending transactions.
-  On the due time a new block containing the list of pending transactions is
-  created, proposed, and finally validated by consensus between the blockchain
-  validating nodes. The confirmed block is applied to the current confirmed
-  state that automatically becomes the next confirmed state. Immediately after
-  the update of the confirmed state a new pending state is created as a copy of
-  the latest confirmed state and the cycle restarts.
+  progressively becomes the confirmed state rejecting invalid transactions. The
+  cycle starts by creating the pending state as a copy of the latest confirmed
+  state. Then new transactions are applied to the pending state. The transaction
+  application process validates a new transaction against balances and nonces of
+  the pending state. If the new transaction is valid, it is added to the list of
+  pending transactions. On the due time a new block containing the list of
+  pending transactions is created, proposed, and, finally, validated by
+  consensus between the validating nodes. The confirmed block is applied to the
+  current confirmed state that automatically becomes the next confirmed state.
+  Immediately after the update of the confirmed state a new pending state is
+  created as a copy of the latest confirmed state and the cycle restarts.
 
 *** Application of transactions to the state
 
 - Transaction application :: The transaction application process occurs four
-  times during the transaction life cycle in the blockchain
-  - The first time a new transaction is applied to the pending state. The new
-    transaction is either sent to the blockchain node by an external client or
-    relayed to the node from another node on the blockchain network
-  - The second time a pending transaction is applied again to the cloned state
-    when a new block is created and proposed for consensus agreement
-  - The third time a transaction from the proposed block is applied to the
-    cloned state during the validation of the proposed block
-  - The fourth time a transaction from a validated block is applied to the
-    confirmed state when the validated block is added to the blockchain
+  times during the transaction life cycle on the blockchain
+  - *Transaction creation*. The first time a /new transaction/ is applied to the
+    /pending state/. The new transaction is either sent to the blockchain node
+    by an external client or relayed to the node from another node on the
+    blockchain network
+  - *Block creation*. The second time a /pending transaction/ is applied again
+    to the /cloned state/ when a new block is created and proposed for consensus
+    agreement
+  - *Block validation*. The third time a /transaction from the proposed block/
+    is applied to the /cloned state/ during the validation of the proposed block
+  - *Block confirmation*. The fourth time a /transaction from the validated
+    block/ is applied to the /confirmed state/ when the validated block is added
+    to the blockchain
   The transaction application process validates a new transaction against one of
-  pending, cloned, or confirmed state by performing a set of checks
-  - Verify the signature of the signed transaction
-  - Check the transaction nonce against the state nonce for the sender account
-  - Ensure that the sender account has enough funds to satisfy the value amount
+  pending, cloned, or confirmed states by performing a set of checks
+  - Verify the /signature/ of the signed transaction
+  - Check the /transaction nonce/ against the state nonce for the sender account
+  - Ensure that the sender account has /enough funds/ to satisfy the value
+    amount
   Only validated transactions that has passed the transaction application
   process will be included in the next block on the blockchain. If any of the
   transaction checks fails the transaction is rejected and the rejection is
@@ -67,29 +72,52 @@
   algorithm. The block creation process is performed on the cloned state. The
   block creation process constructs a new block to be proposed and validated by
   other nodes on the blockchain network. All pending transactions are sorted by
-  the sender account and nonce to be applied in order, validated against the
-  cloned state, and packed into the new block. The block number is incremented
-  by one regarding the last confirmed block number, and the parent hash is taken
-  from the hash of the last block on the confirmed state.
+  the sender account and nonce to be applied in order per the sender account,
+  validated against the cloned state, and packed into a new block. The block
+  number is incremented by one regarding the number of the last confirmed block,
+  and the parent hash is set to the hash of the last block from the confirmed
+  state.
 
 *** Application of proposed blocks to the confirmed state
 
 - Block application :: The block application process occurs when a new proposed
-  block is relayed from other nodes on the blockchain network. The block
-  application process is first performed on the cloned state and, if valid, the
-  block application process is directly performed on the confirmed state and a
-  new block is appended to the block store. The block application process
-  performs a set of checks
-  - Verify the signature of the proposed block
-  - Check the successive block number against the block number of the last block
-    from the confirmed state
-  - Check the correct parent hash against the hash of the last block from the
+  block is relayed to the node from other nodes on the blockchain network. The
+  block application process is first performed on the cloned state and, if
+  successful, the block application process is directly performed on the
+  confirmed state and a new block is appended to the block store. The block
+  application process performs a set of checks
+  - Verify the /signature/ of the proposed signed block
+  - Check the successive /block number/ against the block number of the last
+    block from the confirmed state
+  - Check the correct /parent hash/ against the hash of the last block from the
     confirmed state
-  Only validated blocks are applied to the confirmed state and immediately
+  Only validated blocks are applied to the confirmed state and are immediately
   appended to the block store. Validated blocks and transactions are published
   to the node event stream. Any subscriber can read events from the node event
   stream
 
 ** Design and implementation
+
+*** The blockchain state type
+
+- =State= type ::
+  - *Uniform support of confirmed and pending states*. The state type is
+    recursively defined to support the confirmed and the pending states. This
+    design allows to apply transactions, create blocks, and apply blocks to
+    either the confirmed state or the pending states using the same methods
+    without any modifications
+  - *Concurrency safety*. The state type is concurrency safe. To be concurrency
+    safe the state type uses the *readers-writer mutex*. Concurrent requests to
+    read or write state come from concurrent processes running on the blockchain
+    node e.g. transaction application, block creation, block application,
+    transaction and block queries. The readers-writer mutex improves throughput
+    and reduces latency by allowing either multiple concurrent state readers
+    without state writers or a single state writer without any state readers
+    - *Read lock* is employed in the =Clone=, =Balance=, =Nonce=, =LastBlock=,
+      and =String= methods
+    - *Write lock* is employed in the =Apply=, =ApplyTx=, and =ApplyBlock=
+      methods
+    - *No lock* is needed in the =CreateBlock= method as the method is always
+      executed on a local clone of the state
 
 ** Testing and usage
