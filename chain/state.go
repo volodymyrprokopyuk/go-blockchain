@@ -65,15 +65,15 @@ func (s *State) Apply(state *State) {
   }
 }
 
+func (s *State) Authority() Address {
+  return s.authority
+}
+
 func (s *State) Balance(acc Address) (uint64, bool) {
   s.mtx.RLock()
   defer s.mtx.RUnlock()
   balance, exist := s.balances[acc]
   return balance, exist
-}
-
-func (s *State) Authority() Address {
-  return s.authority
 }
 
 func (s *State) Nonce(acc Address) uint64 {
@@ -92,16 +92,14 @@ func (s *State) String() string {
   s.mtx.RLock()
   defer s.mtx.RUnlock()
   var bld strings.Builder
-  bld.WriteString("* Balances\n")
+  bld.WriteString("* Balances and nonces\n")
+  format := "acc %.7s:                    %8d %8d\n"
   for acc, bal := range s.balances {
-    bld.WriteString(fmt.Sprintf("acc %.7s: %27d\n", acc, bal))
-  }
-  bld.WriteString("* Nonces\n")
-  for acc, nonce := range s.nonces {
-    bld.WriteString(fmt.Sprintf("acc %.7s: %36d\n", acc, nonce))
+    nonce := s.nonces[acc]
+    bld.WriteString(fmt.Sprintf(format, acc, bal, nonce))
   }
   bld.WriteString("* Last block\n")
-  bld.WriteString(fmt.Sprintf("%v\n", s.lastBlock))
+  bld.WriteString(fmt.Sprintf("%v", s.lastBlock))
   if s.Pending != nil && len(s.Pending.txs) > 0 {
     bld.WriteString("* Pending txs\n")
     for _, tx := range s.Pending.txs {
@@ -109,15 +107,10 @@ func (s *State) String() string {
     }
   }
   if s.Pending != nil && len(s.Pending.balances) > 0 {
-    bld.WriteString("* Pending balances\n")
+    bld.WriteString("* Pending balances and nonces\n")
     for acc, bal := range s.Pending.balances {
-      bld.WriteString(fmt.Sprintf("acc %.7s: %27d\n", acc, bal))
-    }
-  }
-  if s.Pending != nil && len(s.Pending.nonces) > 0 {
-    bld.WriteString("* Pending nonces\n")
-    for acc, nonce := range s.Pending.nonces {
-      bld.WriteString(fmt.Sprintf("acc %.7s: %36d\n", acc, nonce))
+      nonce := s.Pending.nonces[acc]
+      bld.WriteString(fmt.Sprintf(format, acc, bal, nonce))
     }
   }
   return bld.String()
@@ -131,13 +124,13 @@ func (s *State) ApplyTx(tx SigTx) error {
     return err
   }
   if !valid {
-    return fmt.Errorf("error: invalid signature\n%v\n", tx)
+    return fmt.Errorf("tx: invalid transaction signature\n%v\n", tx)
   }
   if tx.Nonce != s.nonces[tx.From] + 1 {
-    return fmt.Errorf("error: invalid nonce\n%v\n", tx)
+    return fmt.Errorf("tx: invalid transaction nonce\n%v\n", tx)
   }
   if s.balances[tx.From] < tx.Value {
-    return fmt.Errorf("error: insufficient funds\n%v\n", tx)
+    return fmt.Errorf("tx: insufficient account funds\n%v\n", tx)
   }
   s.balances[tx.From] -= tx.Value
   s.balances[tx.To] += tx.Value
@@ -184,10 +177,10 @@ func (s *State) ApplyBlock(blk SigBlock) error {
     return err
   }
   if !valid {
-    return fmt.Errorf("error: invalid block signature\n%v", blk)
+    return fmt.Errorf("blk: invalid block signature\n%v", blk)
   }
   if blk.Number != s.lastBlock.Number + 1 {
-    return fmt.Errorf("error: invalid block number\n%v", blk)
+    return fmt.Errorf("blk: invalid block number\n%v", blk)
   }
   var hash Hash
   if blk.Number == 1 {
@@ -196,7 +189,7 @@ func (s *State) ApplyBlock(blk SigBlock) error {
     hash = s.lastBlock.Hash()
   }
   if blk.Parent != hash {
-    return fmt.Errorf("error: invalid parent hash\n%v", blk)
+    return fmt.Errorf("blk: invalid parent hash\n%v", blk)
   }
   for _, tx := range blk.Txs {
     err := s.ApplyTx(tx)
@@ -215,6 +208,6 @@ func (s *State) ApplyBlockToState(blk SigBlock) error {
     return err
   }
   s.Apply(clone)
-  fmt.Printf("** Block state (ApplyBlock)\n%v", s)
+  fmt.Printf("== Block state\n%v", s)
   return nil
 }

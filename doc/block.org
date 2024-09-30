@@ -240,13 +240,8 @@ func (b SigBlock) String() string {
   bld.WriteString(
     fmt.Sprintf("blk %7d: %.7s -> %.7s\n", b.Number, b.Hash(), b.Parent),
   )
-  lastIdx := len(b.Txs) - 1
-  for i, tx := range b.Txs {
-    if i == lastIdx {
-      bld.WriteString(fmt.Sprintf("%v", tx))
-    } else {
-      bld.WriteString(fmt.Sprintf("%v\n", tx))
-    }
+  for _, tx := range b.Txs {
+    bld.WriteString(fmt.Sprintf("%v\n", tx))
   }
   return bld.String()
 }
