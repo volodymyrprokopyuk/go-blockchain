@@ -11,36 +11,30 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-func createAccount() (chain.Account, error) {
-  acc, err := chain.NewAccount()
-  if err != nil {
-    return chain.Account{}, err
-  }
-  err = acc.Write(keyStoreDir, []byte(ownerPass))
-  if err != nil {
-    return chain.Account{}, err
-  }
-  return acc, nil
-}
-
 func TestTxSign(t *testing.T) {
+  defer os.RemoveAll(keyStoreDir)
+  defer os.RemoveAll(blockStoreDir)
+  // Create and persist the genesis
   gen, err := createGenesis()
   if err != nil {
     t.Fatal(err)
   }
+  // Create the blockchain state
   state := chain.NewState(gen)
+  // Create and persist a new account
   acc, err := createAccount()
   if err != nil {
     t.Fatal(err)
   }
-  defer os.RemoveAll(keyStoreDir)
-  defer os.RemoveAll(blockStoreDir)
+  // Set up the gRPC server and client
   conn := grpcClientConn(t, func(grpcSrv *grpc.Server) {
     tx := rpc.NewTxSrv(keyStoreDir, blockStoreDir, state, nil)
     rpc.RegisterTxServer(grpcSrv, tx)
   })
   ctx := context.Background()
+  // Create the gRPC transaction client
   cln := rpc.NewTxClient(conn)
+  // Call the TxSign method
   req := &rpc.TxSignReq{
     From: string(acc.Address()), To: "recipient", Value: 12, Password: ownerPass,
   }
@@ -54,6 +48,7 @@ func TestTxSign(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
+  // Verify the signature of the signed transaction
   valid, err := chain.VerifyTx(tx)
   if err != nil {
     t.Fatal(err)

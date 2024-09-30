@@ -16,8 +16,8 @@ function txSignAndSend -a node from to value pass
   echo $hash
 end
 
-set own 1e99b05ea4c43c1b928b0f2b028ea099bb72fcb624dfa5bbbd99128f5e670946
-set ben 00e2f46d9e7c3e42eb69f41c2fe63c096c2114ca5de9f51c0540a1d02215b087
+set own 42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3
+set ben f607fd36d6ed871db2a6021382452f54225d0cff8354698a0584f287019afec9
 
 txSignAndSend $node $own $ben 2 $pass
 txSignAndSend $node $ben $own 1 $pass

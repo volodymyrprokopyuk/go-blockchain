@@ -68,7 +68,7 @@ func (t SigTx) Hash() Hash {
 
 func (t SigTx) String() string {
   return fmt.Sprintf(
-    "tx %.7s: %.7s -> %.7s %8d %8d", t.Hash(), t.From, t.To, t.Value, t.Nonce,
+    "tx  %.7s: %.7s -> %.7s %8d %8d", t.Hash(), t.From, t.To, t.Value, t.Nonce,
   )
 }
 
@@ -94,6 +94,6 @@ func NewSearchTx(tx SigTx, blkNumber uint64, blkHash Hash) SearchTx {
 
 func (t SearchTx) String() string {
   return fmt.Sprintf(
-    "%v    blk: %5d    %.7s", t.SigTx, t.BlockNumber, t.BlockHash,
+    "%v    blk: %8d    %.7s", t.SigTx, t.BlockNumber, t.BlockHash,
   )
 }

@@ -55,10 +55,15 @@ func (b SigBlock) Hash() Hash {
 func (b SigBlock) String() string {
   var bld strings.Builder
   bld.WriteString(
-    fmt.Sprintf("blk %4d: %.7s -> %.7s\n", b.Number, b.Hash(), b.Parent),
+    fmt.Sprintf("blk %7d: %.7s -> %.7s\n", b.Number, b.Hash(), b.Parent),
   )
-  for _, tx := range b.Txs {
-    bld.WriteString(fmt.Sprintf("%v\n", tx))
+  lastIdx := len(b.Txs) - 1
+  for i, tx := range b.Txs {
+    if i == lastIdx {
+      bld.WriteString(fmt.Sprintf("%v", tx))
+    } else {
+      bld.WriteString(fmt.Sprintf("%v\n", tx))
+    }
   }
   return bld.String()
 }
@@ -71,16 +76,6 @@ func (b SigBlock) Write(dir string) error {
   }
   defer file.Close()
   return json.NewEncoder(file).Encode(b)
-}
-
-func VerifyBlock(blk SigBlock, authority Address) (bool, error) {
-  hash := blk.Block.Hash().Bytes()
-  pub, err := ecc.RecoverPubkey("P-256k1", hash, blk.Sig)
-  if err != nil {
-    return false, err
-  }
-  acc := NewAddress(pub)
-  return acc == authority, nil
 }
 
 func ReadBlocks(dir string) (
@@ -139,4 +134,14 @@ func ReadBlocksBytes(dir string) (
     }
   }
   return blocks, close, nil
+}
+
+func VerifyBlock(blk SigBlock, authority Address) (bool, error) {
+  hash := blk.Block.Hash().Bytes()
+  pub, err := ecc.RecoverPubkey("P-256k1", hash, blk.Sig)
+  if err != nil {
+    return false, err
+  }
+  acc := NewAddress(pub)
+  return acc == authority, nil
 }

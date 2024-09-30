@@ -56,16 +56,6 @@ func (g SigGenesis) Write(dir string) error {
   return os.WriteFile(path, jgen, 0600)
 }
 
-func VerifyGen(gen SigGenesis) (bool, error) {
-  hash := gen.Genesis.Hash().Bytes()
-  pub, err := ecc.RecoverPubkey("P-256k1", hash, gen.Sig)
-  if err != nil {
-    return false, err
-  }
-  acc := NewAddress(pub)
-  return acc == Address(gen.Authority), nil
-}
-
 func ReadGenesis(dir string) (SigGenesis, error) {
   path := filepath.Join(dir, genesisFile)
   jgen, err := os.ReadFile(path)
@@ -80,4 +70,14 @@ func ReadGenesis(dir string) (SigGenesis, error) {
 func ReadGenesisBytes(dir string) ([]byte, error) {
   path := filepath.Join(dir, genesisFile)
   return os.ReadFile(path)
+}
+
+func VerifyGen(gen SigGenesis) (bool, error) {
+  hash := gen.Genesis.Hash().Bytes()
+  pub, err := ecc.RecoverPubkey("P-256k1", hash, gen.Sig)
+  if err != nil {
+    return false, err
+  }
+  acc := NewAddress(pub)
+  return acc == Address(gen.Authority), nil
 }

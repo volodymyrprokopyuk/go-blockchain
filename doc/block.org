@@ -35,9 +35,9 @@
 
 *** Genesis and signed genesis types
 
-The implementation makes distinction between the =Genesis= type that contains on
+The implementation makes distinction between the =Genesis= type that contains
 the initial configuration of the blockchain and the =SigGenesis= type that also
-contains the signature of the genesis by the authority account. Most of the
+includes the signature of the genesis by the authority account. Most of the
 blockchain components work exclusively with the =SigGenesis= type
 
 - =Genesis= type :: The =Genesis= type contains the initial configuration of the
@@ -73,8 +73,8 @@ func (g Genesis) Hash() Hash {
 - =SigGenesis= type :: The =SigGenesis= type embeds the =Genesis= type and
   includes the genesis signature. After the genesis is created and signed by the
   authority account, the genesis is immediately written to the genesis file
-  | ~Genesis~    | Genesis content |
-  | ~Sig []byte~ | Genesis signature |
+  | ~Genesis~    | Embedded genesis content |
+  | ~Sig []byte~ | Genesis signature        |
   #+BEGIN_SRC go
 type SigGenesis struct {
   Genesis
@@ -98,7 +98,7 @@ elliptic curve* is used for for signing and verification of the genesis
 
 - Secp256k1 genesis signing :: The genesis signing process requires the
   owner-provided password and is performed from the =Account= instance. The
-  signing signing process
+  genesis signing process
   - Produce the Keccak256 hash of the genesis
   - Sign the Keccak256 hash of the genesis using the ECDSA algorithm on the
     Secp256k1 elliptic curve
@@ -156,6 +156,20 @@ func (g SigGenesis) Write(dir string) error {
   return os.WriteFile(path, jgen, 0600)
 }
   #+END_SRC
+
+The structure of the persisted signed genesis
+#+BEGIN_SRC json
+{
+  "chain": "blockchain",
+  "authority": "3f884151ac3a02bf6e157ff6ff6b71df27fdd93e7210429da7e35c041eaf5739",
+  "balances": {
+    "1e99b05ea4c43c1b928b0f2b028ea099bb72fcb624dfa5bbbd99128f5e670946": 1000
+  },
+  "time": "2024-09-29T17:08:51.402870312+02:00",
+  "sig": "a4y0h8GgMnWKvXWjh6C0EzznHyd6tNs4H1fL6OG6nOt5ExHrtRZvb8b8GSqHXQjETKmkVk73X3pYNjnwcGEltgE="
+}
+#+END_SRC
+
 - Genesis re-creation :: The genesis re-creation process
   - Read the encoded genesis from a file
   - Decode the genesis from JSON
@@ -169,6 +183,211 @@ func ReadGenesis(dir string) (SigGenesis, error) {
   var gen SigGenesis
   err = json.Unmarshal(jgen, &gen)
   return gen, err
+}
+  #+END_SRC
+
+*** Block and signed block types
+
+The implementation makes distinction between the =Block= type that contains the
+block number, the parent hash, and the list of transactions; and the =SigBlock=
+type that also includes the signature of the block by the authority account.
+Most of the blockchain components work exclusively with the =SigBlock= type
+
+- =Block= type :: The =Block= type contains the block number, the hash of the
+  parent block, the list of transactions, the creation time of the block
+  | ~Number uint64~  | Block number         |
+  | ~Parent Hash~    | Parent hash          |
+  | ~Txs []SigTx~    | List of transactions |
+  | ~Time time.Time~ | Creation time        |
+  #+BEGIN_SRC go
+type Block struct {
+  Number uint64 `json:"number"`
+  Parent Hash `json:"parent"`
+  Txs []SigTx `json:"txs"`
+  Time time.Time `json:"time"`
+}
+
+func NewBlock(number uint64, parent Hash, txs []SigTx) Block {
+  return Block{Number: number, Parent: parent, Txs: txs, Time: time.Now()}
+}
+
+func (b Block) Hash() Hash {
+  return NewHash(b)
+}
+  #+END_SRC
+
+- =SigBlock= type :: The =SigBlock= type embeds the =Block= type and includes
+  the block signature signed by the authority account. The string representation
+  of a signed block is defined to present the block to the end user
+  | ~Block~      | Embedded block content |
+  | ~Sig []byte~ | Block signature        |
+  #+BEGIN_SRC go
+type SigBlock struct {
+  Block
+  Sig []byte `json:"sig"`
+}
+
+func NewSigBlock(blk Block, sig []byte) SigBlock {
+  return SigBlock{Block: blk, Sig: sig}
+}
+
+func (b SigBlock) Hash() Hash {
+  return NewHash(b)
+}
+
+func (b SigBlock) String() string {
+  var bld strings.Builder
+  bld.WriteString(
+    fmt.Sprintf("blk %7d: %.7s -> %.7s\n", b.Number, b.Hash(), b.Parent),
+  )
+  lastIdx := len(b.Txs) - 1
+  for i, tx := range b.Txs {
+    if i == lastIdx {
+      bld.WriteString(fmt.Sprintf("%v", tx))
+    } else {
+      bld.WriteString(fmt.Sprintf("%v\n", tx))
+    }
+  }
+  return bld.String()
+}
+  #+END_SRC
+
+*** ECDSA signing and verification of blocks
+
+This blockchain uses the *Elliptic Curve Digital Signature Algorithm* (*ECDSA*)
+for signing and verification of the blocks. Specifically, the *Secp256k1
+elliptic curve* is used for for signing and verification of the blocks
+
+- Secp256k1 block signing :: The block signing process requires the
+  owner-provided password and is performed from the =Account= instance. The
+  block signing process
+  - Produce the Keccak256 hash of the block
+  - Sign the Keccak256 hash of the block using the ECDSA algorithm on the
+    Secp256k1 elliptic curve
+  - Construct a signed block by adding the produced digital signature to
+    the block
+  #+BEGIN_SRC go
+func (a Account) SignBlock(blk Block) (SigBlock, error) {
+  hash := blk.Hash().Bytes()
+  sig, err := ecc.SignBytes(a.prv, hash, ecc.LowerS | ecc.RecID)
+  if err != nil {
+    return SigBlock{}, err
+  }
+  sblk := NewSigBlock(blk, sig)
+  return sblk, nil
+}
+  #+END_SRC
+
+- Secp256k1 block verification :: The block verification process does not
+  require any external information like the owner-provided password. The signed
+  block instance contains all the necessary information to verify the signed
+  block. The block verification process
+  - Recover the public key from the hash of the original embedded block and
+    the block signature
+  - Construct the account address from the recovered public key
+  - If the constructed account address is equal to the account address of the
+    authority that signed the block, then the block signature is valid
+  #+BEGIN_SRC go
+func VerifyBlock(blk SigBlock, authority Address) (bool, error) {
+  hash := blk.Block.Hash().Bytes()
+  pub, err := ecc.RecoverPubkey("P-256k1", hash, blk.Sig)
+  if err != nil {
+    return false, err
+  }
+  acc := NewAddress(pub)
+  return acc == authority, nil
+}
+  #+END_SRC
+
+*** Persistence and re-creation of blocks
+
+- Block persistence :: The block persistence process
+  - Encode the block to JSON
+  - Append the encoded block to the block store file
+  #+BEGIN_SRC go
+func (b SigBlock) Write(dir string) error {
+  path := filepath.Join(dir, blocksFile)
+  file, err := os.OpenFile(path, os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0600)
+  if err != nil {
+    return err
+  }
+  defer file.Close()
+  return json.NewEncoder(file).Encode(b)
+}
+  #+END_SRC
+
+The structure of the persisted encoded bock in the block store
+#+BEGIN_SRC json
+{
+  "number": 1,
+  "parent": "0bc618352639b3136f2595c28c464d1e944b13d2fe6c15b8458b98c173acee4c",
+  "txs": [
+    {
+      "from": "42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3",
+      "to": "f607fd36d6ed871db2a6021382452f54225d0cff8354698a0584f287019afec9",
+      "value": 2,
+      "nonce": 1,
+      "time": "2024-09-30T12:18:38.943889593+02:00",
+      "sig": "EIJeOdHacPEtDhD7BCuwW0ywEJtORM8zJQvzXs7hK55HRrBk9l7J0+V4PRUG4iItXzBo7ph/4y8PRtXEYQQOQQA="
+    },
+    {
+      "from": "f607fd36d6ed871db2a6021382452f54225d0cff8354698a0584f287019afec9",
+      "to": "42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3",
+      "value": 1,
+      "nonce": 1,
+      "time": "2024-09-30T12:18:39.000359314+02:00",
+      "sig": "o9TkiTwiDtF3LtiQqWXwCFGN3Z6Q10WVSUT4LV0ke0pQUUA+HMhEmGqx/vkJM8wolDQ+x5xpO+hQWGbVI4BPtwE="
+    }
+  ],
+  "time": "2024-09-30T12:18:39.788595965+02:00",
+  "sig": "+iuk5nIKVAbVIMUe8Kh7Yx6suHtD87rkGUPuZkiWgk1jQPDgHEgrB35aoMs1NwyFMM6QwxGE5QRebXPUG/kUiQE="
+}
+#+END_SRC
+
+- Block re-creation :: The =ReadBlocs= function returns an iterator over the
+  signed blocks from a store file, the deferred function to close the block
+  store, and a possible error if the blocks store is not accessible. The
+  iterator returns a block and a possible error if the block store is corrupted.
+  The block re-creation process
+  - Open a block store file
+  - Prepare a deferred function to close the block store
+  - Create an iterator over the blocks in a block store
+  - For each block in a block store
+    - Scan the encoded signed block
+    - Decode the encoded signed block
+    - Yield the signed block to a client iterating over blocks
+  - Return the block iterator and the deferred function to close the block store
+  #+BEGIN_SRC go
+func ReadBlocks(dir string) (
+  func(yield func(err error, blk SigBlock) bool), func(), error,
+) {
+  path := filepath.Join(dir, blocksFile)
+  file, err := os.Open(path)
+  if err != nil {
+    return nil, nil, err
+  }
+  close := func() {
+    file.Close()
+  }
+  blocks := func(yield func(err error, blk SigBlock) bool) {
+    sca := bufio.NewScanner(file)
+    more := true
+    for sca.Scan() && more {
+      err := sca.Err()
+      if err != nil {
+        yield(err, SigBlock{})
+        return
+      }
+      var blk SigBlock
+      err = json.Unmarshal(sca.Bytes(), &blk)
+      if err != nil {
+        more = yield(err, SigBlock{})
+        continue
+      }
+      more = yield(nil, blk)
+    }
+  }
+  return blocks, close, nil
 }
   #+END_SRC
 
@@ -188,4 +407,19 @@ The =TestGenesisWriteReadSignGenVerifyGen= testing process
 - Verify the signature of the signed genesis
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run SignGenVerifyGen
+#+END_SRC
+
+*** Testing block signing and verification
+
+The =TestBlockSignBlockWriteReadVerifyBlock= testing process
+- Create and persist the genesis
+- Re-create the authority account and the initial owner account from the genesis
+- Create and sign a transaction with the initial owner account
+- Create and sign a block containing the signed transaction with the authority
+  account
+- Persist the signed block to the block store
+- Re-create the first block from the block store
+- Verify the signature of the re-created signed block
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run VerifyBlock
 #+END_SRC

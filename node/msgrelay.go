@@ -184,7 +184,7 @@ func (r *msgRelay[Msg, Relay]) relayMsgs() {
       if exist {
         continue
       }
-      fmt.Printf("* Relay peer: %v\n", peer)
+      fmt.Printf("<> Relay peer: %v\n", peer)
       chRelay := r.peerRelay(peer)
       chRelays[peer] = chRelay
     case peer := <- r.chPeerRem:

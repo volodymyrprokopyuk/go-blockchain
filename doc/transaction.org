@@ -145,9 +145,9 @@ func (t Tx) Hash() Hash {
 }
   #+END_SRC
 - =SigTx= type :: The =SigTx= type embeds the =Tx= type and includes the
-  transaction signature. The string representation of the signed transaction is
-  defined to present a transaction to end users
-  | ~Tx~         | Original transaction                          |
+  transaction signature. The string representation of a signed transaction is
+  defined to present the transaction to the end user
+  | ~Tx~         | Embedded original transaction                 |
   | ~Sig []byte~ | Digital signature of the original transaction |
   #+BEGIN_SRC go
 type SigTx struct {
@@ -322,14 +322,14 @@ set ownerpass password
 ./bcn tx sign --node $node --from $sender --to recipient --value 12 \
   --ownerpass $ownerpass
   #+END_SRC
-  Structure of the signed encoded transaction
+  The structure of the signed encoded transaction
   #+BEGIN_SRC json
 {
-  "from":"d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7",
-  "to":"recipient",
-  "value":12,
-  "nonce":1,
-  "time":"2024-09-29T09:57:28.65978649+02:00",
-  "sig":"Cz+qV8DaD+sCnaLnTR2S49a/9nwsYbe2EF8Y6Upa/vYoGY7P9qSmzDSBBHQolg6KdxIiS/NrXvcevLiSYJpbvQE="
+  "from": "d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7",
+  "to": "recipient",
+  "value": 12,
+  "nonce": 1,
+  "time": "2024-09-29T09:57:28.65978649+02:00",
+  "sig": "Cz+qV8DaD+sCnaLnTR2S49a/9nwsYbe2EF8Y6Upa/vYoGY7P9qSmzDSBBHQolg6KdxIiS/NrXvcevLiSYJpbvQE="
 }
   #+END_SRC

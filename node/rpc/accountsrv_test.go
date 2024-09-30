@@ -26,23 +26,31 @@ const (
   ownerBalance = 1000
 )
 
-func createGenesis() (chain.SigGenesis, error) {
-  auth, err := chain.NewAccount()
-  if err != nil {
-    return chain.SigGenesis{}, err
-  }
-  err = auth.Write(blockStoreDir, []byte(authPass))
-  if err != nil {
-    return chain.SigGenesis{}, err
-  }
+func createAccount() (chain.Account, error) {
+  // Create and persist a new account
   acc, err := chain.NewAccount()
   if err != nil {
-    return chain.SigGenesis{}, err
+    return chain.Account{}, err
   }
-  err = acc.Write(blockStoreDir, []byte(ownerPass))
+  err = acc.Write(keyStoreDir, []byte(ownerPass))
+  if err != nil {
+    return chain.Account{}, err
+  }
+  return acc, nil
+}
+
+func createGenesis() (chain.SigGenesis, error) {
+  // Create and persist the authority account
+  auth, err := createAccount()
   if err != nil {
     return chain.SigGenesis{}, err
   }
+  // Create and persist the initial owner account
+  acc, err := createAccount()
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  // Create and persist the genesis
   gen := chain.NewGenesis(chainName, auth.Address(), acc.Address(), ownerBalance)
   sgen, err := auth.SignGen(gen)
   if err != nil {
@@ -58,7 +66,7 @@ func createGenesis() (chain.SigGenesis, error) {
 func grpcClientConn(
   t *testing.T, grpcRegisterSrv func(grpcSrv *grpc.Server),
 ) *grpc.ClientConn {
-  // server
+  // Set up the gRPC server
   lis := bufconn.Listen(1024 * 1024)
   grpcSrv := grpc.NewServer()
   grpcRegisterSrv(grpcSrv)
@@ -68,7 +76,7 @@ func grpcClientConn(
       fmt.Println(err)
     }
   }()
-  // client
+  // Set up the gRPC client
   resolver.SetDefaultScheme("passthrough")
   conn, err := grpc.NewClient(
     "bufnet",
@@ -82,6 +90,7 @@ func grpcClientConn(
   if err != nil {
     t.Fatal(err)
   }
+  // Set up the clean up of the gRPC client and server
   t.Cleanup(func() {
     lis.Close()
     grpcSrv.GracefulStop()
@@ -91,14 +100,18 @@ func grpcClientConn(
 }
 
 func TestAccountCreate(t *testing.T) {
+  defer os.RemoveAll(keyStoreDir)
+  // Set up the gRPC server and client
   conn := grpcClientConn(t, func(grpcSrv *grpc.Server) {
     acc := rpc.NewAccountSrv(keyStoreDir, nil)
     rpc.RegisterAccountServer(grpcSrv, acc)
   })
-  defer os.RemoveAll(keyStoreDir)
+  ctx := context.Background()
+  // Create the gRPC account client
   cln := rpc.NewAccountClient(conn)
   req := &rpc.AccountCreateReq{Password: ownerPass}
-  res, err := cln.AccountCreate(context.Background(), req)
+  // Call the AccountCrate method
+  res, err := cln.AccountCreate(ctx, req)
   if err != nil {
     t.Fatal(err)
   }
@@ -109,37 +122,44 @@ func TestAccountCreate(t *testing.T) {
 }
 
 func TestAccountBalance(t *testing.T) {
+  defer os.RemoveAll(keyStoreDir)
+  defer os.RemoveAll(blockStoreDir)
+  // Create and persist the genesis
   gen, err := createGenesis()
   if err != nil {
     t.Fatal(err)
   }
+  // Create the blockchain state
   state := chain.NewState(gen)
-  var ownAcc chain.Address
-  var ownBalance uint64
+  // Retrieve the initial owner account and balance
+  var ownerAcc chain.Address
+  var ownerBal uint64
   for acc, bal := range gen.Balances {
-    ownAcc, ownBalance = acc, bal
+    ownerAcc, ownerBal = acc, bal
     break
   }
-  defer os.RemoveAll(keyStoreDir)
-  defer os.RemoveAll(blockStoreDir)
+  // Set up the gRPC server and client
   conn := grpcClientConn(t, func(grpcSrv *grpc.Server) {
     acc := rpc.NewAccountSrv(keyStoreDir, state)
     rpc.RegisterAccountServer(grpcSrv, acc)
   })
   ctx := context.Background()
+  // Create the gRPC account client
   cln := rpc.NewAccountClient(conn)
   t.Run("balance exists", func(t *testing.T) {
-    req := &rpc.AccountBalanceReq{Address: string(ownAcc)}
+    // Call the AccountBalance method
+    req := &rpc.AccountBalanceReq{Address: string(ownerAcc)}
     res, err := cln.AccountBalance(ctx, req)
     if err != nil {
       t.Fatal(err)
     }
-    got, exp := res.Balance, ownBalance
+    got, exp := res.Balance, ownerBal
     if got != exp {
       t.Errorf("invalid balance: expected %v, got %v", exp, got)
     }
   })
   t.Run("balance does not exist", func(t *testing.T) {
+    // Call the AccountBalance method
     req := &rpc.AccountBalanceReq{Address: "non-existing"}
     _, err := cln.AccountBalance(ctx, req)
     if err == nil {

@@ -10,6 +10,8 @@ import (
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type TxApplier interface {
@@ -43,7 +45,7 @@ func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
   path := filepath.Join(s.keyStoreDir, req.From)
   acc, err := chain.ReadAccount(path, []byte(req.Password))
   if err != nil {
-    return nil, err
+    return nil, status.Errorf(codes.NotFound, err.Error())
   }
   tx := chain.NewTx(
     chain.Address(req.From), chain.Address(req.To), req.Value,
@@ -51,11 +53,11 @@ func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
   )
   stx, err := acc.SignTx(tx)
   if err != nil {
-    return nil, err
+    return nil, status.Errorf(codes.Internal, err.Error())
   }
   jtx, err := json.Marshal(stx)
   if err != nil {
-    return nil, err
+    return nil, status.Errorf(codes.Internal, err.Error())
   }
   res := &TxSignRes{Tx: jtx}
   return res, nil
