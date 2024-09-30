@@ -5,4 +5,5 @@
   - [[/doc/account.org][Account]]
   - [[/doc/transaction.org][Transaction]]
   - [[/doc/block.org][Block]]
+  - [[/doc/state.org][State]]
 *** Blockchain node

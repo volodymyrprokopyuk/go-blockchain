@@ -19,10 +19,10 @@ end
 set own 42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3
 set ben f607fd36d6ed871db2a6021382452f54225d0cff8354698a0584f287019afec9
 
-txSignAndSend $node $own $ben 2 $pass
-txSignAndSend $node $ben $own 1 $pass
+# txSignAndSend $node $own $ben 2 $pass
+# txSignAndSend $node $ben $own 1 $pass
 
-# ./bcn account balance --node $node --account $own
+./bcn account balance --node $node --account $own
 # ./bcn account balance --node $node --account $ben
 
 # ./bcn block search --node $node --number 2
