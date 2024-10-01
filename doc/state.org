@@ -119,7 +119,10 @@
   transactions are removed from the list of pending transactions. The state has
   concurrency safe getters for the account balance, the account nonce, the last
   confirmed block. The concurrency safe string representation of the state is
-  provided to preset the state to the end user
+  provided to preset the state to the end user. The genesis is used to construct
+  the initial state. Specifically, the authority account address, the initial
+  genesis balances, and the genesis hash is used to initialize the confirmed
+  state and the pending state
   - *Symmetric confirmed and pending states*. The =State= type is recursively
     defined and contains the pending state of type =State= to support the
     confirmed and the pending states. Both the confirmed state and the pending
@@ -140,10 +143,9 @@
     without any state readers
     - *Read lock* is employed in the =Clone=, =Balance=, =Nonce=, =LastBlock=,
       and =String= methods
-    - *Write lock* is employed in the =Apply=, =ApplyTx=, and =ApplyBlock=
-      methods
-    - *No lock* is needed in the =CreateBlock= method as the method is always
-      executed on a local clone of the confirmed state
+    - *Write lock* is employed in the =Apply= and =ApplyTx= methods
+    - *No lock* is needed in the =CreateBlock=, and =ApplyBlock= methods as the
+      methods are always executed on a local clone of the confirmed state
   | ~mtx sync.RWMutex~            | Readers-writer mutex         |
   | ~authority Address~           | Address of authority account |
   | ~balances map[Address]uint64~ | Map of account balances      |
@@ -413,3 +415,39 @@ func (s *State) ApplyBlock(blk SigBlock) error {
   #+END_SRC
 
 ** Testing and usage
+
+*** Testing transaction application
+
+The =TestApplyTx= testing process
+- Create the initial state from the genesis
+- Set the initial owner account from the genesis as the sender account
+- Apply several transactions to the pending state
+  - The first is a valid transaction
+  - The second transaction has an invalid nonce
+  - The third is a valid transaction
+- Check the correct balance of the sender account on the pending state after the
+  application of transactions
+- Apply a transaction that exceeds the balance of the sender account
+- Apply a transaction with an invalid signature
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run ApplyTx
+#+END_SRC
+
+*** Testing block application
+
+The =TestApplyBlock= testing process
+- Create the initial state from the genesis
+- Set the initial owner account from the genesis as the sender account
+- Re-create the authority account
+- Apply several transactions to the pending state
+  - The first is a valid transaction
+  - The second transaction has the value that exceeds the sender balance
+  - The third is a valid transaction
+- Create a new block on the cloned state
+- Apply the new block to the cloned state
+- Apply the cloned state with the new block updates to the confirmed state
+- Check the correct balance of the sender account on the confirmed state after
+  the application of the block
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run ApplyBlock
+#+END_SRC
