@@ -44,6 +44,13 @@ func createGenesis() (chain.SigGenesis, error) {
   return sgen, nil
 }
 
+func genesisAccount(gen chain.SigGenesis) (chain.Address, uint64) {
+  for acc, bal := range gen.Balances {
+    return acc, bal
+  }
+  return "", 0
+}
+
 func TestGenesisWriteReadSignGenVerifyGen(t *testing.T) {
   defer os.RemoveAll(keyStoreDir)
   defer os.RemoveAll(blockStoreDir)
