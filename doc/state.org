@@ -38,7 +38,7 @@
   Immediately after the update of the confirmed state a new pending state is
   created as a copy of the latest confirmed state and the cycle restarts.
 
-*** Application of transactions to the state
+*** Application of transactions to the pending state
 
 - Transaction application :: The transaction application process occurs four
   times during the transaction life cycle on the blockchain
@@ -78,14 +78,15 @@
   and the parent hash is set to the hash of the last block from the confirmed
   state.
 
-*** Application of proposed blocks to the confirmed state
+*** Application of proposed blocks to the cloned state
 
 - Block application :: The block application process occurs when a new proposed
-  block is relayed to the node from other nodes on the blockchain network. The
-  block application process is first performed on the cloned state and, if
-  successful, the block application process is directly performed on the
-  confirmed state and a new block is appended to the block store. The block
-  application process performs a set of checks
+  block is relayed to the node from other nodes on the blockchain network or
+  when the confirmed block is read from the local block store during the
+  initialization or synchronization of the state. The block application process
+  is first performed on the cloned state and, if successful, the cloned state is
+  applied to the confirmed state and a new block is appended to the block store.
+  The block application process performs a set of checks
   - Verify the /signature/ of the proposed signed block
   - Check the successive /block number/ against the block number of the last
     block from the confirmed state
@@ -98,26 +99,317 @@
 
 ** Design and implementation
 
-*** The blockchain state type
+*** The concurrency safe blockchain state type
 
-- =State= type ::
-  - *Uniform support of confirmed and pending states*. The state type is
-    recursively defined to support the confirmed and the pending states. This
-    design allows to apply transactions, create blocks, and apply blocks to
-    either the confirmed state or the pending states using the same methods
-    without any modifications
-  - *Concurrency safety*. The state type is concurrency safe. To be concurrency
-    safe the state type uses the *readers-writer mutex*. Concurrent requests to
-    read or write state come from concurrent processes running on the blockchain
-    node e.g. transaction application, block creation, block application,
-    transaction and block queries. The readers-writer mutex improves throughput
-    and reduces latency by allowing either multiple concurrent state readers
-    without state writers or a single state writer without any state readers
+- =State= type :: The =State= type represents both the confirmed and the pending
+  state of the blockchain. The state is maintained independently, but
+  synchronized by consensus on every node of the blockchain network. The state
+  contains the address of the authority account required to sign the genesis and
+  all proposed blocks. The state contains the map of account addresses to
+  respective confirmed balances, the map of account addresses to respective per
+  account transaction nonces. The state has a copy of the last confirmed block
+  for proposal of new blocks and validation of proposed blocks. The state has a
+  copy of the genesis hash for proposal and validation of the first block. The
+  state contains a list of pending transactions. The list of pending
+  transactions acts as a buffer for new transactions either sent by a client
+  directly to the blockchain node or relayed to the node by other nodes in the
+  blockchain network. The list of pending transactions is the source of
+  transactions for proposal of new blocks. Once a confirmed block is added to
+  the confirmed state and appended to the block store, the confirmed
+  transactions are removed from the list of pending transactions. The state has
+  concurrency safe getters for the account balance, the account nonce, the last
+  confirmed block. The concurrency safe string representation of the state is
+  provided to preset the state to the end user
+  - *Symmetric confirmed and pending states*. The =State= type is recursively
+    defined and contains the pending state of type =State= to support the
+    confirmed and the pending states. Both the confirmed state and the pending
+    state use the same data structure. This design allows to apply transactions,
+    create blocks, and apply blocks to either the confirmed state or the pending
+    states using the same methods without any modifications. After the confirmed
+    state is updated with the application of the next confirmed block, the
+    balances and nonces of the pending state are updated to have a copy of
+    balances and nonces of the new confirmed state. The confirmed transactions
+    are removed from the list of pending transactions
+  - *Concurrency safety*. The =State= type is concurrency safe. To be
+    concurrency safe the state type uses the *readers-writer mutex*. Concurrent
+    requests to read or write state come from concurrent processes running on
+    the blockchain node e.g. transaction application, block creation, block
+    application, transaction and block queries. The readers-writer mutex
+    improves throughput and reduces latency by allowing either multiple
+    concurrent state readers with no state writer or a single state writer
+    without any state readers
     - *Read lock* is employed in the =Clone=, =Balance=, =Nonce=, =LastBlock=,
       and =String= methods
     - *Write lock* is employed in the =Apply=, =ApplyTx=, and =ApplyBlock=
       methods
     - *No lock* is needed in the =CreateBlock= method as the method is always
-      executed on a local clone of the state
+      executed on a local clone of the confirmed state
+  | ~mtx sync.RWMutex~            | Readers-writer mutex         |
+  | ~authority Address~           | Address of authority account |
+  | ~balances map[Address]uint64~ | Map of account balances      |
+  | ~nonces map[Address]uint64~   | Map of account nonces        |
+  | ~lastBlock SigBlock~          | Last confirmed block         |
+  | ~genesisHash Hash~            | Genesis hash                 |
+  | ~txs map[Hash]SigTx~          | List of pending transactions |
+  | ~Pending *State~              | Pending state                |
+  #+BEGIN_SRC go
+type State struct {
+  mtx sync.RWMutex
+  authority Address
+  balances map[Address]uint64
+  nonces map[Address]uint64
+  lastBlock SigBlock
+  genesisHash Hash
+  txs map[Hash]SigTx
+  Pending *State
+}
+
+func NewState(gen SigGenesis) *State {
+  return &State{
+    authority: gen.Authority,
+    balances: maps.Clone(gen.Balances),
+    nonces: make(map[Address]uint64),
+    genesisHash: gen.Hash(),
+    txs: make(map[Hash]SigTx),
+    Pending: &State{
+      authority: gen.Authority,
+      balances: maps.Clone(gen.Balances),
+      nonces: make(map[Address]uint64),
+      genesisHash: gen.Hash(),
+      txs: make(map[Hash]SigTx),
+    },
+  }
+}
+  #+END_SRC
+
+*** State cloning and application
+
+- State cloning :: Creation of a new block and validation of the proposed block
+  is always performed on a clone of the confirmed state in order to prevent
+  undesirable corruption of the confirmed state in the case if some pending
+  transactions are no longer valid for inclusion in a new block or the proposed
+  block has some invalid transactions or cannot be validated for some other
+  reason. The state cloning operation is concurrency safe. The state cloning
+  operation
+  - Lock the state for reading
+  - Create a new state with shallow clones of balances, nonces, and transaction
+    maps
+  - Copy the authority address, the last block, and the genesis hash
+  - Create a new pending state with a shallow clone of the pending transactions
+  #+BEGIN_SRC go
+func (s *State) Clone() *State {
+  s.mtx.RLock()
+  defer s.mtx.RUnlock()
+  return &State{
+    authority: s.authority,
+    balances: maps.Clone(s.balances),
+    nonces: maps.Clone(s.nonces),
+    lastBlock: s.lastBlock,
+    genesisHash: s.genesisHash,
+    txs: maps.Clone(s.txs),
+    Pending: &State{
+      txs: maps.Clone(s.Pending.txs),
+    },
+  }
+}
+  #+END_SRC
+
+- State application :: The state application operation is needed to update the
+  confirmed state with the balances, the nonces, the new last block from the
+  confirmed block after the successful validation of a proposed block. The
+  validated block is first applied to the cloned state, and, if successful, the
+  cloned state is applied to the confirmed state. This design ensures that only
+  validated confirmed blocks are safely applied to the confirmed state
+  minimizing the possibility of corruption of the confirmed state. After the
+  successful application of the confirmed block to the confirmed state, the
+  pending state is updated to reflect the new confirmed state. Specifically, the
+  pending balances and pending nonces are assigned shallow clones for the
+  respective balances and nonces from the new confirmed state. All confirmed
+  transactions from the new last block are removed from the list of pending
+  transactions to yet included in a block. The state application operation
+  - Lock the state for writing
+  - Assign the balances, nonces, and the new last block from the cloned state to
+    the confirmed state
+  - Assign shallow clones of balances and nonces from the new confirmed state to
+    the pending state
+  - Remove the confirmed transaction from the new last block from the list of
+    pending transactions
+  #+BEGIN_SRC go
+func (s *State) Apply(clone *State) {
+  s.mtx.Lock()
+  defer s.mtx.Unlock()
+  s.balances = clone.balances
+  s.nonces = clone.nonces
+  s.lastBlock = clone.lastBlock
+  s.Pending.balances = maps.Clone(s.balances)
+  s.Pending.nonces = maps.Clone(s.nonces)
+  for _, tx := range clone.lastBlock.Txs {
+    delete(s.Pending.txs, tx.Hash())
+  }
+}
+  #+END_SRC
+
+*** Applying new transactions to the pending state
+
+- Transaction application :: The transaction application operation contributes
+  to the blockchain integrity by protecting the blockchain from invalid
+  transactions. The transaction application operation is concurrency safe. The
+  transaction application operation verifies the signature of a new transaction,
+  checks the correct value of transaction nonce, ensures that the account has
+  sufficient funds to satisfy the value amount. Once all checks are
+  successfully passed, the transaction application operation moves funds from
+  the sender account to the receiver account, increments the nonce of the sender
+  account, and add the transaction to the pending transactions map for its
+  future inclusion in a block. The transaction application operation
+  - Lock the state for writing
+  - Verify the signature of the transaction
+  - Check the correct value for the transaction nonce
+  - Ensure that the sender account has sufficient funds to satisfy the value
+    amount
+  - Debit the sender account and credit the recipient account
+  - Increment the nonce of the sender account
+  - Add the validated transaction to the list of pending transactions
+  #+BEGIN_SRC go
+func (s *State) ApplyTx(tx SigTx) error {
+  s.mtx.Lock()
+  defer s.mtx.Unlock()
+  valid, err := VerifyTx(tx)
+  if err != nil {
+    return err
+  }
+  if !valid {
+    return fmt.Errorf("tx: invalid transaction signature\n%v\n", tx)
+  }
+  if tx.Nonce != s.nonces[tx.From] + 1 {
+    return fmt.Errorf("tx: invalid transaction nonce\n%v\n", tx)
+  }
+  if s.balances[tx.From] < tx.Value {
+    return fmt.Errorf("tx: insufficient account funds\n%v\n", tx)
+  }
+  s.balances[tx.From] -= tx.Value
+  s.balances[tx.To] += tx.Value
+  s.nonces[tx.From]++
+  s.txs[tx.Hash()] = tx
+  return nil
+}
+  #+END_SRC
+
+*** Creating and signing new blocks from the pending state
+
+- Block creation :: The block creation operation constructs a new block of valid
+  transactions to be proposed, validated, and, eventually, confirmed by
+  consensus between the blockchain validating nodes. The block creation
+  operation is always performed on the local cloned state, so there is no need
+  to acquire a read lock of the state. The state cloning operation is already
+  concurrency safe. The block creation operation is this implementation is
+  scheduled with a random delay on the authority node that is the only node in
+  the blockchain that proposes new blocks. The block creation operation sorts
+  all pending transactions by the address of the sender account and by the nonce
+  to ensure correct in-order processing of transactions from the same sender
+  account. The sorted transactions are applied to the cloned state with the
+  objective to reject any invalid transaction before their inclusion into a new
+  block. All pending validated transactions are included in the new block. The
+  block number is incremented by one regarding the number of the last block from
+  the confirmed cloned state. For the first block the parent hash is the genesis
+  hash, while for any successive block the parent hash is the hash of the last
+  block for the confirmed cloned state. The new block is digitally signed by the
+  authority account that created the block. The block creation operation
+  - Sort the pending transactions by the address of the sender account and the
+    nonce
+  - Apply the sorted pending transaction the the cloned state
+  - Reject any invalid transactions from inclusion into a new block
+  - Create a new block with validated transactions
+  - Sign the new block with the authority account
+  #+BEGIN_SRC go
+func (s *State) CreateBlock(authority Account) (SigBlock, error) {
+  // The is no need to lock/unlock as the CreateBlock is always executed on the
+  // cloned state
+  pndTxs := make([]SigTx, 0, len(s.Pending.txs))
+  for _, tx := range s.Pending.txs {
+    pndTxs = append(pndTxs, tx)
+  }
+  slices.SortFunc(pndTxs, func(a, b SigTx) int {
+    cmp := strings.Compare(string(a.From), string(b.From))
+    if cmp != 0 {
+      return cmp
+    }
+    return int(a.Nonce) - int(b.Nonce)
+  })
+  txs := make([]SigTx, 0, len(pndTxs))
+  for _, tx := range pndTxs {
+    err := s.ApplyTx(tx)
+    if err != nil {
+      fmt.Printf("REJECTED %v\n", err)
+      continue
+    }
+    txs = append(txs, tx)
+  }
+  var blk Block
+  if s.lastBlock.Number == 0 {
+    blk = NewBlock(s.lastBlock.Number + 1, s.genesisHash, txs)
+  } else {
+    blk = NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
+  }
+  return authority.SignBlock(blk)
+}
+  #+END_SRC
+
+*** Applying blocks to the cloned state
+
+- Block application :: The block application operation contributes to the
+  integrity of the blockchain by validating proposed blocks with all their
+  transactions. The block application operations ensures integrity of the
+  blockchain when reading the state from a local block store, or synchronizing
+  the state and updating the block store from other nodes in the blockchain
+  network. The block application operation is first applied to a clone of the
+  confirmed state, and, if successful, the cloned state is applied to the
+  confirmed state and the confirmed block is added to the block store. The block
+  application operation. The block application operation is concurrency safe.
+  The block application operation verifies the signature of the block, checks
+  the correct block number and the correct parent hash. Then all transactions
+  from the block are applied to the cloned state to check their validity. If all
+  checks are passed, the last block of the cloned state is updated with the
+  current validated block. The updated of the last block will be eventually
+  applied to the confirmed state and the confirmed block will be added to the
+  block store. The block application operation
+  - Lock the state for writing
+  - Verify the signature of the block
+  - Check the correct block number regarding the number of the last block
+  - Check the correct parent hash regarding the hash of the last block
+  - Validate block transactions by applying them to the cloned state
+  - Assign the validated block to the last block of the cloned state
+  #+BEGIN_SRC go
+func (s *State) ApplyBlock(blk SigBlock) error {
+  s.mtx.Lock()
+  defer s.mtx.Unlock()
+  valid, err := VerifyBlock(blk, s.authority)
+  if err != nil {
+    return err
+  }
+  if !valid {
+    return fmt.Errorf("blk: invalid block signature\n%v", blk)
+  }
+  if blk.Number != s.lastBlock.Number + 1 {
+    return fmt.Errorf("blk: invalid block number\n%v", blk)
+  }
+  var hash Hash
+  if blk.Number == 1 {
+    hash = s.genesisHash
+  } else {
+    hash = s.lastBlock.Hash()
+  }
+  if blk.Parent != hash {
+    return fmt.Errorf("blk: invalid parent hash\n%v", blk)
+  }
+  for _, tx := range blk.Txs {
+    err := s.ApplyTx(tx)
+    if err != nil {
+      return err
+    }
+  }
+  s.lastBlock = blk
+  return nil
+}
+  #+END_SRC
 
 ** Testing and usage

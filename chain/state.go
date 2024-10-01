@@ -52,15 +52,15 @@ func (s *State) Clone() *State {
   }
 }
 
-func (s *State) Apply(state *State) {
+func (s *State) Apply(clone *State) {
   s.mtx.Lock()
   defer s.mtx.Unlock()
-  s.balances = state.balances
-  s.nonces = state.nonces
-  s.lastBlock = state.lastBlock
+  s.balances = clone.balances
+  s.nonces = clone.nonces
+  s.lastBlock = clone.lastBlock
   s.Pending.balances = maps.Clone(s.balances)
   s.Pending.nonces = maps.Clone(s.nonces)
-  for _, tx := range state.lastBlock.Txs {
+  for _, tx := range clone.lastBlock.Txs {
     delete(s.Pending.txs, tx.Hash())
   }
 }
@@ -140,7 +140,8 @@ func (s *State) ApplyTx(tx SigTx) error {
 }
 
 func (s *State) CreateBlock(authority Account) (SigBlock, error) {
-  // no need to lock/unlock as CreateBlock is always executed on a clone
+  // The is no need to lock/unlock as the CreateBlock is always executed on the
+  // cloned state
   pndTxs := make([]SigTx, 0, len(s.Pending.txs))
   for _, tx := range s.Pending.txs {
     pndTxs = append(pndTxs, tx)
