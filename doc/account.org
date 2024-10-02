@@ -447,7 +447,7 @@ account on the blockchain and store its key pair on the blockchain node
   - =--ownerpass= provides the password for the new account
   #+BEGIN_SRC fish
 ./bcn account create --node $node --ownerpass $ownerpass
-acc 596cd4370df451aa9403dddf7febc949fa729eab8f2bdceebbc24477d6f4c80f
+# acc 596cd4370df451aa9403dddf7febc949fa729eab8f2bdceebbc24477d6f4c80f
   #+END_SRC
 
 *** Using =account balance= CLI command
@@ -476,5 +476,5 @@ blockchain
   #+BEGIN_SRC fish
 set account d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7
 ./bcn account balance --node $node --account $account
-acc d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7: 1000
+# acc d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7: 1000
   #+END_SRC

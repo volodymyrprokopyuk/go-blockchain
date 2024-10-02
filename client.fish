@@ -8,12 +8,11 @@ set pass password
 # ./bcn account create --node $node --ownerpass $pass
 # ./bcn node start --node localhost:1123 --seed localhost:1122
 
-function txSignAndSend -a node from to value pass
+function txSignAndSend -a node from to value ownerpass
   set tx (./bcn tx sign --node $node --from $from --to $to --value $value \
-    --ownerpass $pass)
+    --ownerpass $ownerpass)
   echo $tx
-  set hash (./bcn tx send --node $node --sigtx $tx)
-  echo $hash
+  ./bcn tx send --node $node --sigtx $tx
 end
 
 set own 42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3
@@ -22,7 +21,11 @@ set ben f607fd36d6ed871db2a6021382452f54225d0cff8354698a0584f287019afec9
 # txSignAndSend $node $own $ben 2 $pass
 # txSignAndSend $node $ben $own 1 $pass
 
-./bcn account balance --node $node --account $own
+set sender 42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3
+set ownerpass password
+txSignAndSend $node $sender to 1000 $ownerpass
+
+# ./bcn account balance --node $node --account $own
 # ./bcn account balance --node $node --account $ben
 
 # ./bcn block search --node $node --number 2

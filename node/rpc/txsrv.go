@@ -73,7 +73,9 @@ func (s *TxSrv) TxSend(_ context.Context, req *TxSendReq) (*TxSendRes, error) {
   if err != nil {
     return nil, status.Errorf(codes.FailedPrecondition, err.Error())
   }
-  s.txRelayer.RelayTx(tx)
+  if s.txRelayer != nil {
+    s.txRelayer.RelayTx(tx)
+  }
   res := &TxSendRes{Hash: tx.Hash().String()}
   return res, nil
 }

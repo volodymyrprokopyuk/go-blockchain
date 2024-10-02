@@ -414,7 +414,6 @@ func (s *State) ApplyBlock(blk SigBlock) error {
 }
   #+END_SRC
 
-
 *** gRPC =TxSend= methods
 
 The gRPC =Tx= service provides the =TxSend= method to send signed transactions
@@ -493,3 +492,64 @@ The =TestApplyBlock= testing process
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run ApplyBlock
 #+END_SRC
+
+*** Testing gRPC =TxSend= method
+
+The =TestAccountCreate= testing process
+- Create the initial state from the genesis
+- Set the initial owner account from the genesis as the sender account
+- Set up the gRPC transaction service and the gRPC transaction client
+- Set the gRPC transaction service to the pending state
+- Send several transactions to the pending state
+  - The first is a valid transaction
+  - The second transaction has the value that exceeds the sender balance
+- Check the correct balance of the sender account on the pending state after
+  the application of the block
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run TxSend
+#+END_SRC
+
+*** Using =tx send= CLI command
+
+The gRPC =TxSend= method is exposed through the CLI. Create, sign, and send a
+new transaction to a blockchain node
+- Start a blockchain node
+  #+BEGIN_SRC fish
+set node localhost:1122
+set authpass password
+./bcn node start --node $node --bootstrap --authpass $authpass
+  #+END_SRC
+- Define a shell function to create, sign, and send a transaction
+  #+BEGIN_SRC fish
+function txSignAndSend -a node from to value ownerpass
+  set tx (./bcn tx sign --node $node --from $from --to $to --value $value \
+    --ownerpass $ownerpass)
+  echo $tx
+  ./bcn tx send --node $node --sigtx $tx
+end
+  #+END_SRC
+- Create, sign, and send a valid transaction (in a new terminal)
+  #+BEGIN_SRC fish
+set sender 42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3
+set ownerpass password
+txSignAndSend $node $sender to 12 $ownerpass
+# tx 51bd61eeec69d7cbf9dbf3a4a6e0577c6f30c57021376fc49227e4add02bbbb7
+  #+END_SRC
+  The structure of the signed encoded transaction before sending to the node
+  #+BEGIN_SRC json
+{
+  "from": "42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3",
+  "to": "to",
+  "value": 12,
+  "nonce": 2,
+  "time": "2024-10-02T15:23:17.800661339+02:00",
+  "sig": "+kq1kKqN3CRc49J1KonKIFBeWCuwUVo1fnowTfJVQKBy+Zdu8D1xdzqzXtUIwfxiPzB2G97ARWYhS+aWe2EpHQA="
+}
+  #+END_SRC
+- Create, sign, and send a transaction with the value that exceeds the sender
+  balance
+  #+BEGIN_SRC fish
+txSignAndSend $node $sender to 12 $ownerpass
+# rpc error: code = FailedPrecondition desc = tx: insufficient account funds
+# tx  54e6c92: 42e61ae -> to     1000        3
+  #+END_SRC

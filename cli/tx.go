@@ -98,7 +98,7 @@ func txSendCmd(ctx context.Context) *cobra.Command {
       if err != nil {
         return err
       }
-      fmt.Printf("%s\n", hash)
+      fmt.Printf("tx %s\n", hash)
       return nil
     },
   }

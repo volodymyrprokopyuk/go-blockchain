@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"net"
 	"os/signal"
-	"path/filepath"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rpc"
@@ -79,8 +77,8 @@ func NewNode(cfg NodeCfg) *Node {
 
 func (n *Node) Start() error {
   defer n.ctxCancel()
-  n.wg.Add(1)
-  go n.evStream.streamEvents()
+  // n.wg.Add(1)
+  // go n.evStream.streamEvents()
   state, err := n.stateSync.syncState()
   if err != nil {
     return err
@@ -88,23 +86,23 @@ func (n *Node) Start() error {
   n.state = state
   n.wg.Add(1)
   go n.servegRPC()
-  n.wg.Add(1)
-  go n.peerDisc.discoverPeers(10 * time.Second)
-  n.wg.Add(1)
-  go n.txRelay.relayMsgs()
-  if n.cfg.Bootstrap {
-    path := filepath.Join(n.cfg.KeyStoreDir, string(n.state.Authority()))
-    auth, err := chain.ReadAccount(path, []byte(n.cfg.AuthPass))
-    if err != nil {
-      return err
-    }
-    n.blockProp.authority = auth
-    n.blockProp.state = n.state
-    n.wg.Add(1)
-    go n.blockProp.proposeBlocks(10 * time.Second)
-  }
-  n.wg.Add(1)
-  go n.blkRelay.relayMsgs()
+  // n.wg.Add(1)
+  // go n.peerDisc.discoverPeers(10 * time.Second)
+  // n.wg.Add(1)
+  // go n.txRelay.relayMsgs()
+  // if n.cfg.Bootstrap {
+  //   path := filepath.Join(n.cfg.KeyStoreDir, string(n.state.Authority()))
+  //   auth, err := chain.ReadAccount(path, []byte(n.cfg.AuthPass))
+  //   if err != nil {
+  //     return err
+  //   }
+  //   n.blockProp.authority = auth
+  //   n.blockProp.state = n.state
+  //   n.wg.Add(1)
+  //   go n.blockProp.proposeBlocks(10 * time.Second)
+  // }
+  // n.wg.Add(1)
+  // go n.blkRelay.relayMsgs()
   select {
   case <- n.ctx.Done():
   case err = <- n.chErr:
