@@ -1,0 +1,56 @@
+* State sync
+
+** Concepts and purpose
+
+*** Initial state synchronization
+
+- State synchronization :: The initial state sync occurs when either the
+  bootstrap node first starts and initializes a new blockchain or when a node
+  syncs the confirmed state and the block store with the bootstrap node starting
+  from the genesis or from a specific block number. The state sync ensures
+  immutability and integrity of the blockchain by verifying signatures of the
+  genesis and every block in order, re-applying every block to the confirmed
+  state and the block store of every node. The state sync process is performed
+  during the bootstrap of a new blockchain. In this case only the genesis is
+  created and persisted, and the confirmed state of the bootstrap node is
+  initialized with the genesis balances. The state sync process brings a new
+  empty node or an out-of-sync node have the verified and validated confirmed
+  state as per the latest confirmed block
+
+*** Bootstrap state initialization
+
+- Bootstrap state init :: The bootstrap state init is only performed once on the
+  bootstrap node during the initialization of a new blockchain. The bootstrap
+  state init creates, signs, and persists the genesis with the initial
+  blockchain configuration parameters including the blockchain name, the time of
+  signing the genesis, the authority account for signing the genesis and every
+  proposed block, the initial owner account with the initial balance. The
+  bootstrap state init process also initializes the confirmed state of the
+  bootstrap node with balances from the genesis
+
+*** Node state synchronization
+
+- Node state sync :: The node state sync occurs every time when a new node joins
+  the blockchain network and needs to verify and validate all confirmed blocks
+  on the blockchain starting from the genesis. In this case the genesis is
+  fetched from the bootstrap node, the genesis signature is verified, and the
+  genesis is persisted to the block store. All the confirmed blocks are fetched
+  either from the bootstrap node or any other know peer that has newer confirmed
+  blocks that the bootstrap node. The node state sync is also performed when an
+  out-of-sync node is catching up with the latest confirmed blocks on the
+  blockchain. In this case the genesis and the initial confirmed blocks are
+  already verified, validated, and persisted. The initial confirmed blocks are
+  read and applied to the confirmed state from the local block store. Only the
+  newer confirmed blocks are fetched from the bootstrap node and known peers.
+  Regardless of a new node or an out-of-sync node, every fetched node including
+  the genesis goes through the verification of the signature and the full
+  validation in the form of the block application. Every verified, validated,
+  and confirmed block is applied to the node's confirmed state and appended to
+  the block store. Once the node state sync process is finished the node is
+  ready to receive and relay new transactions, to receive and relay new proposed
+  blocks, and to verify and validated new proposed blocks. The node state sync
+  process is only executed when the node starts.
+
+** Design and implementation
+
+** Testing and usage
