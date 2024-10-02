@@ -23,7 +23,7 @@ implementation* to *practical testing and usage*
 
 *** Blockchain node
 
-5. [[/doc/state-sync.org][State sync]]
+5. [@5] [[/doc/state-sync.org][State sync]]
 6. Peer discovery
 7. Transaction relay
 8. Block proposer
