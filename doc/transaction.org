@@ -244,8 +244,8 @@ The implementation of the =TxSign= method
 - Construct a new transaction from the request arguments
   - =From= specifies the sender address
   - =To= specifies the recipient address
-  - =Value= the value amount to be transferred
-- Request from the blockchain state and increment by 1 the current value of
+  - =Value= indicates the value amount to be transferred
+- Request from the pending state and increment by 1 the current value of the
   nonce for the sender account
 - Sign the transaction with the sender account private key
 - Encode the signed transaction
@@ -255,7 +255,7 @@ func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
   path := filepath.Join(s.keyStoreDir, req.From)
   acc, err := chain.ReadAccount(path, []byte(req.Password))
   if err != nil {
-    return nil, err
+    return nil, status.Errorf(codes.InvalidArgument, err.Error())
   }
   tx := chain.NewTx(
     chain.Address(req.From), chain.Address(req.To), req.Value,
@@ -263,11 +263,11 @@ func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
   )
   stx, err := acc.SignTx(tx)
   if err != nil {
-    return nil, err
+    return nil, status.Errorf(codes.Internal, err.Error())
   }
   jtx, err := json.Marshal(stx)
   if err != nil {
-    return nil, err
+    return nil, status.Errorf(codes.Internal, err.Error())
   }
   res := &TxSignRes{Tx: jtx}
   return res, nil

@@ -303,11 +303,11 @@ func (s *AccountSrv) AccountCreate(
   }
   acc, err := chain.NewAccount()
   if err != nil {
-    return nil, err
+    return nil, status.Errorf(codes.Internal , err.Error())
   }
   err = acc.Write(s.keyStoreDir, pass)
   if err != nil {
-    return nil, err
+    return nil, status.Errorf(codes.Internal, err.Error())
   }
   res := &AccountCreateRes{Address: string(acc.Address())}
   return res, nil
@@ -334,8 +334,8 @@ service Account {
 
 The implementation of the =AccountBalance= method
 - Check the balance of the requested account if the balance entry exists in the
-  blockchain state. The account can be created, but the balance entry in the
-  blockchain state will be included only after the first transaction involving
+  confirmed state. The account can be created, but the balance entry in the
+  confirmed state will be included only after the first transaction involving
   the account
 #+BEGIN_SRC go
 func (s *AccountSrv) AccountBalance(

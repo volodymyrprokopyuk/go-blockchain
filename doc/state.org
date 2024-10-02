@@ -414,6 +414,48 @@ func (s *State) ApplyBlock(blk SigBlock) error {
 }
   #+END_SRC
 
+
+*** gRPC =TxSend= methods
+
+The gRPC =Tx= service provides the =TxSend= method to send signed transactions
+to a blockchain node. The blockchain node then applies the transaction to the
+pending state and responds tho the client with the result of transaction
+application. The interface of the service
+#+BEGIN_SRC protobuf
+message TxSendReq {
+  bytes Tx = 1;
+}
+
+message TxSendRes {
+  string Hash = 1;
+}
+
+service Tx {
+  rpc TxSend(TxSendReq) returns (TxSendRes);
+}
+#+END_SRC
+
+The implementation of the =TxSend= method
+- Decode the encoded transaction from the request
+- Apply the decoded transaction to the pending state
+- Relay the validated transaction to the node peers
+#+BEGIN_SRC go
+func (s *TxSrv) TxSend(_ context.Context, req *TxSendReq) (*TxSendRes, error) {
+  var tx chain.SigTx
+  err := json.Unmarshal(req.Tx, &tx)
+  if err != nil {
+    return nil, status.Errorf(codes.InvalidArgument, err.Error())
+  }
+  err = s.txApplier.ApplyTx(tx)
+  if err != nil {
+    return nil, status.Errorf(codes.FailedPrecondition, err.Error())
+  }
+  s.txRelayer.RelayTx(tx)
+  res := &TxSendRes{Hash: tx.Hash().String()}
+  return res, nil
+}
+#+END_SRC
+
 ** Testing and usage
 
 *** Testing transaction application

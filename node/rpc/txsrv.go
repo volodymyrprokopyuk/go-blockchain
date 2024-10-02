@@ -45,7 +45,7 @@ func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
   path := filepath.Join(s.keyStoreDir, req.From)
   acc, err := chain.ReadAccount(path, []byte(req.Password))
   if err != nil {
-    return nil, status.Errorf(codes.NotFound, err.Error())
+    return nil, status.Errorf(codes.InvalidArgument, err.Error())
   }
   tx := chain.NewTx(
     chain.Address(req.From), chain.Address(req.To), req.Value,
@@ -67,11 +67,11 @@ func (s *TxSrv) TxSend(_ context.Context, req *TxSendReq) (*TxSendRes, error) {
   var tx chain.SigTx
   err := json.Unmarshal(req.Tx, &tx)
   if err != nil {
-    return nil, err
+    return nil, status.Errorf(codes.InvalidArgument, err.Error())
   }
   err = s.txApplier.ApplyTx(tx)
   if err != nil {
-    return nil, err
+    return nil, status.Errorf(codes.FailedPrecondition, err.Error())
   }
   s.txRelayer.RelayTx(tx)
   res := &TxSendRes{Hash: tx.Hash().String()}

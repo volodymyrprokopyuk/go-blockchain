@@ -157,7 +157,7 @@ func (s *State) CreateBlock(authority Account) (SigBlock, error) {
   for _, tx := range pndTxs {
     err := s.ApplyTx(tx)
     if err != nil {
-      fmt.Printf("REJECTED %v\n", err)
+      fmt.Printf("tx: rejected: %v\n", err)
       continue
     }
     txs = append(txs, tx)
