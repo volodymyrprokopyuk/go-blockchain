@@ -23,11 +23,7 @@ func TestBlockSignBlockWriteReadVerifyBlock(t *testing.T) {
     t.Fatal(err)
   }
   // Re-create the initial owner account
-  var ownerAcc chain.Address
-  for acc := range gen.Balances {
-    ownerAcc = acc
-    break
-  }
+  ownerAcc, _ := genesisAccount(gen)
   path = filepath.Join(keyStoreDir, string(ownerAcc))
   acc, err := chain.ReadAccount(path, []byte(ownerPass))
   if err != nil {

@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/volodymyrprokopyuk/go-blockchain/command"
+	"github.com/volodymyrprokopyuk/go-blockchain/cli"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
     context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL,
   )
   defer cancel()
-  cmd := command.ChainCmd(ctx)
+  cmd := cli.ChainCmd(ctx)
   err := cmd.Execute()
   if err != nil {
     fmt.Println(err)

@@ -63,6 +63,13 @@ func createGenesis() (chain.SigGenesis, error) {
   return sgen, nil
 }
 
+func genesisAccount(gen chain.SigGenesis) (chain.Address, uint64) {
+  for acc, bal := range gen.Balances {
+    return acc, bal
+  }
+  return "", 0
+}
+
 func grpcClientConn(
   t *testing.T, grpcRegisterSrv func(grpcSrv *grpc.Server),
 ) *grpc.ClientConn {
@@ -132,12 +139,7 @@ func TestAccountBalance(t *testing.T) {
   // Create the blockchain state
   state := chain.NewState(gen)
   // Retrieve the initial owner account and balance
-  var ownerAcc chain.Address
-  var ownerBal uint64
-  for acc, bal := range gen.Balances {
-    ownerAcc, ownerBal = acc, bal
-    break
-  }
+  ownerAcc, ownerBal := genesisAccount(gen)
   // Set up the gRPC server and client
   conn := grpcClientConn(t, func(grpcSrv *grpc.Server) {
     acc := rpc.NewAccountSrv(keyStoreDir, state)
