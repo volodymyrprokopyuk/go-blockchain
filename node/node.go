@@ -122,7 +122,7 @@ func (n *Node) servegRPC() {
     return
   }
   defer lis.Close()
-  fmt.Printf("<> gRPC %v\n", n.cfg.NodeAddr)
+  fmt.Printf("<=> gRPC %v\n", n.cfg.NodeAddr)
   n.grpcSrv = grpc.NewServer()
   node := rpc.NewNodeSrv(n.peerDisc, n.evStream)
   rpc.RegisterNodeServer(n.grpcSrv, node)

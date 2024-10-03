@@ -212,6 +212,6 @@ func (s *State) ApplyBlockToState(blk SigBlock) error {
     return err
   }
   s.Apply(clone)
-  fmt.Printf("== Block state\n%v", s)
+  fmt.Printf("=== Block state\n%v", s)
   return nil
 }
