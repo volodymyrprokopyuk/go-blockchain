@@ -345,6 +345,90 @@ func (s *stateSync) syncBlocks() error {
 
 *** gRPC =GenesisSync= method
 
+The gRPC =Block= service provides the =GenesisSync= method to fetch the encoded
+and signed genesis from the bootstrap node. The interface of the service
+#+BEGIN_SRC protobuf
+message GenesisSyncReq { }
+
+message GenesisSyncRes {
+  bytes Genesis = 1;
+}
+
+service Block {
+  rpc GenesisSync(GenesisSyncReq) returns (GenesisSyncRes);
+}
+#+END_SRC
+
+The implementation of the =GenesisSync= method
+- Read and return the encoded signed genesis
+#+BEGIN_SRC go
+func (s *BlockSrv) GenesisSync(
+  _ context.Context, req *GenesisSyncReq,
+) (*GenesisSyncRes, error) {
+  jgen, err := chain.ReadGenesisBytes(s.blockStoreDir)
+  if err != nil {
+    return nil, status.Errorf(codes.NotFound, err.Error())
+  }
+  res := &GenesisSyncRes{Genesis: jgen}
+  return res, nil
+}
+#+END_SRC
+
 *** gRPC =BlockSync= method
 
+The gRPC =Block= service provides the =BlockSync= method to fetch from a peer
+node a server stream of the encoded and signed confirmed blocks starting from a
+specified block number. The interface of the service
+#+BEGIN_SRC protobuf
+message BlockSyncReq {
+  uint64 Number = 1;
+}
+
+message BlockSyncRes {
+  bytes Block = 1;
+}
+
+service Block {
+  rpc BlockSync(BlockSyncReq) returns (stream BlockSyncRes);
+}
+#+END_SRC
+
+The implementation of the =BlockSync= method
+- Create an iterator for confirmed blocks from the local block store
+- Defer closing the block iterator
+- Send every block staring from the requested block number over the server
+  stream to a client
+#+BEGIN_SRC go
+func (s *BlockSrv) BlockSync(
+  req *BlockSyncReq, stream grpc.ServerStreamingServer[BlockSyncRes],
+) error {
+  blocks, closeBlocks, err := chain.ReadBlocksBytes(s.blockStoreDir)
+  if err != nil {
+    return status.Errorf(codes.NotFound, err.Error())
+  }
+  defer closeBlocks()
+  num, i := int(req.Number), 1
+  for err, jblk := range blocks {
+    if err != nil {
+      return status.Errorf(codes.Internal, err.Error())
+    }
+    if i >= num {
+      res := &BlockSyncRes{Block: jblk}
+      err = stream.Send(res)
+      if err != nil {
+        return status.Errorf(codes.Internal, err.Error())
+      }
+    }
+    i++
+  }
+  return nil
+}
+#+END_SRC
+
 ** Testing and usage
+
+*** Testing the genesis creation on the bootstrap node
+*** Testing the genesis fetching from the bootstrap node
+*** Testing reading confirmed blocks from the local block store
+*** Testing fetching confirmed blocks from all known peers
+*** Using the =node start= CLI command
