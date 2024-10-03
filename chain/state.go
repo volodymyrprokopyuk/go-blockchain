@@ -147,11 +147,13 @@ func (s *State) CreateBlock(authority Account) (SigBlock, error) {
     pndTxs = append(pndTxs, tx)
   }
   slices.SortFunc(pndTxs, func(a, b SigTx) int {
-    cmp := strings.Compare(string(a.From), string(b.From))
-    if cmp != 0 {
-      return cmp
+    if a.Time.Before(b.Time) {
+      return -1
     }
-    return int(a.Nonce) - int(b.Nonce)
+    if b.Time.Before(a.Time) {
+      return 1
+    }
+    return 0
   })
   txs := make([]SigTx, 0, len(pndTxs))
   for _, tx := range pndTxs {

@@ -427,8 +427,37 @@ func (s *BlockSrv) BlockSync(
 
 ** Testing and usage
 
-*** Testing the genesis creation on the bootstrap node
+*** Testing gRPC =GenesisSync= method
+
+The =TestGenesisSync= testing process
+- Create and persist the genesis
+- Create and initialize the state from the genesis
+- Set up the gRPC block service and the gRPC block client
+- Call the gRPC =GenesisSync= method to fetch the genesis
+- Verify the signature of the received genesis
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run GenesisSync
+#+END_SRC
+
 *** Testing the genesis fetching from the bootstrap node
-*** Testing reading confirmed blocks from the local block store
+
+*** Testing gRPC =BlockSync= method
+
+The =TestBlockSync= testing process
+- Create and persist the genesis
+- Create and initialize the state from the genesis
+- Create, verify, validate and persist to the local block store several blocks
+- Set up the gRPC block service and the gRPC block client
+- Call the gRPC =BlockSync= method to receive the newer confirmed blocks from
+  the server stream
+- For each received block
+  - Decode the received block
+  - Verify the signature of the received block
+  - Check the correct block number regarding the last confirmed block
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run BlockSync
+#+END_SRC
+
 *** Testing fetching confirmed blocks from all known peers
+
 *** Using the =node start= CLI command

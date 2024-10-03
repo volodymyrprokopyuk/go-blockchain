@@ -115,8 +115,12 @@ func (s *BlockSrv) BlockReceive(
       fmt.Println(err)
       continue
     }
-    s.blkRelayer.RelayBlock(blk)
-    s.publishBlock(blk)
+    if s.blkRelayer != nil {
+      s.blkRelayer.RelayBlock(blk)
+    }
+    if s.eventPub != nil {
+      s.publishBlock(blk)
+    }
   }
 }
 

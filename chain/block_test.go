@@ -16,8 +16,8 @@ func TestBlockSignBlockWriteReadVerifyBlock(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  path := filepath.Join(keyStoreDir, string(gen.Authority))
   // Re-create the authority account
+  path := filepath.Join(keyStoreDir, string(gen.Authority))
   auth, err := chain.ReadAccount(path, []byte(authPass))
   if err != nil {
     t.Fatal(err)

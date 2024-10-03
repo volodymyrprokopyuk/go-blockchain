@@ -72,7 +72,7 @@
   algorithm. The block creation process is performed on the cloned state. The
   block creation process constructs a new block to be proposed and validated by
   other nodes on the blockchain network. All pending transactions are sorted by
-  the sender account and nonce to be applied in order per the sender account,
+  the transaction signing time to be applied in order per the sender account,
   validated against the cloned state, and packed into a new block. The block
   number is incremented by one regarding the number of the last confirmed block,
   and the parent hash is set to the hash of the last block from the confirmed
@@ -303,21 +303,20 @@ func (s *State) ApplyTx(tx SigTx) error {
   consensus between the blockchain validating nodes. The block creation
   operation is always performed on the local cloned state, so there is no need
   to acquire a read lock of the state. The state cloning operation is already
-  concurrency safe. The block creation operation is this implementation is
+  concurrency safe. The block creation operation in this implementation is
   scheduled with a random delay on the authority node that is the only node in
   the blockchain that proposes new blocks. The block creation operation sorts
-  all pending transactions by the address of the sender account and by the nonce
-  to ensure correct in-order processing of transactions from the same sender
-  account. The sorted transactions are applied to the cloned state with the
-  objective to reject any invalid transaction before their inclusion into a new
-  block. All pending validated transactions are included in the new block. The
-  block number is incremented by one regarding the number of the last block from
-  the confirmed cloned state. For the first block the parent hash is the genesis
-  hash, while for any successive block the parent hash is the hash of the last
-  block for the confirmed cloned state. The new block is digitally signed by the
-  authority account that created the block. The block creation operation
-  - Sort the pending transactions by the address of the sender account and the
-    nonce
+  all pending transactions by the transaction signing time to ensure correct
+  in-order processing of transactions from the same sender account. The sorted
+  transactions are applied to the cloned state with the objective to reject any
+  invalid transaction before their inclusion into a new block. All pending
+  validated transactions are included in the new block. The block number is
+  incremented by one regarding the number of the last block from the confirmed
+  cloned state. For the first block the parent hash is the genesis hash, while
+  for any successive block the parent hash is the hash of the last block for the
+  confirmed cloned state. The new block is digitally signed by the authority
+  account that created the block. The block creation operation
+  - Sort the pending transactions by the transaction signing time
   - Apply the sorted pending transaction the the cloned state
   - Reject any invalid transactions from inclusion into a new block
   - Create a new block with validated transactions
@@ -331,17 +330,19 @@ func (s *State) CreateBlock(authority Account) (SigBlock, error) {
     pndTxs = append(pndTxs, tx)
   }
   slices.SortFunc(pndTxs, func(a, b SigTx) int {
-    cmp := strings.Compare(string(a.From), string(b.From))
-    if cmp != 0 {
-      return cmp
+    if a.Time.Before(b.Time) {
+      return -1
     }
-    return int(a.Nonce) - int(b.Nonce)
+    if b.Time.Before(a.Time) {
+      return 1
+    }
+    return 0
   })
   txs := make([]SigTx, 0, len(pndTxs))
   for _, tx := range pndTxs {
     err := s.ApplyTx(tx)
     if err != nil {
-      fmt.Printf("REJECTED %v\n", err)
+      fmt.Printf("tx: rejected: %v\n", err)
       continue
     }
     txs = append(txs, tx)
