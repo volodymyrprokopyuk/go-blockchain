@@ -12,6 +12,11 @@ implementation* to *practical testing and usage*
 - Concise, yet detailed ::
 - Practical, yet well-grounded ::
 
+** Learning path
+| Chapter | Blockchain concepts | Cryptography, concurrency, networking |
+|---------+---------------------+---------------------------------------|
+|         |                     |                                       |
+
 ** Contents
 
 *** Blockchain state
