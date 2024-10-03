@@ -53,6 +53,35 @@
 
 ** Design and implementation
 
+*** The state sync type
+
+- State sync type :: The =stateSync= type implements the state sync algorithm
+  and to initialize the bootstrap node or synchronize the peer node. The
+  =stateSync= type contains the node configuration including the node address,
+  the seed address, the key store directory, the block store directory, the
+  genesis configuration; the node context for the graceful shutdown, the
+  reference to the confirmed state for application of confirmed blocks read from
+  the local block store or fetched from all known peers, and the reference to
+  the peer discovery for fetching of the genesis and newer confirmed blocks. The
+  =stateSync= type
+  | ~cfg NodeCfg~             | Node configuration          |
+  | ~ctx context.Context~     | Node context                |
+  | ~state *chain.State~      | Confirmed and pending state |
+  | ~peerDisc *peerDiscovery~ | Peer discovery              |
+  #+BEGIN_SRC go
+type stateSync struct {
+  cfg NodeCfg
+  ctx context.Context
+  state *chain.State
+  peerDisc *peerDiscovery
+}
+
+func newStateSync(
+  ctx context.Context, cfg NodeCfg, peerDisc *peerDiscovery,
+) *stateSync {
+  return &stateSync{ctx: ctx, cfg: cfg, peerDisc: peerDisc}
+}
+  #+END_SRC
 *** The state synchronization algorithm
 
 - State sync algorithm :: The state synchronization algorithm covers both the
@@ -116,5 +145,206 @@ func (s *stateSync) syncState() (*chain.State, error) {
   return s.state, nil
 }
   #+END_SRC
+
+*** Creating the genesis on the bootstrap node
+
+- Genesis creation :: The genesis creation process is performed once on the
+  bootstrap node during the initialization of the blockchain. The authority
+  account is created and protected with the authority account password. The
+  authority account is used to sign the genesis and sign the proposed blocks on
+  the blockchain. The initial owner account is created and protected with the
+  owner password. The initial owner account has the initial balance on the
+  blockchain. The new genesis is created by providing the blockchain name, the
+  authority account address, the initial owner account address and the initial
+  balance. The new genesis is signed by the authority account and is persisted
+  to the local block store of the bootstrap node. The genesis creation process
+  - Create and persist the authority account for signing the genesis and
+    proposed blocks
+  - Create and persist the initial owner account with the initial blockchain
+    balance
+  - Create sign the genesis with the authority account
+  - Persis the genesis to the local block store of the bootstrap node
+  #+BEGIN_SRC go
+func (s *stateSync) createGenesis() (chain.SigGenesis, error) {
+  authPass := []byte(s.cfg.AuthPass)
+  if len(authPass) < 5 {
+    return chain.SigGenesis{}, fmt.Errorf("authpass length is less than 5")
+  }
+  auth, err := chain.NewAccount()
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  err = auth.Write(s.cfg.KeyStoreDir, authPass)
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  ownerPass := []byte(s.cfg.OwnerPass)
+  if len(ownerPass) < 5 {
+    return chain.SigGenesis{}, fmt.Errorf("ownerpass length is less than 5")
+  }
+  if s.cfg.Balance == 0 {
+    return chain.SigGenesis{}, fmt.Errorf("balance must be positive")
+  }
+  acc, err := chain.NewAccount()
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  err = acc.Write(s.cfg.KeyStoreDir, ownerPass)
+  s.cfg.OwnerPass = "erase"
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  gen := chain.NewGenesis(
+    s.cfg.Chain, auth.Address(), acc.Address(), s.cfg.Balance,
+  )
+  sgen, err := auth.SignGen(gen)
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  err = sgen.Write(s.cfg.BlockStoreDir)
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  return sgen, nil
+}
+  #+END_SRC
+
+*** Fetching the genesis from the bootstrap node
+
+- Genesis sync :: The genesis sync process is performed once per node during the
+  node initialization on already initialized blockchain with the running
+  bootstrap node. The genesis syn process contributes to the immutability and
+  integrity of the blockchain by ensuring that exactly the same copy of the
+  genesis is stored in the local block store of every node on the blockchain.
+  The genesis sync process fetches the encoded and signed genesis from the
+  bootstrap node by calling the =GenesisSync= method of the =Block= gRPC
+  service. Then the encoded genesis is decoded. Next the genesis signature is
+  verified. Finally the verified genesis is persisted to the local block store
+  of the node. The genesis sync process
+  - Fetch the encoded and signed genesis from the bootstrap node
+  - Decode and verify the genesis signature
+  - Persist the verified genesis to the local block store
+  #+BEGIN_SRC go
+func (s *stateSync) syncGenesis() (chain.SigGenesis, error) {
+  jgen, err := s.grpcGenesisSync()
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  var gen chain.SigGenesis
+  err = json.Unmarshal(jgen, &gen)
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  valid, err := chain.VerifyGen(gen)
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  if !valid {
+    return chain.SigGenesis{}, fmt.Errorf("invalid genesis signature")
+  }
+  err = gen.Write(s.cfg.BlockStoreDir)
+  if err != nil {
+    return chain.SigGenesis{}, err
+  }
+  return gen, nil
+}
+  #+END_SRC
+
+*** Reading confirmed blocks from the local block store
+
+- Block reading :: The block reading process is executed every time the node is
+  restarted. First the genesis is read and the state is initialized with the
+  genesis. Then all confirmed blocks from the local block store are read in
+  order and applied to the state. The block reading process brings the node to
+  the state when the node left the last time. The block reading process creates
+  an iterator over the confirmed blocks in the local block store. Each confirmed
+  block returned in order by the iterator is applied to the cloned state, and,
+  if successful, the cloned state is applied to the confirmed state. The block
+  application process ensures integrity and immutability of the blockchain state
+  on every node. The block reading process
+  - Create the iterator for reading the confirmed blocks in order from the local
+    block store
+  - Defer closing the block iterator
+  - Iterate over the confirmed blocks in order
+    - Apply each block to the cloned state, if successful
+    - Apply the cloned state to the confirmed state
+  #+BEGIN_SRC go
+func (s *stateSync) readBlocks() error {
+  blocks, closeBlocks, err := chain.ReadBlocks(s.cfg.BlockStoreDir)
+  if err != nil {
+    return err
+  }
+  defer closeBlocks()
+  for err, blk := range blocks {
+    if err != nil {
+      return err
+    }
+    clone := s.state.Clone()
+    err = clone.ApplyBlock(blk)
+    if err != nil {
+      return err
+    }
+    s.state.Apply(clone)
+  }
+  return nil
+}
+  #+END_SRC
+
+*** Fetching confirmed blocks from all known peers...
+
+- Block sync :: The block sync process propagates the recent confirmed blocks
+  through the blockchain network during the initialization of new nodes or the
+  synchronization of out-of-sync nodes on the blockchain. The block sync process
+  contributes to the immutability and integrity of the blockchain by ensuring
+  that exactly the same blocks in the same order are stored on every node on the
+  blockchain. For every known peer the block sync process fetches the new
+  confirmed blocks starting from the block number next to the last confirmed
+  block on the requesting node. Each fetched block is decoded. Then the block is
+  applied to the cloned state, and, if successful, the cloned state is applied
+  to the confirmed state. Finally, after successful application, the new
+  confirmed blocks is persisted to the local block store. The block sync process
+  - For every known peer fetch new confirmed blocks starting from the block
+    number next to the last confirmed block on the requesting node
+    - For every fetched block
+      - Decode the fetched block
+      - Apply the decoded block to the local state, if successful
+      - Apply the cloned state to the confirmed state
+      - Persist the confirmed block to the local block store
+  #+BEGIN_SRC go
+func (s *stateSync) syncBlocks() error {
+  for _, peer := range s.peerDisc.Peers() {
+    blocks, closeBlocks, err := s.grpcBlockSync(peer)
+    if err != nil {
+      return err
+    }
+    defer closeBlocks()
+    for err, jblk := range blocks {
+      if err != nil {
+        return err
+      }
+      var blk chain.SigBlock
+      err = json.Unmarshal(jblk, &blk)
+      if err != nil {
+        return err
+      }
+      clone := s.state.Clone()
+      err = clone.ApplyBlock(blk)
+      if err != nil {
+        return err
+      }
+      s.state.Apply(clone)
+      err = blk.Write(s.cfg.BlockStoreDir)
+      if err != nil {
+        return err
+      }
+    }
+  }
+  return nil
+}
+  #+END_SRC
+
+*** gRPC =GenesisSync= method
+
+*** gRPC =BlockSync= method
 
 ** Testing and usage
