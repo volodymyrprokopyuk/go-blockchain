@@ -1,0 +1,163 @@
+* Peer discovery
+
+** Concepts and purpose
+
+*** Peer discovery in peer-to-peer networks
+
+- Peer discovery :: The peer discovery process is necessary in a peer-to-peer
+  network to interconnect autonomous and self-contained nodes into the
+  peer-to-peer network without a centralized authority. The peer discovery
+  process happens automatically and periodically on every node. This ensures
+  that every node independently builds its network of peers without any central
+  authority. This also contributes to the resilience of the peer-to-peer network
+  by dropping connections with nodes that have gone offline and automatically
+  and continuously establishing connections with new healthy nodes. The peer
+  discovery process on every node, except the bootstrap node, starts with the
+  seed node that is the only explicitly provided peer address for a node to
+  start discovering new peers. Usually the seed node is the bootstrap node. On
+  start a new node fetches from the seed node a set of initial peers that are
+  saved for periodic reference in order to build a network of peers for a node.
+  A node maintains a list of unique healthy peers. A node fetches new peers from
+  its list of known peers on the periodic basis. Only new peers are added to the
+  list of known peers discarding already known peers and the node's own address.
+- Peer discovery on the bootstrap node :: The bootstrap node is the only node
+  that is started without providing the seed node. The bootstrap node builds the
+  list of known peers by saving addresses of peers that have contacted the
+  bootstrap node as part of the peer discovery process. Later on the bootstrap
+  node employs exactly the same algorithm as any other node on the peer-to-peer
+  network
+
+** Design and implementation
+
+*** The concurrency safe peer discovery type
+
+- Peer discovery type :: The =peerDiscovery= type maintains the list of unique,
+  healthy known peers and implements the peer discovery algorithm. The peer
+  discovery algorithm is performed periodically in order to keep the node
+  connected to healthy peers, discover new peers, drop unhealthy peers, and
+  provide peers information to other components of a node e.g. transaction
+  relay, block relay. The peer discovery type type is concurrency safe. Adding
+  new peers and reading known peers is concurrency safe by employing
+  *readers-writer mutex*. The readers-writer mutex improves throughput and
+  reduces latency by allowing either multiple concurrent peers readers with no
+  peers writer or a single peers writer without any peers readers. The peer
+  discovery type contains the peer discovery configuration, the node context for
+  graceful shutdown, the node waiting group to let the peer discovery algorithm
+  to finish before the shutdown, the readers-writer mutex for safe concurrent
+  access to the known peers, and a set of unique, healthy known peers
+  | ~cfg peerDiscoveryCfg~      | Peer discovery configuration |
+  | ~ctx context.Context~       | Node context                 |
+  | ~wg *sync.WaitGroup~        | Node waiting group           |
+  | ~mtx sync.RWMutex~          | Readers-writer mutex         |
+  | ~peers map[string]struct{}~ | Set of unique known peers    |
+  #+BEGIN_SRC go
+type peerDiscovery struct {
+  cfg peerDiscoveryCfg
+  ctx context.Context
+  wg *sync.WaitGroup
+  mtx sync.RWMutex
+  peers map[string]struct{}
+}
+
+func newPeerDiscovery(
+  ctx context.Context, wg *sync.WaitGroup, cfg peerDiscoveryCfg,
+) *peerDiscovery {
+  peerDisc := &peerDiscovery{
+    ctx: ctx, wg: wg, cfg: cfg, peers: make(map[string]struct{}),
+  }
+  if !peerDisc.Bootstrap() {
+    peerDisc.AddPeers(peerDisc.cfg.seedAddr)
+  }
+  return peerDisc
+}
+  #+END_SRC
+
+*** Adding and reading known peers
+
+- Add peers :: The add peers method is concurrency safe and is executed every
+  time the peer discovery algorithm fetches a list of peers from another node.
+  There may be peers that are already known to the node in the fetched list of
+  peers. The add peers method iterates over the fetched list of peers and adds
+  only new peers to the node's list of known peers. The add peers method
+  - Lock the peers set for writing
+  - Iterate over a fetched list of peers from another node
+  - Add only new, not yet known peers, to the list of known peers
+  #+BEGIN_SRC go
+func (d *peerDiscovery) AddPeers(peers ...string) {
+  d.mtx.Lock()
+  defer d.mtx.Unlock()
+  for _, peer := range peers {
+    if peer != d.cfg.nodeAddr {
+      _, exist := d.peers[peer]
+      if !exist {
+        fmt.Printf("<=> Peer %v\n", peer)
+      }
+      d.peers[peer] = struct{}{}
+    }
+  }
+}
+  #+END_SRC
+
+- Read peers :: The read peers method is concurrency safe and is executed for
+  every peer discovery cycle, when relaying validated transactions, when
+  relaying validated blocks. The read peers method converts the set of known
+  peers into a slice of known peers. The read peers method
+  - Lock the peers for reading
+  - Convert the set of known peers into a slice of known peers
+  #+BEGIN_SRC go
+func (d *peerDiscovery) Peers() []string {
+  d.mtx.RLock()
+  defer d.mtx.RUnlock()
+  peers := make([]string, 0, len(d.peers))
+  for peer := range d.peers {
+    peers = append(peers, peer)
+  }
+  return peers
+}
+  #+END_SRC
+
+- Read peers with self-reference :: The read peers with the self-reference adds
+  the node's own address to the list of known peers in order to relay proposed
+  blocks to the proposing authority node itself. When the authority node
+  creates, validates and proposes a new block, the block is relayed to all known
+  peers including the authority node itself. This design allows to separate the
+  block proposal algorithm from the block validation and confirmation algorithm
+  even if two algorithms happen on the same node. The read peers with the
+  self-reference method appends the node's own address to the list of known
+  peers. The read peers with the self-reference method
+  - Append the node's own address to the list of known peers
+  #+BEGIN_SRC go
+func (d *peerDiscovery) SelfPeers() []string {
+  return append(d.Peers(), d.cfg.nodeAddr)
+}
+  #+END_SRC
+
+
+*** Node graceful shutdown mechanism
+
+- Node graceful shutdown mechanism :: The node graceful shutdown mechanism
+  avoids unexpected termination of concurrent processes in the middle of
+  processing of a unit of work. The node graceful shutdown mechanism ensures
+  that concurrent processes on the node are timely notified to shutdown and the
+  node main goroutine waits for the concurrent processes to gracefully terminate
+  after finishing they current unit of work. The node graceful shutdown
+  mechanism is implemented using the single node context hierarchy shared
+  between all concurrent processes for signaling a shutdown, and a shared wait
+  group to let concurrent processes to terminate gracefully by finishing the
+  current unit of work. The concurrent counter of the wait group is incremented
+  every time a new concurrent process is started on the node. When the node
+  receives a signal to shutdown, the signal is automatically propagated through
+  the shared context hierarchy to all concurrent processes on the node. Every
+  concurrent process finishes processing the current unit of work and decrements
+  the concurrent counter of the shared wait group to indicated the graceful
+  shutdown. The main node goroutine waits for all concurrent processes to
+  notify graceful shutdown success when the concurrent counter of the wait group
+  becomes zero and the node main goroutine gracefully terminates
+
+*** The peer discovery algorithm
+
+- Peer discovery algorithm :: The peer discovery algorithm is periodically
+  executed in a separate goroutine within the node process. The peer discovery
+  algorithm is fully integrated with the node graceful shutdown mechanism.
+
+** Testing and usage

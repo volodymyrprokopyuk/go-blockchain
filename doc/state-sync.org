@@ -550,7 +550,7 @@ set ownerpass password
 - Start a regular node with the seed bootstrap address
 #+BEGIN_SRC fish
 set peer localhost:1123
-./bcn node start --node $peer --bootstrap --seed $node
+./bcn node start --node $peer --seed $node
 # === Sync state
 # * Balances and nonces
 # acc 1dc6773:                        1000        0

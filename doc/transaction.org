@@ -115,10 +115,10 @@ type is only used for initial creation of a transaction, signing of a new
 transaction, and verification of a signed transaction. Most of the blockchain
 components work exclusively with the =SigTx= type
 
-- =Tx= type :: The =Tx= type represents a transaction on the blockchain. The
-  transaction defines the address of a sender account, the address of a
-  recipient account, the value amount to be transferred, the per account
-  nonce to prevent replay attacks, the double spending problem, and process
+- Transaction type :: The =Tx= type represents a transaction on the blockchain.
+  The transaction defines the address of a sender account, the address of a
+  recipient account, the value amount to be transferred, the per account nonce
+  to prevent replay attacks, the double spending problem, and process
   transaction from an account in order, and, finally, the time of transaction
   signing. All transaction fields participate in producing the hash of a
   transaction that is used to sign a transaction
@@ -144,9 +144,9 @@ func (t Tx) Hash() Hash {
   return NewHash(t)
 }
   #+END_SRC
-- =SigTx= type :: The =SigTx= type embeds the =Tx= type and includes the
-  transaction signature. The string representation of a signed transaction is
-  defined to present the transaction to the end user
+- Signed transaction type :: The =SigTx= type embeds the =Tx= type and includes
+  the transaction signature. The string representation of a signed transaction
+  is defined to present the transaction to the end user
   | ~Tx~         | Embedded original transaction                 |
   | ~Sig []byte~ | Digital signature of the original transaction |
   #+BEGIN_SRC go

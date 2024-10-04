@@ -46,6 +46,10 @@ func (d *peerDiscovery) AddPeers(peers ...string) {
   defer d.mtx.Unlock()
   for _, peer := range peers {
     if peer != d.cfg.nodeAddr {
+      _, exist := d.peers[peer]
+      if !exist {
+        fmt.Printf("<=> Peer %v\n", peer)
+      }
       d.peers[peer] = struct{}{}
     }
   }
@@ -106,7 +110,6 @@ func (d *peerDiscovery) discoverPeers(period time.Duration) {
           d.AddPeers(peers...)
         }
       }
-      // fmt.Printf("* Peers: %v => %v\n", d.cfg.nodeAddr, d.Peers())
     }
   }
 }

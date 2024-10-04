@@ -430,7 +430,7 @@ set ownerpass password
   --ownerpass $ownerpass --balance 1000
 #+END_SRC
 
-*Start of aleady initialized bootstrap and authority node*. Start an already
+*Start of already initialized bootstrap and authority node*. Start an already
 initialized bootstrap and authority node
 #+BEGIN_SRC fish
 ./bcn node start --node $node --bootstrap --authpass $authpass
