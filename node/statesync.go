@@ -16,11 +16,11 @@ type stateSync struct {
   cfg NodeCfg
   ctx context.Context
   state *chain.State
-  peerDisc *peerDiscovery
+  peerDisc *PeerDiscovery
 }
 
 func newStateSync(
-  ctx context.Context, cfg NodeCfg, peerDisc *peerDiscovery,
+  ctx context.Context, cfg NodeCfg, peerDisc *PeerDiscovery,
 ) *stateSync {
   return &stateSync{ctx: ctx, cfg: cfg, peerDisc: peerDisc}
 }

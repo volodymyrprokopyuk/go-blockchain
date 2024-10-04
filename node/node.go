@@ -44,7 +44,7 @@ type Node struct {
   state *chain.State
   stateSync *stateSync
   grpcSrv *grpc.Server
-  peerDisc *peerDiscovery
+  peerDisc *PeerDiscovery
   txRelay *msgRelay[chain.SigTx, grpcMsgRelay[chain.SigTx]]
   blockProp *blockProposer
   blkRelay *msgRelay[chain.SigBlock, grpcMsgRelay[chain.SigBlock]]
@@ -64,12 +64,12 @@ func NewNode(cfg NodeCfg) *Node {
   // events
   nd.evStream = newEventStream(nd.ctx, nd.wg, 100)
   // components
-  peerDiscCfg := peerDiscoveryCfg{
-    nodeAddr: nd.cfg.NodeAddr,
-    bootstrap: nd.cfg.Bootstrap,
-    seedAddr: nd.cfg.SeedAddr,
+  peerDiscCfg := PeerDiscoveryCfg{
+    NodeAddr: nd.cfg.NodeAddr,
+    Bootstrap: nd.cfg.Bootstrap,
+    SeedAddr: nd.cfg.SeedAddr,
   }
-  nd.peerDisc = newPeerDiscovery(nd.ctx, nd.wg, peerDiscCfg)
+  nd.peerDisc = NewPeerDiscovery(nd.ctx, nd.wg, peerDiscCfg)
   nd.stateSync = newStateSync(nd.ctx, nd.cfg, nd.peerDisc)
   nd.txRelay = newMsgRelay(nd.ctx, nd.wg, 100, grpcTxRelay, false, nd.peerDisc)
   nd.blkRelay = newMsgRelay(nd.ctx, nd.wg, 10, grpcBlockRelay, true, nd.peerDisc)
@@ -89,7 +89,7 @@ func (n *Node) Start() error {
   n.wg.Add(1)
   go n.servegRPC()
   n.wg.Add(1)
-  go n.peerDisc.discoverPeers(10 * time.Second)
+  go n.peerDisc.DiscoverPeers(10 * time.Second)
   n.wg.Add(1)
   go n.txRelay.relayMsgs()
   if n.cfg.Bootstrap {

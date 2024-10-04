@@ -87,14 +87,14 @@ type msgRelay[Msg any, Relay grpcMsgRelay[Msg]] struct {
   chMsg chan Msg
   grpcRelay Relay
   selfRelay bool
-  peerDisc *peerDiscovery
+  peerDisc *PeerDiscovery
   wgRelays *sync.WaitGroup
   chPeerAdd, chPeerRem chan string
 }
 
 func newMsgRelay[Msg any, Relay grpcMsgRelay[Msg]](
   ctx context.Context, wg *sync.WaitGroup, cap int,
-  grpcRelay Relay, selfRelay bool, peerDisc *peerDiscovery,
+  grpcRelay Relay, selfRelay bool, peerDisc *PeerDiscovery,
 ) *msgRelay[Msg, Relay] {
   return &msgRelay[Msg, Relay]{
     ctx: ctx, wg: wg, chMsg: make(chan Msg, cap),

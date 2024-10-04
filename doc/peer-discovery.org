@@ -51,18 +51,18 @@
   | ~mtx sync.RWMutex~          | Readers-writer mutex         |
   | ~peers map[string]struct{}~ | Set of unique known peers    |
   #+BEGIN_SRC go
-type peerDiscovery struct {
-  cfg peerDiscoveryCfg
+type PeerDiscovery struct {
+  cfg PeerDiscoveryCfg
   ctx context.Context
   wg *sync.WaitGroup
   mtx sync.RWMutex
   peers map[string]struct{}
 }
 
-func newPeerDiscovery(
-  ctx context.Context, wg *sync.WaitGroup, cfg peerDiscoveryCfg,
-) *peerDiscovery {
-  peerDisc := &peerDiscovery{
+func NewPeerDiscovery(
+  ctx context.Context, wg *sync.WaitGroup, cfg PeerDiscoveryCfg,
+) *PeerDiscovery {
+  peerDisc := &PeerDiscovery{
     ctx: ctx, wg: wg, cfg: cfg, peers: make(map[string]struct{}),
   }
   if !peerDisc.Bootstrap() {
@@ -83,7 +83,7 @@ func newPeerDiscovery(
   - Iterate over a fetched list of peers from another node
   - Add only new, not yet known peers, to the list of known peers
   #+BEGIN_SRC go
-func (d *peerDiscovery) AddPeers(peers ...string) {
+func (d *PeerDiscovery) AddPeers(peers ...string) {
   d.mtx.Lock()
   defer d.mtx.Unlock()
   for _, peer := range peers {
@@ -105,7 +105,7 @@ func (d *peerDiscovery) AddPeers(peers ...string) {
   - Lock the peers for reading
   - Convert the set of known peers into a slice of known peers
   #+BEGIN_SRC go
-func (d *peerDiscovery) Peers() []string {
+func (d *PeerDiscovery) Peers() []string {
   d.mtx.RLock()
   defer d.mtx.RUnlock()
   peers := make([]string, 0, len(d.peers))
@@ -127,11 +127,10 @@ func (d *peerDiscovery) Peers() []string {
   peers. The read peers with the self-reference method
   - Append the node's own address to the list of known peers
   #+BEGIN_SRC go
-func (d *peerDiscovery) SelfPeers() []string {
+func (d *PeerDiscovery) SelfPeers() []string {
   return append(d.Peers(), d.cfg.nodeAddr)
 }
   #+END_SRC
-
 
 *** Node graceful shutdown mechanism
 
@@ -158,6 +157,89 @@ func (d *peerDiscovery) SelfPeers() []string {
 
 - Peer discovery algorithm :: The peer discovery algorithm is periodically
   executed in a separate goroutine within the node process. The peer discovery
-  algorithm is fully integrated with the node graceful shutdown mechanism.
+  algorithm is fully integrated with the node graceful shutdown mechanism to
+  avoid unexpected terminations in the middle of the peer discovery cycle. The
+  peer discovery algorithm creates a recurrent tick with a configurable period
+  that specifies the frequency of peer discovery cycles. The node shared wait
+  group done is deferred to the end of peer discovery cycles. The peer discovery
+  algorithm composes the node shared context hierarchy cancellation channel for
+  graceful shutdown with the tick channel for the next peed discovery cycle. On
+  the due time the peer discovery algorithm fetches peers from the list of known
+  peers and adds new peers to the internal set of known peers. The peer
+  discovery algorithm
+  - Defer the node shared wait group done to indicate success of the graceful
+    shutdown
+  - Create a recurrent tick with a configurable period
+  - Compose the node shared context hierarchy cancellation channel with the
+    recurrent tick channel
+  - For the recurrent tick
+    - Fetch peers from the list of known peers
+    - Add newly discovered peers to the list of known peers
+  #+BEGIN_SRC go
+func (d *PeerDiscovery) DiscoverPeers(period time.Duration) {
+  defer d.wg.Done()
+  tick := time.NewTicker(4 * time.Second) // initial early peer discovery
+  defer tick.Stop()
+  reset := false
+  for {
+    select {
+    case <- d.ctx.Done():
+      return
+    case <- tick.C:
+      if !reset {
+        tick.Reset(period)
+        reset = true
+      }
+      for _, peer := range d.Peers() {
+        if peer != d.cfg.nodeAddr {
+          peers, err := d.grpcPeerDiscover(peer)
+          if err != nil {
+            fmt.Println(err)
+            continue
+          }
+          d.AddPeers(peers...)
+        }
+      }
+    }
+  }
+}
+  #+END_SRC
+
+*** gRPC =PeerDiscover= method
+
+The gRPC =Node= service provides the =PeerDiscover= method to fetch the list of
+peers from a node. The interface of the service
+#+BEGIN_SRC protobuf
+message PeerDiscoverReq {
+  string Peer = 1;
+}
+
+message PeerDiscoverRes {
+  repeated string Peers = 1;
+}
+
+service Node {
+  rpc PeerDiscover(PeerDiscoverReq) returns (PeerDiscoverRes);
+}
+#+END_SRC
+
+The implementation of the =PeerDiscover= method
+- Add the requesting peer address to the list of known peers if the servers is
+  the bootstrap node, effectively collecting peers from the peer-to-peer network
+- Return the list of known peers to the requesting peer
+#+BEGIN_SRC go
+func (s *NodeSrv) PeerDiscover(
+  _ context.Context, req *PeerDiscoverReq,
+) (*PeerDiscoverRes, error) {
+  if s.peerDisc.Bootstrap() {
+    s.peerDisc.AddPeers(req.Peer)
+  }
+  peers := s.peerDisc.Peers()
+  res := &PeerDiscoverRes{Peers: peers}
+  return res, nil
+}
+#+END_SRC
 
 ** Testing and usage
+
+*** Testing gRPC =PeerDiscover= method
