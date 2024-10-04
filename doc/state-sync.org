@@ -481,3 +481,82 @@ go test -v -cover -coverprofile=coverage.cov ./... -run StateSync
 #+END_SRC
 
 *** Using the =node start= CLI command
+
+The node start command is the main entry point for initialization, starting, and
+restarting of a blockchain node. There are two types of nodes on this blockchain
+- Bootstrap and authority node :: The bootstrap and authority node in this
+  blockchain is a single authority node that initializes the blockchain by
+  creating and signing the genesis on the first start; creates, signs, proposes,
+  and relays new blocks; and serves as the bootstrap node for the initial peer
+  discovery. The bootstrap and authority node also accepts, validates and relays
+  new transactions to other peers; streams blockchain events e.g. confirmed
+  block, confirmed transaction to subscribed clients; maintains the confirmed
+  and pending in-memory state, and the on-disk local block store with confirmed
+  blocks
+- Regular node :: The regular node participates in the peer discovery; accepts,
+  validates and relays new transactions from clients to other peers; receives,
+  validates, and relays new transactions and proposed blocks to other peers. The
+  regular node streams blockchain events e.g. confirmed block, confirmed
+  transaction to subscribed clients; maintains the confirmed and pending
+  in-memory state and the on-disk local block store with confirmed blocks
+
+The =node start= parameters
+- =--node= specifies the node address
+- =--bootstrap= makes the node a bootstrap node for the initial peer discovery
+  and also makes the node the authority node for signing the genesis, proposing
+  and signing new blocks
+- =--seed= specifies the seed bootstrap address for a regular node
+- =--keystore= defines the key store directory on the local file system to store
+  password-protected key pairs of blockchain accounts created on the node
+- =--blockstore= defines the block store directory on the local file system to
+  store confirmed blocks on the blockchain
+- =--chain= specifies the name of the blockchain to be included in the genesis
+- =--authpass= provides a password for the authority account to sign the genesis
+  and proposed blocks on the blockchain
+- =--ownerpass= provides a password for the initial owner account on the
+  blockchain
+- =--balance= specifies the balance for the initial owner account on the
+  blockchain
+
+Options for starting a blockchain node
+- Initialize the bootstrap and authority node
+#+BEGIN_SRC fish
+set node localhost:1122
+set authpass password
+set ownerpass password
+./bcn node start --node $node --bootstrap --authpass $authpass \
+  --ownerpass $ownerpass --balance 1000
+# === Sync state
+# * Balances and nonces
+# acc 1dc6773:                        1000        0
+# * Last block
+# blk       0: d951443 -> 0000000
+# * Pending balances and nonces
+# acc 1dc6773:                        1000        0
+# <=> gRPC localhost:1122
+#+END_SRC
+- Start already initialized the bootstrap and authority node
+#+BEGIN_SRC fish
+./bcn node start --node $node --bootstrap --authpass $authpass
+# === Sync state
+# * Balances and nonces
+# acc 1dc6773:                        1000        0
+# * Last block
+# blk       0: d951443 -> 0000000
+# * Pending balances and nonces
+# acc 1dc6773:                        1000        0
+# <=> gRPC localhost:1122
+#+END_SRC
+- Start a regular node with the seed bootstrap address
+#+BEGIN_SRC fish
+set peer localhost:1123
+./bcn node start --node $peer --bootstrap --seed $node
+# === Sync state
+# * Balances and nonces
+# acc 1dc6773:                        1000        0
+# * Last block
+# blk       0: d951443 -> 0000000
+# * Pending balances and nonces
+# acc 1dc6773:                        1000        0
+# <=> gRPC localhost:1123
+#+END_SRC

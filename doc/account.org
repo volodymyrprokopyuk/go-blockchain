@@ -395,29 +395,31 @@ The =TestAccountBalance= testing process
 go test -v -cover -coverprofile=coverage.cov ./... -run AccountBalance
 #+END_SRC
 
-*** Initializing and starting a blockchain node
+*** Initializing and starting the bootstrap node
 
-This blockchain consists of an in-memory state that holds balances and nonces of
-all accounts, a reference to the last confirmed block, and pending transactions
-sent by external clients or relayed by other nodes that are not yet validated
-and packed into a confirmed block. Every confirmed block is immediately appended
-to the block store file. A blockchain node manages the blockchain State and
-interactions with other blockchain nodes connected through a peer-to-peer
-network. All interactions between blockchain nodes and with external blockchain
-clients are performed at any blockchain node through the gRPC interface. A
-single blockchain node is autonomous, self-contained, and provides the same gRPC
-services as a peer-to-peer blockchain network
+This blockchain consists of the in-memory confirmed and pending state that holds
+confirmed balances and nonces of all accounts, a reference to the last confirmed
+block, and pending transactions sent by external clients or relayed by other
+nodes that are not yet validated and packed into a confirmed block. Every
+confirmed block is immediately appended to the local block store on every node.
+A blockchain node manages the blockchain state and interactions with other
+blockchain nodes connected through a peer-to-peer network. All interactions
+between blockchain nodes and with external clients are performed at any
+blockchain node through the gRPC interface. A single bootstrap node is
+autonomous, self-contained, and provides the same gRPC services as any other
+node on the peer-to-peer blockchain network
 
-*Initialization of a bootstrap and authority blockchain node*. The parameters to
-initialize a bootstrap and authority blockchain node
+*Initialization of a bootstrap and authority node*. The parameters to initialize
+a bootstrap and authority node
 - =--node= specifies the node address
 - =--bootstrap= makes the node a bootstrap node for the initial peer discovery
-  and also makes the node the authority node for the PoA consensus
+  and also makes the node the authority node for signing the genesis, proposing
+  and signing new blocks
 - =--authpass= provides a password for the authority account to sign the genesis
-  and blocks on the blockchain
-- =--ownerpass= provides a password for the first owner account on the
+  and proposed blocks on the blockchain
+- =--ownerpass= provides a password for the initial owner account on the
   blockchain
-- =--balance= specifies the balance for the first owner account on the
+- =--balance= specifies the balance for the initial owner account on the
   blockchain
 Initialize a bootstrap and authority blockchain node
 #+BEGIN_SRC fish
@@ -428,8 +430,8 @@ set ownerpass password
   --ownerpass $ownerpass --balance 1000
 #+END_SRC
 
-*Start of an initialized bootstrap and authority blockchain node*. Start an
-already initialized bootstrap and authority blockchain node
+*Start of aleady initialized bootstrap and authority node*. Start an already
+initialized bootstrap and authority node
 #+BEGIN_SRC fish
 ./bcn node start --node $node --bootstrap --authpass $authpass
 #+END_SRC
