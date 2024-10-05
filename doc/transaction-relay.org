@@ -126,4 +126,202 @@ func NewMsgRelay[Msg any, Relay GRPCMsgRelay[Msg]](
 }
   #+END_SRC
 
+*** Transaction relayer and block relayer interfaces
+
+The message relay exposes the single inbound channel to relay messages. The
+message relay for transactions and blocks happens through the =TxRelayer= and
+the =BlockRelayer= interfaces. These interfaces are implemented by the
+=MsgRelay= type. Places where the relayer interfaces are used
+- The transaction relayer interface is used by the =TxSend= and =TxReceive=
+  methods of the =Tx= gRPC service
+- The block relayer interface is used by the =ProposeBlocks= method of the
+  =BlockProposer= type and by the =BlockReceive= method of the =Block= gRPC
+  service
+
+#+BEGIN_SRC go
+type TxRelayer interface {
+  RelayTx(tx chain.SigTx)
+}
+
+type BlockRelayer interface {
+  RelayBlock(blk chain.SigBlock)
+}
+
+func (r *MsgRelay[Msg, Relay]) RelayTx(tx Msg) {
+  r.chMsg <- tx
+}
+
+func (r *MsgRelay[Msg, Relay]) RelayBlock(blk Msg) {
+  r.chMsg <- blk
+}
+#+END_SRC
+
+*** The message relay algorithm
+
+- Message relay algorithm :: The message relay algorithm coordinates concurrent
+  processes of monitoring new discovered peers through the peer reader
+  interface, adding new peers for the message relay, removing offline peer from
+  the message relay, multiplexing the inbound message channel over the list of
+  message relay peers. The message relay algorithm starts a dedicated goroutine
+  to periodically read all known peers of the node. Each new peer is handled by
+  the peer add channel. If the peer is not in the list of message relay peers, A
+  new outbound message relay channel is created with an associated goroutine to
+  independently manage the message relay to the peer. A failure in communication
+  with a peer causes the failed peer to be handled by the peer remove channel.
+  The outbound message relay channel for the peer is closed, the associated
+  goroutine is terminated. Later the same peer, when online again, will be
+  handled by the peer add channel. Finally all messages from the inbound message
+  relay channel are multiplexed to all active outbound message relay channels.
+  The message relay algorithm is fully integrated in the node graceful shutdown
+  mechanism by monitoring the cancellation of the node shared context hierarchy,
+  waiting for all message relay goroutines to gracefully shutdown through the
+  relay wait group, and notifying the graceful shutdown of the message relay to
+  the node through the node shared wait group. The message relay algorithm
+  - Start a goroutine for monitoring the list of known peers
+  - Compose the channels for the node context cancellation, addition of new
+    peers, removal of closed peers, relay of messages by multiplexing the
+    inbound message relay channel to the list of outbound message relay channels
+    - When the node shared context hierarchy is closed, close all active
+      outbound message relay channels, wait for all active message relay
+      goroutines to terminate and stop the message relay
+    - When a new peer is discovered, create a new outbound message relay
+      channel, start a new goroutine to handle the message relay to the peer
+    - When an active peer is closed, close the outbound message relay channel,
+      which causes the associated message relay goroutine to terminate
+    - When a new message is sent to the inbound message relay channel, multiplex
+      the message over the list of active outbound message relay channels, so
+      the gRPC client streaming happens concurrently to all known active peers
+  #+BEGIN_SRC go
+func (r *MsgRelay[Msg, Relay]) RelayMsgs(period time.Duration) {
+  defer r.wg.Done()
+  r.wgRelays.Add(1)
+  go r.addPeers(period)
+  chRelays := make(map[string]chan Msg)
+  closeRelays := func() {
+    for _, chRelay := range chRelays {
+      close(chRelay)
+    }
+  }
+  for {
+    select {
+    case <- r.ctx.Done():
+      closeRelays()
+      r.wgRelays.Wait()
+      return
+    case peer := <- r.chPeerAdd:
+      _, exist := chRelays[peer]
+      if exist {
+        continue
+      }
+      if r.selfRelay {
+        fmt.Printf("<=> Blk relay: %v\n", peer)
+      } else {
+        fmt.Printf("<=> Tx relay: %v\n", peer)
+      }
+      chRelay := r.peerRelay(peer)
+      chRelays[peer] = chRelay
+    case peer := <- r.chPeerRem:
+      _, exist := chRelays[peer]
+      if !exist {
+        continue
+      }
+      chRelay := chRelays[peer]
+      close(chRelay)
+      delete(chRelays, peer)
+    case msg := <- r.chMsg:
+      for _, chRelay := range chRelays {
+        chRelay <- msg
+      }
+    }
+  }
+}
+  #+END_SRC
+
+*** Concurrent monitoring of new peers
+
+- Peers monitoring :: The peers monitoring process is concurrently started by
+  the message relay in order to keep relaying messages to new peers discovered
+  over time. The peers monitoring happens periodically through the =PeerReader=
+  interface. The peers monitoring process is fully integrated into the node
+  graceful shutdown mechanism. In each peers monitoring cycle the list of known
+  peers is sent to the peer add channel. Only new peers will result in creation
+  of the new outbound message relay channel with the associated goroutine. Based
+  on the value of the self relay configuration parameter either only known peers
+  or known peers the the node's own address are sent to the peer add channel.
+  The peers monitoring process
+  - Periodically read the list of known peers with or without the node's own
+    address
+  - Send all known peers to the peer add channel
+  #+BEGIN_SRC go
+func (r *MsgRelay[Msg, Relay]) addPeers(period time.Duration) {
+  defer r.wgRelays.Done()
+  tick := time.NewTicker(period)
+  defer tick.Stop()
+  for {
+    select {
+    case <- r.ctx.Done():
+      return
+    case <- tick.C:
+      var peers []string
+      if r.selfRelay {
+        peers = r.peerReader.SelfPeers()
+      } else {
+        peers = r.peerReader.Peers()
+      }
+      for _, peer := range peers {
+        r.chPeerAdd <- peer
+      }
+    }
+  }
+}
+  #+END_SRC
+
+*** Outbound message relay through the gRPC client stream
+
+- Outbound message relay :: The outbound message relay happens through a
+  dedicated to the peer channel in the associated goroutine. This design allows
+  to increase throughput of relayed messages by handling concurrently message
+  relay to every active peer, increase resilience by isolating message relay in
+  a dedicated goroutine on the per peer basis. The message relay goroutines are
+  integrated into the message relay graceful shutdown mechanism through the node
+  shared context hierarchy and the dedicated relay wait group. The outbound
+  message relay creates a gRPC client connection with the peer and handles the
+  node shared context, the gRPC client connection and the outbound message relay
+  channel to the generic gRPC relay function that manages the gRPC client stream
+  of relayed messages. On any error establishing the gRPC client connection of
+  handling the gRPC client stream the peer is sent to the peer remove channel.
+  This mark the peer as inactive, closes the channel, and terminates the
+  associated goroutine. The outbound message relay process
+  - Starts a dedicated to the peer message relay goroutine
+  - The goroutine established the gRPC client connection with the peer
+  - The goroutine handles the node shared context, the gRPC client connection,
+    and the outbound message relay channel to the generic gRPC relay function
+  #+BEGIN_SRC go
+func (r *MsgRelay[Msg, Relay]) peerRelay(peer string) chan Msg {
+  chRelay := make(chan Msg)
+  r.wgRelays.Add(1)
+  go func () {
+    defer r.wgRelays.Done()
+    conn, err := grpc.NewClient(
+      peer, grpc.WithTransportCredentials(insecure.NewCredentials()),
+    )
+    if err != nil {
+      fmt.Println(err)
+      r.chPeerRem <- peer
+      return
+    }
+    defer conn.Close()
+    err = r.grpcRelay(r.ctx, conn, chRelay)
+    if err != nil {
+      fmt.Println(err)
+      r.chPeerRem <- peer
+      return
+    }
+  }()
+  return chRelay
+}
+  #+END_SRC
+
+- gGRPC client stream ::
+
 ** Testing and usage
