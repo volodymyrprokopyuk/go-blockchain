@@ -11,6 +11,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+type PeerReader interface {
+  Peers() []string
+  SelfPeers() []string
+}
+
 type PeerDiscoveryCfg struct {
   NodeAddr string
   Bootstrap bool

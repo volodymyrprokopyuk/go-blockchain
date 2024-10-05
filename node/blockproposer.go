@@ -11,19 +11,22 @@ import (
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 )
 
-type blockProposer struct {
+type BlockRelayer interface {
+  RelayBlock(blk chain.SigBlock)
+}
+
+type BlockProposer struct {
   ctx context.Context
   wg *sync.WaitGroup
   authority chain.Account
   state *chain.State
-  blkRelay *MsgRelay[chain.SigBlock, GRPCMsgRelay[chain.SigBlock]]
+  blkRelayer BlockRelayer
 }
 
-func newBlockProposer(
-  ctx context.Context, wg *sync.WaitGroup,
-  blkRelay *MsgRelay[chain.SigBlock, GRPCMsgRelay[chain.SigBlock]],
-) *blockProposer {
-  return &blockProposer{ctx: ctx, wg: wg, blkRelay: blkRelay}
+func NewBlockProposer(
+  ctx context.Context, wg *sync.WaitGroup, blkRelayer BlockRelayer,
+) *BlockProposer {
+  return &BlockProposer{ctx: ctx, wg: wg, blkRelayer: blkRelayer}
 }
 
 func randPeriod(maxPeriod time.Duration) time.Duration {
@@ -32,7 +35,7 @@ func randPeriod(maxPeriod time.Duration) time.Duration {
   return minPeriod + time.Duration(randSpan.Int64())
 }
 
-func (p *blockProposer) proposeBlocks(maxPeriod time.Duration) {
+func (p *BlockProposer) ProposeBlocks(maxPeriod time.Duration) {
   defer p.wg.Done()
   randPropose := time.NewTimer(randPeriod(maxPeriod))
   for {
@@ -57,7 +60,9 @@ func (p *blockProposer) proposeBlocks(maxPeriod time.Duration) {
         fmt.Println(err)
         continue
       }
-      p.blkRelay.RelayBlock(blk)
+      if p.blkRelayer != nil {
+        p.blkRelayer.RelayBlock(blk)
+      }
       fmt.Printf("* Block proposed: %v", blk)
     }
   }

@@ -16,13 +16,13 @@ type StateSync struct {
   cfg NodeCfg
   ctx context.Context
   state *chain.State
-  peerDisc *PeerDiscovery
+  peerReader PeerReader
 }
 
 func NewStateSync(
-  ctx context.Context, cfg NodeCfg, peerDisc *PeerDiscovery,
+  ctx context.Context, cfg NodeCfg, peerReader PeerReader,
 ) *StateSync {
-  return &StateSync{ctx: ctx, cfg: cfg, peerDisc: peerDisc}
+  return &StateSync{ctx: ctx, cfg: cfg, peerReader: peerReader}
 }
 
 func (s *StateSync) createGenesis() (chain.SigGenesis, error) {
@@ -165,7 +165,7 @@ func (s *StateSync) grpcBlockSync(peer string) (
 }
 
 func (s *StateSync) syncBlocks() error {
-  for _, peer := range s.peerDisc.Peers() {
+  for _, peer := range s.peerReader.Peers() {
     blocks, closeBlocks, err := s.grpcBlockSync(peer)
     if err != nil {
       return err

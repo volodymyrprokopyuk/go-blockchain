@@ -64,22 +64,22 @@
   the local block store or fetched from all known peers, and the reference to
   the peer discovery for fetching of the genesis and newer confirmed blocks. The
   =stateSync= type
-  | ~cfg NodeCfg~             | Node configuration          |
-  | ~ctx context.Context~     | Node context                |
-  | ~state *chain.State~      | Confirmed and pending state |
-  | ~peerDisc *peerDiscovery~ | Peer discovery              |
+  | ~cfg NodeCfg~           | Node configuration          |
+  | ~ctx context.Context~   | Node context                |
+  | ~state *chain.State~    | Confirmed and pending state |
+  | ~peerReader PeerReader~ | Peer reader                 |
   #+BEGIN_SRC go
 type StateSync struct {
   cfg NodeCfg
   ctx context.Context
   state *chain.State
-  peerDisc *PeerDiscovery
+  peerReader PeerReader
 }
 
 func NewStateSync(
-  ctx context.Context, cfg NodeCfg, peerDisc *PeerDiscovery,
+  ctx context.Context, cfg NodeCfg, peerReader PeerReader,
 ) *StateSync {
-  return &StateSync{ctx: ctx, cfg: cfg, peerDisc: peerDisc}
+  return &StateSync{ctx: ctx, cfg: cfg, peerReader: peerReader}
 }
   #+END_SRC
 *** The state synchronization algorithm
@@ -250,8 +250,6 @@ func (s *StateSync) syncGenesis() (chain.SigGenesis, error) {
 }
   #+END_SRC
 
-  #+RESULTS:
-
 *** Reading confirmed blocks from the local block store
 
 - Block reading :: The block reading process is executed every time the node is
@@ -314,7 +312,7 @@ func (s *StateSync) readBlocks() error {
       - Persist the confirmed block to the local block store
   #+BEGIN_SRC go
 func (s *StateSync) syncBlocks() error {
-  for _, peer := range s.peerDisc.Peers() {
+  for _, peer := range s.peerReader.Peers() {
     blocks, closeBlocks, err := s.grpcBlockSync(peer)
     if err != nil {
       return err

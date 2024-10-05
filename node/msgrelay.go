@@ -87,18 +87,18 @@ type MsgRelay[Msg any, Relay GRPCMsgRelay[Msg]] struct {
   chMsg chan Msg
   grpcRelay Relay
   selfRelay bool
-  peerDisc *PeerDiscovery
+  peerReader PeerReader
   wgRelays *sync.WaitGroup
   chPeerAdd, chPeerRem chan string
 }
 
 func NewMsgRelay[Msg any, Relay GRPCMsgRelay[Msg]](
   ctx context.Context, wg *sync.WaitGroup, cap int,
-  grpcRelay Relay, selfRelay bool, peerDisc *PeerDiscovery,
+  grpcRelay Relay, selfRelay bool, peerReader PeerReader,
 ) *MsgRelay[Msg, Relay] {
   return &MsgRelay[Msg, Relay]{
     ctx: ctx, wg: wg, chMsg: make(chan Msg, cap),
-    grpcRelay: grpcRelay, selfRelay: selfRelay, peerDisc: peerDisc,
+    grpcRelay: grpcRelay, selfRelay: selfRelay, peerReader: peerReader,
     wgRelays: new(sync.WaitGroup),
     chPeerAdd: make(chan string), chPeerRem: make(chan string),
   }
@@ -123,9 +123,9 @@ func (r *MsgRelay[Msg, Relay]) addPeers(period time.Duration) {
     case <- tick.C:
       var peers []string
       if r.selfRelay {
-        peers = r.peerDisc.SelfPeers()
+        peers = r.peerReader.SelfPeers()
       } else {
-        peers = r.peerDisc.Peers()
+        peers = r.peerReader.Peers()
       }
       for _, peer := range peers {
         r.chPeerAdd <- peer

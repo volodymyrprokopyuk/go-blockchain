@@ -2,6 +2,128 @@
 
 ** Concepts and purpose
 
+*** Transaction relay
+
+- Transaction relay :: The transaction relay process propagates new signed and
+  validated transaction through the peer-to-peer network of blockchain nodes.
+  Every node participates in the transaction relay process by receiving new
+  transactions, validating transactions against the pending state of the node
+  and forwarding valid transactions to the list of known peers of the node.
+  There are two cases where the transaction relay process takes place
+  - Transaction sign, send, validate, and relay :: New transactions are first
+    submitted by a client to the node for signing, and then sent by a client to
+    the node for validation through transaction application to the node's
+    pending state. Any transaction application errors are directly returned to
+    the client. After the successful transaction application the transaction is
+    considered valid and is relayed to the node's list of known peers. The
+    transaction sign, send, validated, and relay process ensures that only
+    validated transactions are relayed to the list of known peers. Reception of
+    an already applied transaction results in an transaction application error,
+    and the duplicated transaction is not relayed any more. This protects the
+    blockchain network from relaying already relayed transactions
+  - Transaction receive, validate and relay :: Transactions signed and sent to
+    other nodes are relayed to the node through the transaction received,
+    validate, and relay mechanism. The node receives a transaction, applies the
+    transaction to the pending state and, if valid, relays the transaction to
+    the list of known peers. Once again, application of an already applied
+    transaction to the pending state results in an error, and the duplicated
+    transaction is not relayed any more
+
 ** Design and implementation
+
+*** The message relay type
+
+- Message relay type :: The =MsgRelay= type reliably handles propagation of
+  validated transaction an blocks through the peer-to-peer network of the
+  blockchain. The message relay takes messages from where they are created and
+  validated and forwards messages to where they are processed and confirmed. The
+  message relay component is fully integrated in the node graceful shutdown
+  mechanism. The node shared context hierarchy is used to signal graceful
+  shutdown of all concurrent processes on the node including the message relay.
+  On reception of the shutdown signal the message relay finishes relaying
+  messages in progress and gracefully shuts down. The main node's goroutine
+  gives time to all concurrent processes to shutdown correctly by waiting on the
+  shared wait group. The inbound message channel is exposed to transaction and
+  block creation and forwarding components to receive new messages in the
+  concurrency safe way. All transaction- and block-specific gRPC logic is
+  encapsulated and parameterized in the gRPC relay function. The message relay
+  supports self-relaying messages to the node itself through the self relay
+  configuration parameter. The message relay periodically monitors the list of
+  known peer for new peer to start relaying messages to the new peers. The
+  message relay gracefully shuts down all goroutines dedicated to relaying
+  messages to known peers by waiting on the relays wait group after the know
+  shared context hierarchy has been canceled. The peer add and peer remove
+  channels ensure concurrency safe addition of new discovered peers and disposal
+  of closed peers while reliably relaying messages to known healthy peers
+  - Generic message relay type :: The =MsgRelay= type is a generic type that
+    handles relay of both transactions and blocks in the peer-to-peer network of
+    the blockchain. The message relay type is parameterized with the message
+    type to relay transaction and blocks and the gRPC relay function to manage
+    the corresponding gRPC client stream of transactions or blocks. This design
+    provides a flexible and resilient message relay, while reusing robust
+    implementation of the common concurrent relay logic without code duplication
+    that would be required if the message relay type were not generic.
+  - Concurrency safe message relay type :: The message relay type is concurrency
+    safe. The concurrency safety of the message relay type is achieved through
+    the use of channels. A single inbound message channel exposed to the
+    transaction sign, send, validate, and relay component, the transaction
+    receive, validate, and relay component. The inbound message channel receives
+    new or relayed validated transactions to be further relayed to the node's
+    list of known peers. The transaction relay to the list of known peers is
+    implemented by multiplexing the inbound message channel over the list of
+    outbound channels each with a dedicated goroutine representing for every
+    peer from the list of known peers of the node. This design ensures
+    concurrent relay of messages without blocking know peers down the list if
+    there is a problem with a peer at the top of the list. The relay of message
+    in fully concurrent on the bases of every known peer. Problems with relaying
+    messages to one peer does not impact message relay to other peers
+  - Concurrent peer discovery and disposition of closed connections :: The
+    message relay periodically checks the node's list of known peers for new
+    discovered peers to be included into the message relay list of peers. When a
+    new peer is discovered a dedicated outbound channel is created with an
+    associated goroutine to forward relayed messages from the inbound message
+    channel to the new peer. After an error, the connection is gracefully closed
+    including the dedicated outbound channel and the associated goroutine. This
+    design contributes to the resilience of the message relay as new peers are
+    progressively added to the list message relay, while problematic peers are
+    gracefully closed and disposed in the concurrency safe way
+  - gRPC client streaming for message relay :: This implementation uses the gRPC
+    client streaming to relay messages to every known peer. This design
+    naturally forwards a stream of new transactions to every peer with minimal
+    network overhead. A separate client stream gRPC connection is established
+    with every known peer and is reused until there is an error in the
+    connection e.g. the peer node goes offline
+  | ~ctx context.Context~              | Node shared context hierarchy   |
+  | ~wg *sync.WaitGroup~               | Node shared wait group          |
+  | ~chMsg chan Msg~                   | Inbound generic message channel |
+  | ~grpcRelay Relay~                  | gRPC generic client streaming   |
+  | ~selfRelay bool~                   | Self-relay configuration option |
+  | ~peerReader PeerReader~            | Peer reader                     |
+  | ~wgRelays *sync.WaitGroup~         | Relay wait group                |
+  | ~chPeerAdd, chPeerRem chan string~ | Peer add and remove channels    |
+  #+BEGIN_SRC go
+type MsgRelay[Msg any, Relay GRPCMsgRelay[Msg]] struct {
+  ctx context.Context
+  wg *sync.WaitGroup
+  chMsg chan Msg
+  grpcRelay Relay
+  selfRelay bool
+  peerReader PeerReader
+  wgRelays *sync.WaitGroup
+  chPeerAdd, chPeerRem chan string
+}
+
+func NewMsgRelay[Msg any, Relay GRPCMsgRelay[Msg]](
+  ctx context.Context, wg *sync.WaitGroup, cap int,
+  grpcRelay Relay, selfRelay bool, peerReader PeerReader,
+) *MsgRelay[Msg, Relay] {
+  return &MsgRelay[Msg, Relay]{
+    ctx: ctx, wg: wg, chMsg: make(chan Msg, cap),
+    grpcRelay: grpcRelay, selfRelay: selfRelay, peerReader: peerReader,
+    wgRelays: new(sync.WaitGroup),
+    chPeerAdd: make(chan string), chPeerRem: make(chan string),
+  }
+}
+  #+END_SRC
 
 ** Testing and usage

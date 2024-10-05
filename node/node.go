@@ -45,7 +45,7 @@ type Node struct {
   grpcSrv *grpc.Server
   peerDisc *PeerDiscovery
   txRelay *MsgRelay[chain.SigTx, GRPCMsgRelay[chain.SigTx]]
-  blockProp *blockProposer
+  blockProp *BlockProposer
   blkRelay *MsgRelay[chain.SigBlock, GRPCMsgRelay[chain.SigBlock]]
 }
 
@@ -72,7 +72,7 @@ func NewNode(cfg NodeCfg) *Node {
   nd.stateSync = NewStateSync(nd.ctx, nd.cfg, nd.peerDisc)
   nd.txRelay = NewMsgRelay(nd.ctx, nd.wg, 100, GRPCTxRelay, false, nd.peerDisc)
   nd.blkRelay = NewMsgRelay(nd.ctx, nd.wg, 10, GRPCBlockRelay, true, nd.peerDisc)
-  nd.blockProp = newBlockProposer(nd.ctx, nd.wg, nd.blkRelay)
+  nd.blockProp = NewBlockProposer(nd.ctx, nd.wg, nd.blkRelay)
   return nd
 }
 
