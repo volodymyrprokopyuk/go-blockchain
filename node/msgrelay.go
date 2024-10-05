@@ -13,11 +13,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type grpcMsgRelay[Msg any] func(
+type GRPCMsgRelay[Msg any] func(
   ctx context.Context, conn *grpc.ClientConn, chRelay chan Msg,
 ) error
 
-var grpcTxRelay grpcMsgRelay[chain.SigTx] = func(
+var GRPCTxRelay GRPCMsgRelay[chain.SigTx] = func(
   ctx context.Context, conn *grpc.ClientConn, chRelay chan chain.SigTx,
 ) error {
   cln := rpc.NewTxClient(conn)
@@ -49,7 +49,7 @@ var grpcTxRelay grpcMsgRelay[chain.SigTx] = func(
   }
 }
 
-var grpcBlockRelay grpcMsgRelay[chain.SigBlock] = func(
+var GRPCBlockRelay GRPCMsgRelay[chain.SigBlock] = func(
   ctx context.Context, conn *grpc.ClientConn, chRelay chan chain.SigBlock,
 ) error {
   cln := rpc.NewBlockClient(conn)
@@ -81,7 +81,7 @@ var grpcBlockRelay grpcMsgRelay[chain.SigBlock] = func(
   }
 }
 
-type msgRelay[Msg any, Relay grpcMsgRelay[Msg]] struct {
+type MsgRelay[Msg any, Relay GRPCMsgRelay[Msg]] struct {
   ctx context.Context
   wg *sync.WaitGroup
   chMsg chan Msg
@@ -92,11 +92,11 @@ type msgRelay[Msg any, Relay grpcMsgRelay[Msg]] struct {
   chPeerAdd, chPeerRem chan string
 }
 
-func newMsgRelay[Msg any, Relay grpcMsgRelay[Msg]](
+func NewMsgRelay[Msg any, Relay GRPCMsgRelay[Msg]](
   ctx context.Context, wg *sync.WaitGroup, cap int,
   grpcRelay Relay, selfRelay bool, peerDisc *PeerDiscovery,
-) *msgRelay[Msg, Relay] {
-  return &msgRelay[Msg, Relay]{
+) *MsgRelay[Msg, Relay] {
+  return &MsgRelay[Msg, Relay]{
     ctx: ctx, wg: wg, chMsg: make(chan Msg, cap),
     grpcRelay: grpcRelay, selfRelay: selfRelay, peerDisc: peerDisc,
     wgRelays: new(sync.WaitGroup),
@@ -104,28 +104,23 @@ func newMsgRelay[Msg any, Relay grpcMsgRelay[Msg]](
   }
 }
 
-func (r *msgRelay[Msg, Relay]) RelayTx(tx Msg) {
+func (r *MsgRelay[Msg, Relay]) RelayTx(tx Msg) {
   r.chMsg <- tx
 }
 
-func (r *msgRelay[Msg, Relay]) RelayBlock(blk Msg) {
+func (r *MsgRelay[Msg, Relay]) RelayBlock(blk Msg) {
   r.chMsg <- blk
 }
 
-func (r *msgRelay[Msg, Relay]) addPeers(period time.Duration) {
+func (r *MsgRelay[Msg, Relay]) addPeers(period time.Duration) {
   defer r.wgRelays.Done()
-  tick := time.NewTicker(6 * time.Second) // initial early add peers
+  tick := time.NewTicker(period)
   defer tick.Stop()
-  reset := false
   for {
     select {
     case <- r.ctx.Done():
       return
     case <- tick.C:
-      if !reset {
-        tick.Reset(period)
-        reset = true
-      }
       var peers []string
       if r.selfRelay {
         peers = r.peerDisc.SelfPeers()
@@ -139,7 +134,7 @@ func (r *msgRelay[Msg, Relay]) addPeers(period time.Duration) {
   }
 }
 
-func (r *msgRelay[Msg, Relay]) peerRelay(peer string) chan Msg {
+func (r *MsgRelay[Msg, Relay]) peerRelay(peer string) chan Msg {
   chRelay := make(chan Msg)
   r.wgRelays.Add(1)
   go func () {
@@ -163,10 +158,10 @@ func (r *msgRelay[Msg, Relay]) peerRelay(peer string) chan Msg {
   return chRelay
 }
 
-func (r *msgRelay[Msg, Relay]) relayMsgs() {
+func (r *MsgRelay[Msg, Relay]) RelayMsgs(period time.Duration) {
   defer r.wg.Done()
   r.wgRelays.Add(1)
-  go r.addPeers(10 * time.Second)
+  go r.addPeers(period)
   chRelays := make(map[string]chan Msg)
   closeRelays := func() {
     for _, chRelay := range chRelays {
@@ -184,7 +179,11 @@ func (r *msgRelay[Msg, Relay]) relayMsgs() {
       if exist {
         continue
       }
-      fmt.Printf("<=> Relay peer: %v\n", peer)
+      if r.selfRelay {
+        fmt.Printf("<=> Blk relay: %v\n", peer)
+      } else {
+        fmt.Printf("<=> Tx relay: %v\n", peer)
+      }
       chRelay := r.peerRelay(peer)
       chRelays[peer] = chRelay
     case peer := <- r.chPeerRem:

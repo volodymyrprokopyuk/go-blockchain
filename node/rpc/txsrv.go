@@ -98,13 +98,15 @@ func (s *TxSrv) TxReceive(
       fmt.Println(err)
       continue
     }
-    fmt.Printf("* Tx received\n%v\n", tx)
+    fmt.Printf("<== Tx receive\n%v\n", tx)
     err = s.txApplier.ApplyTx(tx)
     if err != nil {
       fmt.Print(err)
       continue
     }
-    s.txRelayer.RelayTx(tx)
+    if s.txRelayer != nil {
+      s.txRelayer.RelayTx(tx)
+    }
   }
 }
 

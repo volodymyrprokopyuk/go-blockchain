@@ -1,12 +1,14 @@
 #!/usr/bin/env fish
 
-set node localhost:1122
-set pass password
+set boot localhost:1122
+set node localhost:1123
+set authpass password
+set ownerpass password
 
-# ./bcn node start --node $node --bootstrap --authpass $pass \
-#   --ownerpass $pass --balance 1000
-# ./bcn account create --node $node --ownerpass $pass
-# ./bcn node start --node localhost:1123 --seed localhost:1122
+# ./bcn node start --node $boot --bootstrap --authpass $authpass \
+#   --ownerpass $ownerpass --balance 1000
+# ./bcn account create --node $boot --ownerpass $ownerpass
+# ./bcn node start --node $node --seed $boot
 
 function txSignAndSend -a node from to value ownerpass
   set tx (./bcn tx sign --node $node --from $from --to $to --value $value \
@@ -15,24 +17,20 @@ function txSignAndSend -a node from to value ownerpass
   ./bcn tx send --node $node --sigtx $tx
 end
 
-set own 42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3
-set ben f607fd36d6ed871db2a6021382452f54225d0cff8354698a0584f287019afec9
+set own 1dc67739c409b169d8f981525366355694c7de9e24188d1814a7e2159857a878
+set ben 0b283b314c12c66ce7ad65da7d5ab3008d28e25a988308721f010e5a04f23247
 
-# txSignAndSend $node $own $ben 2 $pass
-# txSignAndSend $node $ben $own 1 $pass
+# txSignAndSend $boot $own $ben 2 $ownerpass
+# txSignAndSend $boot $ben $own 1 $ownerpass
 
-set sender 42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3
-set ownerpass password
-txSignAndSend $node $sender to 1000 $ownerpass
+# ./bcn account balance --node $boot --account $own
+# ./bcn account balance --node $boot --account $ben
 
-# ./bcn account balance --node $node --account $own
-# ./bcn account balance --node $node --account $ben
+# ./bcn block search --node $boot --number 2
+# ./bcn block search --node $boot --hash 96b3d1d
+# ./bcn block search --node $boot --parent 76088e0
 
-# ./bcn block search --node $node --number 2
-# ./bcn block search --node $node --hash 96b3d1d
-# ./bcn block search --node $node --parent 76088e0
-
-# ./bcn tx search --hash 6fe5fff
-# ./bcn tx search --from d8a05ac
-# ./bcn tx search --to fd29d48
-# ./bcn tx search --account d8a05ac
+# ./bcn tx search --node $boot --hash 6fe5fff
+# ./bcn tx search --node $boot --from d8a05ac
+# ./bcn tx search --node $boot --to fd29d48
+# ./bcn tx search --node $boot --account d8a05ac

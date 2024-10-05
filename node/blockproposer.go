@@ -16,12 +16,12 @@ type blockProposer struct {
   wg *sync.WaitGroup
   authority chain.Account
   state *chain.State
-  blkRelay *msgRelay[chain.SigBlock, grpcMsgRelay[chain.SigBlock]]
+  blkRelay *MsgRelay[chain.SigBlock, GRPCMsgRelay[chain.SigBlock]]
 }
 
 func newBlockProposer(
   ctx context.Context, wg *sync.WaitGroup,
-  blkRelay *msgRelay[chain.SigBlock, grpcMsgRelay[chain.SigBlock]],
+  blkRelay *MsgRelay[chain.SigBlock, GRPCMsgRelay[chain.SigBlock]],
 ) *blockProposer {
   return &blockProposer{ctx: ctx, wg: wg, blkRelay: blkRelay}
 }
