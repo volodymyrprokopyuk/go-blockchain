@@ -18,8 +18,8 @@ import (
 )
 
 const (
-  keyStoreDir = ".keystoretest"
-  blockStoreDir = ".blockstoretest"
+  keyStoreDir = ".keystorenode"
+  blockStoreDir = ".blockstorenode"
   chainName = "testblockchain"
   authPass = "password"
   ownerPass = "password"

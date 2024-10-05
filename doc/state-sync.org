@@ -521,10 +521,10 @@ The =node start= parameters
 Options for starting a blockchain node
 - Initialize the bootstrap and authority node
 #+BEGIN_SRC fish
-set node localhost:1122
+set boot localhost:1122
 set authpass password
 set ownerpass password
-./bcn node start --node $node --bootstrap --authpass $authpass \
+./bcn node start --node $boot --bootstrap --authpass $authpass \
   --ownerpass $ownerpass --balance 1000
 # === Sync state
 # * Balances and nonces
@@ -537,7 +537,7 @@ set ownerpass password
 #+END_SRC
 - Start already initialized the bootstrap and authority node
 #+BEGIN_SRC fish
-./bcn node start --node $node --bootstrap --authpass $authpass
+./bcn node start --node $boot --bootstrap --authpass $authpass
 # === Sync state
 # * Balances and nonces
 # acc 1dc6773:                        1000        0
@@ -549,8 +549,8 @@ set ownerpass password
 #+END_SRC
 - Start a regular node with the seed bootstrap address
 #+BEGIN_SRC fish
-set peer localhost:1123
-./bcn node start --node $peer --seed $node
+set node localhost:1123
+./bcn node start --node $node --seed $node
 # === Sync state
 # * Balances and nonces
 # acc 1dc6773:                        1000        0

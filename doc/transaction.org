@@ -307,9 +307,9 @@ The gRPC =TxSign= method is exposed through the CLI. Create and sign a new
 transaction to a blockchain node
 - Start a blockchain node
   #+BEGIN_SRC fish
-set node localhost:1122
+set boot localhost:1122
 set authpass password
-./bcn node start --node $node --bootstrap --authpass $authpass
+./bcn node start --node $boot --bootstrap --authpass $authpass
   #+END_SRC
 - Create and sign a new transaction (in a new terminal)
   - =--node= specifies the node address
@@ -319,7 +319,7 @@ set authpass password
   #+BEGIN_SRC fish
 set sender d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7
 set ownerpass password
-./bcn tx sign --node $node --from $sender --to to --value 12 \
+./bcn tx sign --node $boot --from $sender --to to --value 12 \
   --ownerpass $ownerpass
   #+END_SRC
   The structure of the signed encoded transaction

@@ -423,17 +423,17 @@ a bootstrap and authority node
   blockchain
 Initialize a bootstrap and authority blockchain node
 #+BEGIN_SRC fish
-set node localhost:1122
+set boot localhost:1122
 set authpass password
 set ownerpass password
-./bcn node start --node $node --bootstrap --authpass $authpass \
+./bcn node start --node $boot --bootstrap --authpass $authpass \
   --ownerpass $ownerpass --balance 1000
 #+END_SRC
 
 *Start of already initialized bootstrap and authority node*. Start an already
 initialized bootstrap and authority node
 #+BEGIN_SRC fish
-./bcn node start --node $node --bootstrap --authpass $authpass
+./bcn node start --node $boot --bootstrap --authpass $authpass
 #+END_SRC
 
 *** Using =account create= CLI command
@@ -442,13 +442,13 @@ The gRPC =AccountCreate= method is exposed through the CLI. Create a new
 account on the blockchain and store its key pair on the blockchain node
 - Start a blockchain node
   #+BEGIN_SRC fish
-./bcn node start --node $node --bootstrap --authpass $authpass
+./bcn node start --node $boot --bootstrap --authpass $authpass
   #+END_SRC
 - Create a new account (in a new terminal)
   - =--node= specifies the node address
   - =--ownerpass= provides the password for the new account
   #+BEGIN_SRC fish
-./bcn account create --node $node --ownerpass $ownerpass
+./bcn account create --node $boot --ownerpass $ownerpass
 # acc 596cd4370df451aa9403dddf7febc949fa729eab8f2bdceebbc24477d6f4c80f
   #+END_SRC
 
@@ -459,7 +459,7 @@ of an initial owner account or an account that have already transacted on the
 blockchain
 - Start a blockchain node
   #+BEGIN_SRC fish
-./bcn node start --node $node --bootstrap --authpass $authpass
+./bcn node start --node $boot --bootstrap --authpass $authpass
   #+END_SRC
 - Get the account address of the initial owner from the genesis file at
   =.keystore<port>/genesis.json=
@@ -477,6 +477,6 @@ blockchain
 - Get the balance of the initial owner account from the genesis file
   #+BEGIN_SRC fish
 set account d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7
-./bcn account balance --node $node --account $account
+./bcn account balance --node $boot --account $account
 # acc d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7: 1000
   #+END_SRC

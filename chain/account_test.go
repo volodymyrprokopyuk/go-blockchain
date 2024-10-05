@@ -9,8 +9,8 @@ import (
 )
 
 const (
-  keyStoreDir = ".keystoretest"
-  blockStoreDir = ".keystoretest"
+  keyStoreDir = ".keystorenode"
+  blockStoreDir = ".keystorenode"
   chainName = "testblockchain"
   authPass = "password"
   ownerPass = "password"

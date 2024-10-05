@@ -16,12 +16,12 @@ import (
 )
 
 const (
-  nodeAddr = "localhost:1122"
-  node2Addr = "localhost:1123"
+  bootAddr = "localhost:1122"
+  nodeAddr = "localhost:1123"
   bootKeyStoreDir = ".keystoreboot"
   bootBlockStoreDir = ".blockstoreboot"
-  keyStoreDir = ".keystoretest"
-  blockStoreDir = ".blockstoretest"
+  keyStoreDir = ".keystorenode"
+  blockStoreDir = ".blockstorenode"
   chainName = "testblockchaint"
   authPass = "password"
   ownerPass = "password"
@@ -140,11 +140,11 @@ func TestStateSync(t *testing.T) {
   defer cancel()
   wg := new(sync.WaitGroup)
   // Create peer discovery for the bootstrap node
-  peerDiscCfg := PeerDiscoveryCfg{NodeAddr: nodeAddr, Bootstrap: true}
+  peerDiscCfg := PeerDiscoveryCfg{NodeAddr: bootAddr, Bootstrap: true}
   peerDisc := NewPeerDiscovery(ctx, wg, peerDiscCfg)
   // Create state sync for the bootstrap node
   nodeCfg := NodeCfg{
-    NodeAddr: nodeAddr, Bootstrap: true,
+    NodeAddr: bootAddr, Bootstrap: true,
     KeyStoreDir: bootKeyStoreDir, BlockStoreDir: bootBlockStoreDir,
     Chain: chainName, AuthPass: authPass,
     OwnerPass: ownerPass, Balance: ownerBalance,
@@ -182,11 +182,11 @@ func TestStateSync(t *testing.T) {
   // Wait for the gRPC server of the bootstrap node to start
   time.Sleep(100 * time.Millisecond)
   // Create peer discovery for the new node
-  peerDiscCfg = PeerDiscoveryCfg{NodeAddr: node2Addr, SeedAddr: nodeAddr}
+  peerDiscCfg = PeerDiscoveryCfg{NodeAddr: nodeAddr, SeedAddr: bootAddr}
   peerDisc = NewPeerDiscovery(ctx, wg, peerDiscCfg)
   // Create state sync for the new node
   nodeCfg = NodeCfg{
-    NodeAddr: node2Addr, SeedAddr: nodeAddr,
+    NodeAddr: nodeAddr, SeedAddr: bootAddr,
     KeyStoreDir: keyStoreDir, BlockStoreDir: blockStoreDir,
   }
   nodeStateSync := newStateSync(ctx, nodeCfg, peerDisc)

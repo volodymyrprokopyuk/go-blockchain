@@ -516,9 +516,9 @@ The gRPC =TxSend= method is exposed through the CLI. Create, sign, and send a
 new transaction to a blockchain node
 - Start a blockchain node
   #+BEGIN_SRC fish
-set node localhost:1122
+set boot localhost:1122
 set authpass password
-./bcn node start --node $node --bootstrap --authpass $authpass
+./bcn node start --node $boot --bootstrap --authpass $authpass
   #+END_SRC
 - Define a shell function to create, sign, and send a transaction
   #+BEGIN_SRC fish
@@ -533,7 +533,7 @@ end
   #+BEGIN_SRC fish
 set sender 42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3
 set ownerpass password
-txSignAndSend $node $sender to 12 $ownerpass
+txSignAndSend $boot $sender to 12 $ownerpass
 # tx 51bd61eeec69d7cbf9dbf3a4a6e0577c6f30c57021376fc49227e4add02bbbb7
   #+END_SRC
   The structure of the signed encoded transaction before sending to the node
@@ -550,7 +550,7 @@ txSignAndSend $node $sender to 12 $ownerpass
 - Create, sign, and send a transaction with the value that exceeds the sender
   balance
   #+BEGIN_SRC fish
-txSignAndSend $node $sender to 12 $ownerpass
+txSignAndSend $boot $sender to 1000 $ownerpass
 # rpc error: code = FailedPrecondition desc = tx: insufficient account funds
 # tx  54e6c92: 42e61ae -> to     1000        3
   #+END_SRC

@@ -243,3 +243,12 @@ func (s *NodeSrv) PeerDiscover(
 ** Testing and usage
 
 *** Testing gRPC =PeerDiscover= method
+
+The =TestPeerDiscover= testing process
+- Create peer discovery for the bootstrap node
+- Set up the gRPC server and client
+- Call the =PeerDiscover= method
+- Verify that the provided node address is in the response of known peers
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run PeerDiscover
+#+END_SRC
