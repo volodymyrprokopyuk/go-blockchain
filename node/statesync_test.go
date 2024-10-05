@@ -1,4 +1,4 @@
-package node
+package node_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
+	"github.com/volodymyrprokopyuk/go-blockchain/node"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rpc"
 	"google.golang.org/grpc"
 )
@@ -107,8 +108,7 @@ func createBlocks(
 }
 
 func grpcStartSvr(
-  t *testing.T, _ *sync.WaitGroup, nodeAddr string,
-  grpcRegisterSrv func (grpcSrv *grpc.Server),
+  t *testing.T, nodeAddr string, grpcRegisterSrv func (grpcSrv *grpc.Server),
 ) {
   lis, err := net.Listen("tcp", nodeAddr)
   if err != nil {
@@ -140,18 +140,18 @@ func TestStateSync(t *testing.T) {
   defer cancel()
   wg := new(sync.WaitGroup)
   // Create peer discovery for the bootstrap node
-  peerDiscCfg := PeerDiscoveryCfg{NodeAddr: bootAddr, Bootstrap: true}
-  peerDisc := NewPeerDiscovery(ctx, wg, peerDiscCfg)
+  peerDiscCfg := node.PeerDiscoveryCfg{NodeAddr: bootAddr, Bootstrap: true}
+  peerDisc := node.NewPeerDiscovery(ctx, wg, peerDiscCfg)
   // Create state sync for the bootstrap node
-  nodeCfg := NodeCfg{
+  nodeCfg := node.NodeCfg{
     NodeAddr: bootAddr, Bootstrap: true,
     KeyStoreDir: bootKeyStoreDir, BlockStoreDir: bootBlockStoreDir,
     Chain: chainName, AuthPass: authPass,
     OwnerPass: ownerPass, Balance: ownerBalance,
   }
-  bootStateSync := newStateSync(ctx, nodeCfg, peerDisc)
+  bootStateSync := node.NewStateSync(ctx, nodeCfg, peerDisc)
   // Initialize the state on the bootstrap node by creating the genesis
-  bootState, err := bootStateSync.syncState()
+  bootState, err := bootStateSync.SyncState()
   if err != nil {
     t.Fatal(err)
   }
@@ -175,24 +175,24 @@ func TestStateSync(t *testing.T) {
     t.Fatal(err)
   }
   // Start the gRPC server on the bootstrap node
-  grpcStartSvr(t, wg, nodeCfg.NodeAddr, func(grpcSrv *grpc.Server) {
+  grpcStartSvr(t, nodeCfg.NodeAddr, func(grpcSrv *grpc.Server) {
     blk := rpc.NewBlockSrv(bootBlockStoreDir, nil, bootState, nil)
     rpc.RegisterBlockServer(grpcSrv, blk)
   })
   // Wait for the gRPC server of the bootstrap node to start
   time.Sleep(100 * time.Millisecond)
   // Create peer discovery for the new node
-  peerDiscCfg = PeerDiscoveryCfg{NodeAddr: nodeAddr, SeedAddr: bootAddr}
-  peerDisc = NewPeerDiscovery(ctx, wg, peerDiscCfg)
+  peerDiscCfg = node.PeerDiscoveryCfg{NodeAddr: nodeAddr, SeedAddr: bootAddr}
+  peerDisc = node.NewPeerDiscovery(ctx, wg, peerDiscCfg)
   // Create state sync for the new node
-  nodeCfg = NodeCfg{
+  nodeCfg = node.NodeCfg{
     NodeAddr: nodeAddr, SeedAddr: bootAddr,
     KeyStoreDir: keyStoreDir, BlockStoreDir: blockStoreDir,
   }
-  nodeStateSync := newStateSync(ctx, nodeCfg, peerDisc)
+  nodeStateSync := node.NewStateSync(ctx, nodeCfg, peerDisc)
   // Synchronize the state on the new node by fetching the genesis and confirmed
   // blocks from the bootstrap node
-  nodeState, err := nodeStateSync.syncState()
+  nodeState, err := nodeStateSync.SyncState()
   if err != nil {
     t.Fatal(err)
   }

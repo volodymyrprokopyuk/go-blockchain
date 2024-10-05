@@ -12,20 +12,20 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type stateSync struct {
+type StateSync struct {
   cfg NodeCfg
   ctx context.Context
   state *chain.State
   peerDisc *PeerDiscovery
 }
 
-func newStateSync(
+func NewStateSync(
   ctx context.Context, cfg NodeCfg, peerDisc *PeerDiscovery,
-) *stateSync {
-  return &stateSync{ctx: ctx, cfg: cfg, peerDisc: peerDisc}
+) *StateSync {
+  return &StateSync{ctx: ctx, cfg: cfg, peerDisc: peerDisc}
 }
 
-func (s *stateSync) createGenesis() (chain.SigGenesis, error) {
+func (s *StateSync) createGenesis() (chain.SigGenesis, error) {
   authPass := []byte(s.cfg.AuthPass)
   if len(authPass) < 5 {
     return chain.SigGenesis{}, fmt.Errorf("authpass length is less than 5")
@@ -68,7 +68,7 @@ func (s *stateSync) createGenesis() (chain.SigGenesis, error) {
   return sgen, nil
 }
 
-func (s *stateSync) grpcGenesisSync() ([]byte, error) {
+func (s *StateSync) grpcGenesisSync() ([]byte, error) {
   conn, err := grpc.NewClient(
     s.cfg.SeedAddr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -85,7 +85,7 @@ func (s *stateSync) grpcGenesisSync() ([]byte, error) {
   return res.Genesis, nil
 }
 
-func (s *stateSync) syncGenesis() (chain.SigGenesis, error) {
+func (s *StateSync) syncGenesis() (chain.SigGenesis, error) {
   jgen, err := s.grpcGenesisSync()
   if err != nil {
     return chain.SigGenesis{}, err
@@ -109,7 +109,7 @@ func (s *stateSync) syncGenesis() (chain.SigGenesis, error) {
   return gen, nil
 }
 
-func (s *stateSync) readBlocks() error {
+func (s *StateSync) readBlocks() error {
   blocks, closeBlocks, err := chain.ReadBlocks(s.cfg.BlockStoreDir)
   if err != nil {
     return err
@@ -129,7 +129,7 @@ func (s *stateSync) readBlocks() error {
   return nil
 }
 
-func (s *stateSync) grpcBlockSync(peer string) (
+func (s *StateSync) grpcBlockSync(peer string) (
   func(yield (func(err error, jblk []byte) bool)), func(), error,
 ) {
   conn, err := grpc.NewClient(
@@ -164,7 +164,7 @@ func (s *stateSync) grpcBlockSync(peer string) (
   return blocks, close, nil
 }
 
-func (s *stateSync) syncBlocks() error {
+func (s *StateSync) syncBlocks() error {
   for _, peer := range s.peerDisc.Peers() {
     blocks, closeBlocks, err := s.grpcBlockSync(peer)
     if err != nil {
@@ -195,7 +195,7 @@ func (s *stateSync) syncBlocks() error {
   return nil
 }
 
-func (s *stateSync) syncState() (*chain.State, error) {
+func (s *StateSync) SyncState() (*chain.State, error) {
   gen, err := chain.ReadGenesis(s.cfg.BlockStoreDir)
   if err != nil {
     if s.cfg.Bootstrap {

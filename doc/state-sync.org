@@ -69,17 +69,17 @@
   | ~state *chain.State~      | Confirmed and pending state |
   | ~peerDisc *peerDiscovery~ | Peer discovery              |
   #+BEGIN_SRC go
-type stateSync struct {
+type StateSync struct {
   cfg NodeCfg
   ctx context.Context
   state *chain.State
-  peerDisc *peerDiscovery
+  peerDisc *PeerDiscovery
 }
 
-func newStateSync(
-  ctx context.Context, cfg NodeCfg, peerDisc *peerDiscovery,
-) *stateSync {
-  return &stateSync{ctx: ctx, cfg: cfg, peerDisc: peerDisc}
+func NewStateSync(
+  ctx context.Context, cfg NodeCfg, peerDisc *PeerDiscovery,
+) *StateSync {
+  return &StateSync{ctx: ctx, cfg: cfg, peerDisc: peerDisc}
 }
   #+END_SRC
 *** The state synchronization algorithm
@@ -106,7 +106,7 @@ func newStateSync(
   - Fetch, verify, validate, and apply to the confirmed sate the confirmed
     blocks from all know peers
   #+BEGIN_SRC go
-func (s *stateSync) syncState() (*chain.State, error) {
+func (s *StateSync) SyncState() (*chain.State, error) {
   gen, err := chain.ReadGenesis(s.cfg.BlockStoreDir)
   if err != nil {
     if s.cfg.Bootstrap {
@@ -165,7 +165,7 @@ func (s *stateSync) syncState() (*chain.State, error) {
   - Create sign the genesis with the authority account
   - Persis the genesis to the local block store of the bootstrap node
   #+BEGIN_SRC go
-func (s *stateSync) createGenesis() (chain.SigGenesis, error) {
+func (s *StateSync) createGenesis() (chain.SigGenesis, error) {
   authPass := []byte(s.cfg.AuthPass)
   if len(authPass) < 5 {
     return chain.SigGenesis{}, fmt.Errorf("authpass length is less than 5")
@@ -225,7 +225,7 @@ func (s *stateSync) createGenesis() (chain.SigGenesis, error) {
   - Decode and verify the genesis signature
   - Persist the verified genesis to the local block store
   #+BEGIN_SRC go
-func (s *stateSync) syncGenesis() (chain.SigGenesis, error) {
+func (s *StateSync) syncGenesis() (chain.SigGenesis, error) {
   jgen, err := s.grpcGenesisSync()
   if err != nil {
     return chain.SigGenesis{}, err
@@ -250,6 +250,8 @@ func (s *stateSync) syncGenesis() (chain.SigGenesis, error) {
 }
   #+END_SRC
 
+  #+RESULTS:
+
 *** Reading confirmed blocks from the local block store
 
 - Block reading :: The block reading process is executed every time the node is
@@ -269,7 +271,7 @@ func (s *stateSync) syncGenesis() (chain.SigGenesis, error) {
     - Apply each block to the cloned state, if successful
     - Apply the cloned state to the confirmed state
   #+BEGIN_SRC go
-func (s *stateSync) readBlocks() error {
+func (s *StateSync) readBlocks() error {
   blocks, closeBlocks, err := chain.ReadBlocks(s.cfg.BlockStoreDir)
   if err != nil {
     return err
@@ -311,7 +313,7 @@ func (s *stateSync) readBlocks() error {
       - Apply the cloned state to the confirmed state
       - Persist the confirmed block to the local block store
   #+BEGIN_SRC go
-func (s *stateSync) syncBlocks() error {
+func (s *StateSync) syncBlocks() error {
   for _, peer := range s.peerDisc.Peers() {
     blocks, closeBlocks, err := s.grpcBlockSync(peer)
     if err != nil {

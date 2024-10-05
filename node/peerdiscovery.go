@@ -88,18 +88,13 @@ func (d *PeerDiscovery) grpcPeerDiscover(peer string) ([]string, error) {
 
 func (d *PeerDiscovery) DiscoverPeers(period time.Duration) {
   defer d.wg.Done()
-  tick := time.NewTicker(4 * time.Second) // initial early peer discovery
+  tick := time.NewTicker(period)
   defer tick.Stop()
-  reset := false
   for {
     select {
     case <- d.ctx.Done():
       return
     case <- tick.C:
-      if !reset {
-        tick.Reset(period)
-        reset = true
-      }
       for _, peer := range d.Peers() {
         if peer != d.cfg.NodeAddr {
           peers, err := d.grpcPeerDiscover(peer)

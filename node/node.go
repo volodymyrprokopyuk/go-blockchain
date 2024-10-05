@@ -42,7 +42,7 @@ type Node struct {
   evStream *eventStream
   // components
   state *chain.State
-  stateSync *stateSync
+  stateSync *StateSync
   grpcSrv *grpc.Server
   peerDisc *PeerDiscovery
   txRelay *msgRelay[chain.SigTx, grpcMsgRelay[chain.SigTx]]
@@ -70,7 +70,7 @@ func NewNode(cfg NodeCfg) *Node {
     SeedAddr: nd.cfg.SeedAddr,
   }
   nd.peerDisc = NewPeerDiscovery(nd.ctx, nd.wg, peerDiscCfg)
-  nd.stateSync = newStateSync(nd.ctx, nd.cfg, nd.peerDisc)
+  nd.stateSync = NewStateSync(nd.ctx, nd.cfg, nd.peerDisc)
   nd.txRelay = newMsgRelay(nd.ctx, nd.wg, 100, grpcTxRelay, false, nd.peerDisc)
   nd.blkRelay = newMsgRelay(nd.ctx, nd.wg, 10, grpcBlockRelay, true, nd.peerDisc)
   nd.blockProp = newBlockProposer(nd.ctx, nd.wg, nd.blkRelay)
@@ -81,7 +81,7 @@ func (n *Node) Start() error {
   defer n.ctxCancel()
   n.wg.Add(1)
   go n.evStream.streamEvents()
-  state, err := n.stateSync.syncState()
+  state, err := n.stateSync.SyncState()
   if err != nil {
     return err
   }
