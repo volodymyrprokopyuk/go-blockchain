@@ -248,13 +248,12 @@ The =TestPeerDiscover= testing process
 go test -v -cover -coverprofile=coverage.cov ./... -run PeerDiscover
 #+END_SRC
 
-*** Testing the peer discovery between the bootstrap and a node
+*** Testing the peer discovery
 
 The =TestPeerDiscovery= testing process
-- Create peer discovery for the bootstrap node
+- Create the peer discovery without staring for the bootstrap node
 - Start the gRPC server on the bootstrap node
-- Create peer discovery for the new node
-- Start peer discovery on the new node in a separate goroutine
+- Create and start the peer discovery for the new node
 - Wait for the peer discovery to discover peers
 - Verify that the bootstrap node and the new node have discovered each other
 #+BEGIN_SRC fish
