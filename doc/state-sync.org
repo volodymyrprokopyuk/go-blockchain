@@ -472,8 +472,8 @@ The =TestStateSync= testing process
   - Create the peer discovery without starting for the new node
   - Synchronize the state on the new node by fetching the genesis and confirmed
     blocks from the bootstrap node
-  - Verify that the last block number and parent on the confirmed sates of the
-    bootstrap node and the new node are equal
+    Verify that the last block number and the last block parent on the
+    confirmed sates of the the new node and the bootstrap node are equal
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run StateSync
 #+END_SRC

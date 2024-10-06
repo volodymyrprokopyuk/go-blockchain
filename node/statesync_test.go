@@ -138,9 +138,7 @@ func grpcStartSvr(
   fmt.Printf("<=> gRPC test %v\n", nodeAddr)
   grpcSrv := grpc.NewServer()
   grpcRegisterSrv(grpcSrv)
-  // wg.Add(1)
   go func() {
-    // defer wg.Done()
     err := grpcSrv.Serve(lis)
     if err != nil {
       fmt.Println(err)
@@ -203,8 +201,8 @@ func TestStateSync(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  // Verify that the last block number and parent on the confirmed sates of the
-  // bootstrap node and the new node are equal
+  // Verify that the last block number and the last block parent on the
+  // confirmed sates of the the new node and the bootstrap node are equal
   gotLastBlock, expLastBlock := nodeState.LastBlock(), bootState.LastBlock()
   if gotLastBlock.Number != expLastBlock.Number {
     t.Errorf(
