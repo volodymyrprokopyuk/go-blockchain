@@ -124,13 +124,13 @@ func (s *State) ApplyTx(tx SigTx) error {
     return err
   }
   if !valid {
-    return fmt.Errorf("tx: invalid transaction signature\n%v\n", tx)
+    return fmt.Errorf("tx error: invalid transaction signature\n%v\n", tx)
   }
   if tx.Nonce != s.nonces[tx.From] + 1 {
-    return fmt.Errorf("tx: invalid transaction nonce\n%v\n", tx)
+    return fmt.Errorf("tx error: invalid transaction nonce\n%v\n", tx)
   }
   if s.balances[tx.From] < tx.Value {
-    return fmt.Errorf("tx: insufficient account funds\n%v\n", tx)
+    return fmt.Errorf("tx error: insufficient account funds\n%v\n", tx)
   }
   s.balances[tx.From] -= tx.Value
   s.balances[tx.To] += tx.Value
@@ -159,7 +159,7 @@ func (s *State) CreateBlock(authority Account) (SigBlock, error) {
   for _, tx := range pndTxs {
     err := s.ApplyTx(tx)
     if err != nil {
-      fmt.Printf("tx: rejected: %v\n", err)
+      fmt.Printf("tx error: rejected: %v\n", err)
       continue
     }
     txs = append(txs, tx)
@@ -181,10 +181,10 @@ func (s *State) ApplyBlock(blk SigBlock) error {
     return err
   }
   if !valid {
-    return fmt.Errorf("blk: invalid block signature\n%v", blk)
+    return fmt.Errorf("blk error: invalid block signature\n%v", blk)
   }
   if blk.Number != s.lastBlock.Number + 1 {
-    return fmt.Errorf("blk: invalid block number\n%v", blk)
+    return fmt.Errorf("blk error: invalid block number\n%v", blk)
   }
   var hash Hash
   if blk.Number == 1 {
@@ -193,7 +193,7 @@ func (s *State) ApplyBlock(blk SigBlock) error {
     hash = s.lastBlock.Hash()
   }
   if blk.Parent != hash {
-    return fmt.Errorf("blk: invalid parent hash\n%v", blk)
+    return fmt.Errorf("blk error: invalid parent hash\n%v", blk)
   }
   for _, tx := range blk.Txs {
     err := s.ApplyTx(tx)

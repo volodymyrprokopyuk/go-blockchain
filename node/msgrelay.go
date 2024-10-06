@@ -21,7 +21,7 @@ var GRPCTxRelay GRPCMsgRelay[chain.SigTx] = func(
   ctx context.Context, conn *grpc.ClientConn, chRelay chan chain.SigTx,
 ) error {
   cln := rpc.NewTxClient(conn)
-  stream, err := cln.TxReceive(context.Background())
+  stream, err := cln.TxReceive(ctx)
   if err != nil {
     return err
   }
@@ -53,7 +53,7 @@ var GRPCBlockRelay GRPCMsgRelay[chain.SigBlock] = func(
   ctx context.Context, conn *grpc.ClientConn, chRelay chan chain.SigBlock,
 ) error {
   cln := rpc.NewBlockClient(conn)
-  stream, err := cln.BlockReceive(context.Background())
+  stream, err := cln.BlockReceive(ctx)
   if err != nil {
     return err
   }

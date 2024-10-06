@@ -1,5 +1,3 @@
-#+OPTIONS: toc:2
-
 * Transaction relay
 
 ** Concepts and purpose
@@ -441,5 +439,21 @@ func (s *TxSrv) TxReceive(
 ** Testing and usage
 
 *** Testing gRPC =TxReceive= method
+
+The =TestTxReceive= testing process
+- Create and persist the genesis
+- Create the state from the genesis
+- Look up the initial owner account and balance from the genesis
+- Re-create the initial owner account from the genesis
+- Set up the gRPC server and gRPC client connection
+- For each transaction
+  - Create and sign a transaction
+  - Encode the signed transaction
+  - Call the gRPC =TxReceive= method
+  - Wait for the transaction to be received and processed
+- Verify the correct pending balance after receiving the transactions
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run TxReceive
+#+END_SRC
 
 *** Testing transaction relay
