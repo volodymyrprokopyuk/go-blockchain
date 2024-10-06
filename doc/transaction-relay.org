@@ -1,3 +1,5 @@
+#+OPTIONS: toc:2
+
 * Transaction relay
 
 ** Concepts and purpose
@@ -322,6 +324,122 @@ func (r *MsgRelay[Msg, Relay]) peerRelay(peer string) chan Msg {
 }
   #+END_SRC
 
-- gGRPC client stream ::
+- gRPC client streaming :: The gRPC client streaming relays messages from the
+  outbound message relay channel to the gRPC client stream of messages. The gRPC
+  client streaming is message type specific and is parameterized in the message
+  relay type with the gRPC relay generic function. The gRPC relay generic
+  function accepts the node shared context hierarchy, the gRPC client connection
+  and the outbound message relay channel. The gRPC client streaming creates the
+  message-specific gRPC clients and establishes the gRPC client stream. The gRPC
+  client streaming combines the node shared context cancellation channel for
+  graceful shutdown with the outbound message relay channel for streaming
+  messages to the peer. When a new message is sent to the outbound message relay
+  channel, the message is encoded and sent over the gRPC client stream to the
+  peer. The gRPC client streaming
+  - Create the message-specific gRPC client
+  - Establish the gRPC client stream by calling the gRPC =TxReceive= method
+  - Combine the node shared context hierarchy channel with the outbound message
+    relay channel
+    - When the node shared context hierarchy is canceled, close the gRPC client
+      connection and stop the message relay for the peer
+    - When a new message is sent to the outbound message relay channel, forward
+      the message to the established gRPC client stream
+  #+BEGIN_SRC go
+type GRPCMsgRelay[Msg any] func(
+  ctx context.Context, conn *grpc.ClientConn, chRelay chan Msg,
+) error
+
+var GRPCTxRelay GRPCMsgRelay[chain.SigTx] = func(
+  ctx context.Context, conn *grpc.ClientConn, chRelay chan chain.SigTx,
+) error {
+  cln := rpc.NewTxClient(conn)
+  stream, err := cln.TxReceive(context.Background())
+  if err != nil {
+    return err
+  }
+  defer stream.CloseAndRecv()
+  for {
+    select {
+    case <- ctx.Done():
+      return nil
+    case tx, open := <- chRelay:
+      if !open {
+        return nil
+      }
+      jtx, err := json.Marshal(tx)
+      if err != nil {
+        fmt.Println(err)
+        continue
+      }
+      req := &rpc.TxReceiveReq{Tx: jtx}
+      err = stream.Send(req)
+      if err != nil {
+        fmt.Println(err)
+        continue
+      }
+    }
+  }
+}
+  #+END_SRC
+
+*** gRPC =TxReceive= method
+
+The gRPC =Tx= service provides the =TxReceive= method to receive transactions
+relayed from the peer-to-peer network of the blockchain. The transaction relay
+happens from the gRPC =TxSend= method and from the gRPC =TxReceive= method to
+further relay validated transactions to other peers. The interface of the
+service
+#+BEGIN_SRC protobuf
+message TxReceiveReq {
+  bytes Tx = 1;
+}
+
+message TxReceiveRes { }
+
+service Tx {
+  rpc TxReceive(stream TxReceiveReq) returns (TxReceiveRes);
+}
+#+END_SRC
+
+The implementation of the =TxReceive= method
+- For each transaction received from the gRPC client stream
+  - Decode the transaction
+  - Apply the decoded transaction to the pending state, if successful,
+  - Relay the validated transaction to the list of known peers
+#+BEGIN_SRC go
+func (s *TxSrv) TxReceive(
+  stream grpc.ClientStreamingServer[TxReceiveReq, TxReceiveRes],
+) error {
+  for {
+    req, err := stream.Recv()
+    if err == io.EOF {
+      res := &TxReceiveRes{}
+      return stream.SendAndClose(res)
+    }
+    if err != nil {
+      return err
+    }
+    var tx chain.SigTx
+    err = json.Unmarshal(req.Tx, &tx)
+    if err != nil {
+      fmt.Println(err)
+      continue
+    }
+    fmt.Printf("<== Tx receive\n%v\n", tx)
+    err = s.txApplier.ApplyTx(tx)
+    if err != nil {
+      fmt.Print(err)
+      continue
+    }
+    if s.txRelayer != nil {
+      s.txRelayer.RelayTx(tx)
+    }
+  }
+}
+#+END_SRC
 
 ** Testing and usage
+
+*** Testing gRPC =TxReceive= method
+
+*** Testing transaction relay
