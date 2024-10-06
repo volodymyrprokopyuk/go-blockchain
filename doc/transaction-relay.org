@@ -457,3 +457,32 @@ go test -v -cover -coverprofile=coverage.cov ./... -run TxReceive
 #+END_SRC
 
 *** Testing transaction relay
+
+The =TestTxRelay= testing process
+- Set up the bootstrap node
+  - Create peer discovery for the bootstrap node
+  - Create state sync for the bootstrap node
+  - Initialize the state on the bootstrap node by creating the genesis
+  - Create transaction relay for the bootstrap node
+  - Start the transaction relay for the bootstrap node
+  - Start the gRPC server on the bootstrap node
+- Set up the new node
+  - Create peer discovery for the new node
+  - Start peer discover on the new node
+  - Wait for the peer discovery to discover peers
+  - Create state sync for the new node
+  - Synchronize the state on the new node
+  - Start the gRPC server on the new node
+  - Wait for the gRPC server of the new node to start
+- Get the initial owner account and its balance from the genesis
+- Re-create the initial owner account from the genesis
+- Create the gRPC client connected to the bootstrap node
+- Create the gRPC transaction client
+- Sign and send transactions to the bootstrap node
+- Wait for the sent transactions to be relayed to the new node and applied to
+  the pending state on the new node
+- Verify correct balances for the initial owner account on the pending state of
+  the new node and the bootstrap node
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run TxRelay
+#+END_SRC

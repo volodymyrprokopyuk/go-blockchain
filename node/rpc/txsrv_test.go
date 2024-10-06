@@ -161,8 +161,8 @@ func TestTxReceive(t *testing.T) {
   pending := state.Pending
   // Look up the initial owner account and balance from the genesis
   ownerAcc, ownerBal := genesisAccount(gen)
-  path := filepath.Join(keyStoreDir, string(ownerAcc))
   // Re-create the initial owner account from the genesis
+  path := filepath.Join(keyStoreDir, string(ownerAcc))
   acc, err := chain.ReadAccount(path, []byte(ownerPass))
   if err != nil {
     t.Fatal(err)

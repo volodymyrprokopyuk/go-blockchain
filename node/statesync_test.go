@@ -141,7 +141,7 @@ func TestStateSync(t *testing.T) {
   wg := new(sync.WaitGroup)
   // Create peer discovery for the bootstrap node
   peerDiscCfg := node.PeerDiscoveryCfg{NodeAddr: bootAddr, Bootstrap: true}
-  peerDisc := node.NewPeerDiscovery(ctx, wg, peerDiscCfg)
+  bootPeerDisc := node.NewPeerDiscovery(ctx, wg, peerDiscCfg)
   // Create state sync for the bootstrap node
   nodeCfg := node.NodeCfg{
     NodeAddr: bootAddr, Bootstrap: true,
@@ -149,7 +149,7 @@ func TestStateSync(t *testing.T) {
     Chain: chainName, AuthPass: authPass,
     OwnerPass: ownerPass, Balance: ownerBalance,
   }
-  bootStateSync := node.NewStateSync(ctx, nodeCfg, peerDisc)
+  bootStateSync := node.NewStateSync(ctx, nodeCfg, bootPeerDisc)
   // Initialize the state on the bootstrap node by creating the genesis
   bootState, err := bootStateSync.SyncState()
   if err != nil {
@@ -183,13 +183,13 @@ func TestStateSync(t *testing.T) {
   time.Sleep(100 * time.Millisecond)
   // Create peer discovery for the new node
   peerDiscCfg = node.PeerDiscoveryCfg{NodeAddr: nodeAddr, SeedAddr: bootAddr}
-  peerDisc = node.NewPeerDiscovery(ctx, wg, peerDiscCfg)
+  nodePeerDisc := node.NewPeerDiscovery(ctx, wg, peerDiscCfg)
   // Create state sync for the new node
   nodeCfg = node.NodeCfg{
     NodeAddr: nodeAddr, SeedAddr: bootAddr,
     KeyStoreDir: keyStoreDir, BlockStoreDir: blockStoreDir,
   }
-  nodeStateSync := node.NewStateSync(ctx, nodeCfg, peerDisc)
+  nodeStateSync := node.NewStateSync(ctx, nodeCfg, nodePeerDisc)
   // Synchronize the state on the new node by fetching the genesis and confirmed
   // blocks from the bootstrap node
   nodeState, err := nodeStateSync.SyncState()
