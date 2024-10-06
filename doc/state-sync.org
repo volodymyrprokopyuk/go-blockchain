@@ -456,25 +456,23 @@ The =TestBlockSync= testing process
 go test -v -cover -coverprofile=coverage.cov ./... -run BlockSync
 #+END_SRC
 
-*** Testing state sync of a new node joining the network
+*** Testing the state sync
 
 The =TestStateSync= testing process
-- The bootstrap node
-  - Create peer discovery for the bootstrap node
-  - Create state sync for the bootstrap node
+- Set up the bootstrap node
+  - Create the peer discovery without starting for the bootstrap node
   - Initialize the state on the bootstrap node by creating the genesis
   - Get the initial owner account and its balance from the genesis
-  - Verify the correct balance for the initial owner account in the confirmed
-    state
+  - Verify that the initial owner balance from the confirmed state on the
+    bootstrap node is equal to the initial owner balance from the genesis
   - Create several confirmed blocks on the bootstrap node
   - Start the gRPC server on the bootstrap node
-- The new node
   - Wait for the gRPC server of the bootstrap node to start
-  - Create peer discovery for the new node
-  - Create state sync for the new node
+- Set up the new node
+  - Create the peer discovery without starting for the new node
   - Synchronize the state on the new node by fetching the genesis and confirmed
     blocks from the bootstrap node
-  - Verify that the last block number the the last block parent hash on the
+  - Verify that the last block number and parent on the confirmed sates of the
     bootstrap node and the new node are equal
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run StateSync

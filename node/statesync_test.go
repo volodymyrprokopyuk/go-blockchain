@@ -36,8 +36,29 @@ func genesisAccount(gen chain.SigGenesis) (chain.Address, uint64) {
   return "", 0
 }
 
+func createStateSync(
+  ctx context.Context, peerReader node.PeerReader, bootstrap bool,
+) (*chain.State, error) {
+  var nodeCfg node.NodeCfg
+  if bootstrap {
+    nodeCfg = node.NodeCfg{
+      NodeAddr: bootAddr, Bootstrap: true,
+      KeyStoreDir: bootKeyStoreDir, BlockStoreDir: bootBlockStoreDir,
+      Chain: chainName, AuthPass: authPass,
+      OwnerPass: ownerPass, Balance: ownerBalance,
+    }
+  } else {
+    nodeCfg = node.NodeCfg{
+      NodeAddr: nodeAddr, SeedAddr: bootAddr,
+      KeyStoreDir: keyStoreDir, BlockStoreDir: blockStoreDir,
+    }
+  }
+  stateSync := node.NewStateSync(ctx, nodeCfg, peerReader)
+  return stateSync.SyncState()
+}
+
 func createBlocks(
-  gen chain.SigGenesis, state *chain.State, keyStoreDir, blockStoreDir string,
+  keyStoreDir, blockStoreDir string, gen chain.SigGenesis, state *chain.State,
 ) error {
   // Re-create the authority account
   path := filepath.Join(keyStoreDir, string(gen.Authority))
@@ -139,28 +160,21 @@ func TestStateSync(t *testing.T) {
   ctx, cancel := context.WithCancel(context.Background())
   defer cancel()
   wg := new(sync.WaitGroup)
-  // Create peer discovery for the bootstrap node
-  peerDiscCfg := node.PeerDiscoveryCfg{NodeAddr: bootAddr, Bootstrap: true}
-  bootPeerDisc := node.NewPeerDiscovery(ctx, wg, peerDiscCfg)
-  // Create state sync for the bootstrap node
-  nodeCfg := node.NodeCfg{
-    NodeAddr: bootAddr, Bootstrap: true,
-    KeyStoreDir: bootKeyStoreDir, BlockStoreDir: bootBlockStoreDir,
-    Chain: chainName, AuthPass: authPass,
-    OwnerPass: ownerPass, Balance: ownerBalance,
-  }
-  bootStateSync := node.NewStateSync(ctx, nodeCfg, bootPeerDisc)
+  // Create the peer discovery without starting for the bootstrap node
+  bootPeerDisc := createPeerDiscovery(ctx, wg, true, false)
   // Initialize the state on the bootstrap node by creating the genesis
-  bootState, err := bootStateSync.SyncState()
-  if err != nil {
-    t.Fatal(err)
-  }
-  gen, err := chain.ReadGenesis(bootBlockStoreDir)
+  bootState, err := createStateSync(ctx, bootPeerDisc, true)
   if err != nil {
     t.Fatal(err)
   }
   // Get the initial owner account and its balance from the genesis
+  gen, err := chain.ReadGenesis(bootBlockStoreDir)
+  if err != nil {
+    t.Fatal(err)
+  }
   ownerAcc, ownerBal := genesisAccount(gen)
+  // Verify that the initial owner balance from the confirmed state on the
+  // bootstrap node is equal to the initial owner balance from the genesis
   gotBalance, exist := bootState.Balance(ownerAcc)
   if !exist {
     t.Fatalf("balance does not exist")
@@ -169,33 +183,28 @@ func TestStateSync(t *testing.T) {
   if gotBalance != expBalance {
     t.Errorf("invalid balance: expected %v, got %v", expBalance, gotBalance)
   }
-  // Create several confirmed blocks
-  err = createBlocks(gen, bootState, bootKeyStoreDir, bootBlockStoreDir)
+  // Create several confirmed blocks on the bootstrap node
+  err = createBlocks(bootKeyStoreDir, bootBlockStoreDir, gen, bootState)
   if err != nil {
     t.Fatal(err)
   }
   // Start the gRPC server on the bootstrap node
-  grpcStartSvr(t, nodeCfg.NodeAddr, func(grpcSrv *grpc.Server) {
+  grpcStartSvr(t, bootAddr, func(grpcSrv *grpc.Server) {
     blk := rpc.NewBlockSrv(bootBlockStoreDir, nil, bootState, nil)
     rpc.RegisterBlockServer(grpcSrv, blk)
   })
   // Wait for the gRPC server of the bootstrap node to start
   time.Sleep(100 * time.Millisecond)
-  // Create peer discovery for the new node
-  peerDiscCfg = node.PeerDiscoveryCfg{NodeAddr: nodeAddr, SeedAddr: bootAddr}
-  nodePeerDisc := node.NewPeerDiscovery(ctx, wg, peerDiscCfg)
-  // Create state sync for the new node
-  nodeCfg = node.NodeCfg{
-    NodeAddr: nodeAddr, SeedAddr: bootAddr,
-    KeyStoreDir: keyStoreDir, BlockStoreDir: blockStoreDir,
-  }
-  nodeStateSync := node.NewStateSync(ctx, nodeCfg, nodePeerDisc)
+  // Create the peer discovery without starting for the new node
+  nodePeerDisc := createPeerDiscovery(ctx, wg, false, false)
   // Synchronize the state on the new node by fetching the genesis and confirmed
   // blocks from the bootstrap node
-  nodeState, err := nodeStateSync.SyncState()
+  nodeState, err := createStateSync(ctx, nodePeerDisc, false)
   if err != nil {
     t.Fatal(err)
   }
+  // Verify that the last block number and parent on the confirmed sates of the
+  // bootstrap node and the new node are equal
   gotLastBlock, expLastBlock := nodeState.LastBlock(), bootState.LastBlock()
   if gotLastBlock.Number != expLastBlock.Number {
     t.Errorf(
