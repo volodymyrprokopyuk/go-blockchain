@@ -361,9 +361,10 @@ func (s *AccountSrv) AccountBalance(
 
 The =TestAccountWriteReadSignTxVerifyTx= testing process
 - Create a new account
-- Persist the account to a file
-- Re-create the account from a file
-- Verify that the re-created account correctly signs and verifies transactions
+- Persist the new account
+- Re-create the persisted account
+- Create and sign a transaction
+- Verify that the signature of the signed transaction is valid
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run AccountWriteRead
 #+END_SRC

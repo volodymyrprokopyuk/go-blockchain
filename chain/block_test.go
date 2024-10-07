@@ -16,26 +16,26 @@ func TestBlockSignBlockWriteReadVerifyBlock(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  // Re-create the authority account
+  // Re-create the authority account from the genesis
   path := filepath.Join(keyStoreDir, string(gen.Authority))
   auth, err := chain.ReadAccount(path, []byte(authPass))
   if err != nil {
     t.Fatal(err)
   }
-  // Re-create the initial owner account
+  // Re-create the initial owner account from the genesis
   ownerAcc, _ := genesisAccount(gen)
   path = filepath.Join(keyStoreDir, string(ownerAcc))
   acc, err := chain.ReadAccount(path, []byte(ownerPass))
   if err != nil {
     t.Fatal(err)
   }
-  // Create and sign a transaction
+  // Create and sign a transaction with the initial owner account
   tx := chain.NewTx(chain.Address("from"), chain.Address("to"), 12, 1)
   stx, err := acc.SignTx(tx)
   if err != nil {
     t.Fatal(err)
   }
-  // Create and sign a block
+  // Create and sign a block with the authority account
   txs := make([]chain.SigTx, 0, 1)
   txs = append(txs, stx)
   blk := chain.NewBlock(1, gen.Hash(), txs)
@@ -58,7 +58,7 @@ func TestBlockSignBlockWriteReadVerifyBlock(t *testing.T) {
     if err != nil {
       t.Fatal(err)
     }
-    // Verify the signature of the signed block
+    // Verify that the signature of the signed block is valid
     valid, err := chain.VerifyBlock(blk, auth.Address())
     if err != nil {
       t.Fatal(err)

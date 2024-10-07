@@ -436,7 +436,7 @@ The =TestGenesisSync= testing process
 - Create the gRPC block client
 - Call the =GenesysSync= method to fetch the genesis
 - Decode the received genesis
-- Verify that the signature of the received genesis is correct
+- Verify that the signature of the received genesis is valid
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run GenesisSync
 #+END_SRC
@@ -453,7 +453,7 @@ The =TestBlockSync= testing process
 - Start receiving confirmed blocks from the gRPC server stream. For each block
   received from the gRPC server stream
   - Decode the received block
-  - Verify that the signature of the received block is correct
+  - Verify that the signature of the received block is valid
   - Verify that the received block number and its parent hash equal to the
     block number and the parent hash of the last confirmed block
 #+BEGIN_SRC fish

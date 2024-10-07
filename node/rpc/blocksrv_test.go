@@ -102,7 +102,7 @@ func TestGenesisSync(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  // Verify that the signature of the received genesis is correct
+  // Verify that the signature of the received genesis is valid
   valid, err := chain.VerifyGen(gen)
   if err != nil {
     t.Fatal(err)
@@ -160,7 +160,7 @@ func TestBlockSync(t *testing.T) {
     if err != nil {
       t.Fatal(err)
     }
-    // Verify that the signature of the received block is correct
+    // Verify that the signature of the received block is valid
     valid, err := chain.VerifyBlock(blk, state.Authority())
     if err != nil {
       t.Fatal(err)

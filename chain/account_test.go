@@ -24,7 +24,7 @@ func TestAccountWriteReadSignTxVerifyTx(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  // Persist the account
+  // Persist the new account
   err = acc.Write(keyStoreDir, []byte(ownerPass))
   if err != nil {
     t.Fatal(err)
@@ -41,7 +41,7 @@ func TestAccountWriteReadSignTxVerifyTx(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  // Verify the signature of the signed transaction
+  // Verify that the signature of the signed transaction is valid
   valid, err := chain.VerifyTx(stx)
   if err != nil {
     t.Fatal(err)

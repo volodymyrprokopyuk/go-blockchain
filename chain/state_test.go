@@ -17,26 +17,24 @@ func TestApplyTx(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  // Create the state
+  // Create the state from the genesis
   state := chain.NewState(gen)
   pending := state.Pending
-  // Lookup the initial owner account address and balance
+  // Get the initial owner account and its balance from the genesis
   ownerAcc, ownerBal := genesisAccount(gen)
-  // Re-create the initial owner account
+  // Re-create the initial owner account from the genesis
   path := filepath.Join(keyStoreDir, string(ownerAcc))
   acc, err := chain.ReadAccount(path, []byte(ownerPass))
   if err != nil {
     t.Fatal(err)
   }
-  cases := []struct{
-    name string
-    value, nonceInc uint64
-    err error
-  }{
+  // Define several valid and invalid transactions
+  cases := []struct{ name string; value, nonceInc uint64; err error }{
     {"valid tx 1", 12, 1, nil},
     {"invalid nonce error", 99, 0, fmt.Errorf("invalid nonce")},
     {"valid tx 2", 34, 1, nil},
   }
+  // Start applying transactions to the pending state
   for _, c := range cases {
     t.Run(c.name, func(t *testing.T) {
       // Create and sign a transaction
@@ -48,8 +46,10 @@ func TestApplyTx(t *testing.T) {
       if err != nil {
         t.Fatal(err)
       }
-      // Apply the transaction to the pending state
+      // Apply the signed transaction to the pending state
       err = pending.ApplyTx(stx)
+      // Verify that valid transactions are accepted and invalid transactions
+      // are rejected
       if c.err == nil && err != nil {
         t.Error(err)
       }
@@ -58,9 +58,11 @@ func TestApplyTx(t *testing.T) {
       }
     })
   }
-  // Lookup the balance of the initial owner
+  // Get the balance of the initial owner account from the genesis
   got, exist := pending.Balance(acc.Address())
   exp := ownerBal - 12 - 34
+  // Verify that the balance of the initial owner account on the pending state
+  // after applying transactions is correct
   if !exist {
     t.Fatalf("balance does not exist")
   }
@@ -68,7 +70,8 @@ func TestApplyTx(t *testing.T) {
     t.Errorf("invalid balance: expected %v, got %v", exp, got)
   }
   t.Run("insufficient funds error", func(t *testing.T) {
-    // Create and sign a transaction
+    // Create and sign a transaction with the value amount that exceeds the
+    // balance of the sender
     tx := chain.NewTx(
       acc.Address(), chain.Address("to"), 1000, pending.Nonce(acc.Address()) + 1,
     )
@@ -76,8 +79,9 @@ func TestApplyTx(t *testing.T) {
     if err != nil {
       t.Fatal(err)
     }
-    // Apply the transaction to the pending state
+    // Apply the invalid transaction to the pending state
     err = pending.ApplyTx(stx)
+    // Verify that the invalid transaction is rejected
     if err == nil {
       t.Errorf("expected insufficient funds error, got none")
     }
@@ -96,8 +100,9 @@ func TestApplyTx(t *testing.T) {
     if err != nil {
       t.Fatal(err)
     }
-    // Apply the transaction to the pending state
+    // Apply the invalid transaction to the pending state
     err = pending.ApplyTx(stx)
+    // Verify that the invalid transaction is rejected
     if err == nil {
       t.Errorf("expected invalid signature error, got none")
     }
@@ -112,23 +117,25 @@ func TestApplyBlock(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  // Create the state
+  // Create the state from the genesis
   state := chain.NewState(gen)
   pending := state.Pending
-  // Lookup the initial owner account address and balance
+  // Get the initial owner account and its balance from the genesis
   ownerAcc, ownerBal := genesisAccount(gen)
-  // Re-create the initial owner account
+  // Re-create the initial owner account from the genesis
   path := filepath.Join(keyStoreDir, string(ownerAcc))
   acc, err := chain.ReadAccount(path, []byte(ownerPass))
   if err != nil {
     t.Fatal(err)
   }
-  // Re-create the authority account
+  // Re-create the authority account from the genesis to sign blocks
   path = filepath.Join(keyStoreDir, string(gen.Authority))
   auth, err := chain.ReadAccount(path, []byte(authPass))
   if err != nil {
     t.Fatal(err)
   }
+  // Create and apply several valid and invalid transactions to the pending
+  // state
   for _, value := range []uint64{12, 1000, 34} {
     // Create and sign a transaction
     tx := chain.NewTx(
@@ -139,7 +146,7 @@ func TestApplyBlock(t *testing.T) {
     if err != nil {
       t.Fatal(err)
     }
-    // Apply the transaction ot the pending state
+    // Apply the transaction to the pending state
     err = pending.ApplyTx(stx)
     if err != nil {
       fmt.Println(err)
@@ -159,9 +166,11 @@ func TestApplyBlock(t *testing.T) {
   }
   // Apply the cloned state with the new block updates to the confirmed state
   state.Apply(clone)
-  // Lookup the balance of the initial owner
+  // Get the balance of the initial owner account from the genesis
   got, exist := state.Balance(acc.Address())
   exp := ownerBal - 12 - 34
+  // Verify that the balance of the initial owner account on the confirmed state
+  // after the block application is correct
   if !exist {
     t.Fatalf("balance does not exist")
   }

@@ -280,11 +280,10 @@ func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
 
 The =TestAccountWriteReadSignTxVerifyTx= testing process
 - Create a new account
-- Persist the account to a file
-- Re-create the account from a file
-- Create a new transaction
-- Sign the new transaction
-- Verify the signature of the signed transaction
+- Persist the new account
+- Re-create the persisted account
+- Create and sign a transaction
+- Verify that the signature of the signed transaction is valid
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run SignTxVerifyTx
 #+END_SRC
@@ -299,7 +298,7 @@ The =TestTxSign= testing process
 - Create the gRPC transaction client
 - Call the TxSign method to sign a new transaction
 - Decode the signed transaction
-- Verify that the signature of the signed transaction is correct
+- Verify that the signature of the signed transaction is valid
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run TxSign
 #+END_SRC

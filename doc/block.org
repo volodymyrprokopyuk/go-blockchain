@@ -391,15 +391,13 @@ func ReadBlocks(dir string) (
 *** Testing genesis signing and verification
 
 The =TestGenesisWriteReadSignGenVerifyGen= testing process
-- Create and persist the authority account to sign the genesis
-- Create and persist the initial owner account for the initial balance in the
-  genesis
-- Create the genesis by providing the name of the blockchain the authority
-  account address, the initial owner account address and balance
-- Sign the genesis from the authority account
-- Persist the genesis to a file
-- Read the genesis from a file
-- Verify the signature of the signed genesis
+- Create and persist the authority account to sign the genesis and proposed
+  blocks
+- Create and persist the initial owner account to hold the initial balance of
+  the blockchain
+- Create and persist the genesis
+- Re-create the persisted genesis
+- Verify that the signature of the persisted genesis is valid
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run SignGenVerifyGen
 #+END_SRC
@@ -408,13 +406,13 @@ go test -v -cover -coverprofile=coverage.cov ./... -run SignGenVerifyGen
 
 The =TestBlockSignBlockWriteReadVerifyBlock= testing process
 - Create and persist the genesis
-- Re-create the authority account and the initial owner account from the genesis
+- Re-create the authority account from the genesis
+- Re-create the initial owner account from the genesis
 - Create and sign a transaction with the initial owner account
-- Create and sign a block containing the signed transaction with the authority
-  account
-- Persist the signed block to the block store
-- Re-create the first block from the block store
-- Verify the signature of the re-created signed block
+- Create and sign a block with the authority account
+- Persist the signed block
+- Re-create the signed block
+- Verify that the signature of the signed block is valid
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run VerifyBlock
 #+END_SRC

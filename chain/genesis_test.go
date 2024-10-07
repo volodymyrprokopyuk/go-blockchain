@@ -8,7 +8,6 @@ import (
 )
 
 func createAccount() (chain.Account, error) {
-  // Create and persist a new account
   acc, err := chain.NewAccount()
   if err != nil {
     return chain.Account{}, err
@@ -21,17 +20,14 @@ func createAccount() (chain.Account, error) {
 }
 
 func createGenesis() (chain.SigGenesis, error) {
-  // Create and persist the authority account
   auth, err := createAccount()
   if err != nil {
     return chain.SigGenesis{}, err
   }
-  // Create and persist the initial owner account
   acc, err := createAccount()
   if err != nil {
     return chain.SigGenesis{}, err
   }
-  // Create and persist the genesis
   gen := chain.NewGenesis(chainName, auth.Address(), acc.Address(), ownerBalance)
   sgen, err := auth.SignGen(gen)
   if err != nil {
@@ -54,12 +50,14 @@ func genesisAccount(gen chain.SigGenesis) (chain.Address, uint64) {
 func TestGenesisWriteReadSignGenVerifyGen(t *testing.T) {
   defer os.RemoveAll(keyStoreDir)
   defer os.RemoveAll(blockStoreDir)
-  // Create and persist the authority account
+  // Create and persist the authority account to sign the genesis and proposed
+  // blocks
   auth, err := createAccount()
   if err != nil {
     t.Fatal(err)
   }
-  // Create and persist a new account
+  // Create and persist the initial owner account to hold the initial balance of
+  // the blockchain
   acc, err := createAccount()
   if err != nil {
     t.Fatal(err)
@@ -79,7 +77,7 @@ func TestGenesisWriteReadSignGenVerifyGen(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  // Verify the signature of the signed genesis
+  // Verify that the signature of the persisted genesis is valid
   valid, err := chain.VerifyGen(sgen)
   if err != nil {
     t.Fatal(err)

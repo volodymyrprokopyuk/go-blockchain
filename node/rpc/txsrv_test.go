@@ -55,7 +55,7 @@ func TestTxSign(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  // Verify that the signature of the signed transaction is correct
+  // Verify that the signature of the signed transaction is valid
   valid, err := chain.VerifyTx(tx)
   if err != nil {
     t.Fatal(err)
@@ -92,11 +92,12 @@ func TestTxSend(t *testing.T) {
   })
   // Create the gRPC transaction client
   cln := rpc.NewTxClient(conn)
-  // Send several valid and invalid signed transactions
+  // Define several valid and invalid transactions
   cases := []struct{ name string; value uint64; err error }{
     {"valid tx", 12, nil},
     {"insufficient funds", 1000, fmt.Errorf("insufficient funds")},
   }
+  // Start sending transactions to the node
   for _, c := range cases {
     t.Run(c.name, func(t *testing.T) {
       // Create and sign a transaction
