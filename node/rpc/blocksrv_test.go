@@ -143,6 +143,7 @@ func TestBlockSync(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
+  // Start receiving confirmed blocks from the gRPC server stream
   for {
     // Receive a block from the server stream
     res, err := stream.Recv()

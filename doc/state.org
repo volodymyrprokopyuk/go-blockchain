@@ -499,15 +499,19 @@ go test -v -cover -coverprofile=coverage.cov ./... -run ApplyBlock
 *** Testing gRPC =TxSend= method
 
 The =TestAccountCreate= testing process
-- Create the initial state from the genesis
-- Set the initial owner account from the genesis as the sender account
-- Set up the gRPC transaction service and the gRPC transaction client
-- Set the gRPC transaction service to the pending state
-- Send several transactions to the pending state
-  - The first is a valid transaction
-  - The second transaction has the value that exceeds the sender balance
-- Check the correct balance of the sender account on the pending state after
-  the application of the block
+- Create and persist the genesis
+- Create the state from the genesis
+- Get the initial owner account and its balance from the genesis
+- Re-create the initial owner account from the genesis
+- Set up the gRPC server and client
+- Create the gRPC transaction client
+- Send several valid and invalid signed transactions. For each transaction
+  - Create and sign a transaction
+  - Call the =TxSend= method to send the signed transaction
+  - Verify that valid transactions are accepted and invalid transactions are
+    rejected
+- Verify that the balance of the initial owner account on the pending state is
+  correct
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run TxSend
 #+END_SRC

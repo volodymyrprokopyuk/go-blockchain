@@ -292,11 +292,14 @@ go test -v -cover -coverprofile=coverage.cov ./... -run SignTxVerifyTx
 *** Testing gRPC =TxSign= method
 
 The =TestTxSign= testing process
-- Create the genesis and the blockchain state
-- Create a new owner account protected with the owner-provided password
-- Set up the gRPC transaction service and the gRPC transaction client
-- Sign the transaction with the owner-provided password
-- Verify the signature of the signed transaction
+- Create and persist the genesis
+- Create the state from the genesis
+- Create and persist a new account
+- Set up the gRPC server and client
+- Create the gRPC transaction client
+- Call the TxSign method to sign a new transaction
+- Decode the signed transaction
+- Verify that the signature of the signed transaction is correct
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run TxSign
 #+END_SRC

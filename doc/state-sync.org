@@ -450,7 +450,8 @@ The =TestBlockSync= testing process
 - Set up the gRPC server and client
 - Create the gRPC block client
 - Call the =BlockSync= method to get the server stream of confirmed blocks
-- For each block received from the gRPC server stream
+- Start receiving confirmed blocks from the gRPC server stream. For each block
+  received from the gRPC server stream
   - Decode the received block
   - Verify that the signature of the received block is correct
   - Verify that the received block number and its parent hash equal to the

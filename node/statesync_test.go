@@ -60,26 +60,22 @@ func createStateSync(
 func createBlocks(
   keyStoreDir, blockStoreDir string, gen chain.SigGenesis, state *chain.State,
 ) error {
-  // Re-create the authority account
   path := filepath.Join(keyStoreDir, string(gen.Authority))
   auth, err := chain.ReadAccount(path, []byte(authPass))
   if err != nil {
     return err
   }
-  // Re-create the initial owner account
   ownerAcc, _ := genesisAccount(gen)
   path = filepath.Join(keyStoreDir, string(ownerAcc))
   acc, err := chain.ReadAccount(path, []byte(ownerPass))
   if err != nil {
     return err
   }
-  // Create and persist a new auxiliary account
   aux, err := chain.NewAccount()
   err = aux.Write(keyStoreDir, []byte(ownerPass))
   if err != nil {
     return err
   }
-  // Define transactions for blocks
   blocks := [][]struct{
     from, to chain.Account
     value uint64
@@ -89,37 +85,30 @@ func createBlocks(
   }
   for _, txs := range blocks {
     for _, t := range txs {
-      // Create a new transaction
       tx := chain.NewTx(
         t.from.Address(), t.to.Address(), t.value,
         state.Pending.Nonce(t.from.Address()) + 1,
       )
-      // Sign the new transaction
       stx, err := t.from.SignTx(tx)
       if err != nil {
         return err
       }
-      // Apply the signed transaction to the pending state
       err = state.Pending.ApplyTx(stx)
       if err != nil {
         return err
       }
     }
-    // Create a new block on the cloned state
     clone := state.Clone()
     blk, err := clone.CreateBlock(auth)
     if err != nil {
       return err
     }
-    // Validate the new block on the cloned state
     clone = state.Clone()
     err = clone.ApplyBlock(blk)
     if err != nil {
       return err
     }
-    // Apply the cloned state to the confirmed state
     state.Apply(clone)
-    // Persist the confirmed block to the local block store
     err = blk.Write(blockStoreDir)
     if err != nil {
       return err

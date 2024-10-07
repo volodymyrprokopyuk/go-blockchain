@@ -19,12 +19,14 @@ import (
 func TestTxSign(t *testing.T) {
   defer os.RemoveAll(keyStoreDir)
   defer os.RemoveAll(blockStoreDir)
+  ctx, cancel := context.WithCancel(context.Background())
+  defer cancel()
   // Create and persist the genesis
   gen, err := createGenesis()
   if err != nil {
     t.Fatal(err)
   }
-  // Create the blockchain state
+  // Create the state from the genesis
   state := chain.NewState(gen)
   // Create and persist a new account
   acc, err := createAccount()
@@ -36,10 +38,9 @@ func TestTxSign(t *testing.T) {
     tx := rpc.NewTxSrv(keyStoreDir, blockStoreDir, state, nil)
     rpc.RegisterTxServer(grpcSrv, tx)
   })
-  ctx := context.Background()
   // Create the gRPC transaction client
   cln := rpc.NewTxClient(conn)
-  // Call the TxSign method
+  // Call the TxSign method to sign a new transaction
   req := &rpc.TxSignReq{
     From: string(acc.Address()), To: "to", Value: 12, Password: ownerPass,
   }
@@ -47,13 +48,14 @@ func TestTxSign(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
+  // Decode the signed transaction
   jtx := res.Tx
   var tx chain.SigTx
   err = json.Unmarshal(jtx, &tx)
   if err != nil {
     t.Fatal(err)
   }
-  // Verify the signature of the signed transaction
+  // Verify that the signature of the signed transaction is correct
   valid, err := chain.VerifyTx(tx)
   if err != nil {
     t.Fatal(err)
@@ -66,16 +68,18 @@ func TestTxSign(t *testing.T) {
 func TestTxSend(t *testing.T) {
   defer os.RemoveAll(keyStoreDir)
   defer os.RemoveAll(blockStoreDir)
+  ctx, cancel := context.WithCancel(context.Background())
+  defer cancel()
   // Create and persist the genesis
   gen, err := createGenesis()
   if err != nil {
     t.Fatal(err)
   }
-  // Create the blockchain state
+  // Create the state from the genesis
   state := chain.NewState(gen)
-  // Lookup the initial owner account address and balance
+  // Get the initial owner account and its balance from the genesis
   ownerAcc, ownerBal := genesisAccount(gen)
-  // Re-create the initial owner account
+  // Re-create the initial owner account from the genesis
   path := filepath.Join(keyStoreDir, string(ownerAcc))
   acc, err := chain.ReadAccount(path, []byte(ownerPass))
   if err != nil {
@@ -86,14 +90,10 @@ func TestTxSend(t *testing.T) {
     tx := rpc.NewTxSrv(keyStoreDir, blockStoreDir, state.Pending, nil)
     rpc.RegisterTxServer(grpcSrv, tx)
   })
-  ctx := context.Background()
   // Create the gRPC transaction client
   cln := rpc.NewTxClient(conn)
-  cases := []struct{
-    name string
-    value uint64
-    err error
-  }{
+  // Send several valid and invalid signed transactions
+  cases := []struct{ name string; value uint64; err error }{
     {"valid tx", 12, nil},
     {"insufficient funds", 1000, fmt.Errorf("insufficient funds")},
   }
@@ -108,7 +108,7 @@ func TestTxSend(t *testing.T) {
       if err != nil {
         t.Fatal(err)
       }
-      // Call the TxSend method
+      // Call the TxSend method to send the signed transaction
       jtx, err := json.Marshal(stx)
       if err != nil {
         t.Fatal(err)
@@ -118,6 +118,8 @@ func TestTxSend(t *testing.T) {
       if c.err == nil && err != nil {
         t.Error(err)
       }
+      // Verify that valid transactions are accepted and invalid transactions
+      // are rejected
       if c.err != nil && err == nil {
         t.Errorf("expected TxSend error, got none")
       }
@@ -135,7 +137,8 @@ func TestTxSend(t *testing.T) {
       }
     })
   }
-  // Lookup the balance of the initial owner
+  // Verify that the balance of the initial owner account on the pending state
+  // is correct
   got, exist := state.Pending.Balance(acc.Address())
   exp := ownerBal - 12
   if !exist {
@@ -159,7 +162,7 @@ func TestTxReceive(t *testing.T) {
   // Create the state from the genesis
   state := chain.NewState(gen)
   pending := state.Pending
-  // Look up the initial owner account and balance from the genesis
+  // Get the initial owner account and its balance from the genesis
   ownerAcc, ownerBal := genesisAccount(gen)
   // Re-create the initial owner account from the genesis
   path := filepath.Join(keyStoreDir, string(ownerAcc))
@@ -167,16 +170,21 @@ func TestTxReceive(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  // Set up the gRPC server and gRPC client connection
+  // Set up the gRPC server and gRPC client
   conn := grpcClientConn(t, func(grpcSrv *grpc.Server) {
     tx := rpc.NewTxSrv(keyStoreDir, blockStoreDir, pending, nil)
     rpc.RegisterTxServer(grpcSrv, tx)
   })
   // Create the gRPC transaction client
   cln := rpc.NewTxClient(conn)
-  // Establish the gRPC client stream
+  // Call the TxReceive method to get the gRPC client stream to relay validated
+  // transactions
   stream, err := cln.TxReceive(ctx)
+  if err != nil {
+    t.Fatal(err)
+  }
   defer stream.CloseAndRecv()
+  // Start relaying validated transactions to the gRPC client stream
   for _, value := range []uint64{12, 1000} {
     // Create and sign a transaction
     tx := chain.NewTx(
@@ -192,16 +200,17 @@ func TestTxReceive(t *testing.T) {
     if err != nil {
       t.Fatal(err)
     }
-    // Call the gRPC TxReceive method
+    // Call the gRPC TxReceive method to relay the encoded transaction
     req := &rpc.TxReceiveReq{Tx: jtx}
     err = stream.Send(req)
     if err != nil {
       t.Fatal(err)
     }
-    // Wait for the transaction to be received and processed
-    time.Sleep(100 * time.Millisecond)
+    // Wait for the relayed transaction to be received and processed
+    time.Sleep(50 * time.Millisecond)
   }
-  // Verify the correct pending balance after receiving the transactions
+  // Verify that the balance of the initial owner account on the pending state
+  // after receiving relayed transactions is correct
   got, exist := pending.Balance(acc.Address())
   if !exist {
     t.Errorf("balance does not exist %v", acc.Address())

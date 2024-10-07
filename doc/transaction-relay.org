@@ -443,15 +443,20 @@ func (s *TxSrv) TxReceive(
 The =TestTxReceive= testing process
 - Create and persist the genesis
 - Create the state from the genesis
-- Look up the initial owner account and balance from the genesis
+- Get the initial owner account and its balance from the genesis
 - Re-create the initial owner account from the genesis
-- Set up the gRPC server and gRPC client connection
-- For each transaction
+- Set up the gRPC server and gRPC client
+- Create the gRPC transaction client
+- Call the TxReceive method to get the gRPC client stream to relay validated
+  transactions
+- Start relaying validated transactions to the gRPC client stream. For each
+  transaction to be relayed
   - Create and sign a transaction
   - Encode the signed transaction
-  - Call the gRPC =TxReceive= method
-  - Wait for the transaction to be received and processed
-- Verify the correct pending balance after receiving the transactions
+  - Call the gRPC =TxReceive= method to relay the encoded transaction
+  - Wait for the relayed transaction to be received and processed
+- Verify that the balance of the initial owner account on the pending state
+  after receiving relayed transactions is correct
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run TxReceive
 #+END_SRC
