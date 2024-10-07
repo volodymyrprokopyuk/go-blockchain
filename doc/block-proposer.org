@@ -2,6 +2,84 @@
 
 ** Concepts and purpose
 
+*** Proof of Authority centralized consensus
+
+- Proof of Authority :: The PoA centralized consensus relies on a designated set
+  of accountable validators that put at state their identity and reputation in
+  order to create and propose new blocks on the blockchain. The PoA consensus
+  requires other blockchain participants to trust the designated validators. The
+  designated validators are incentivized by the risk of reputational damage or
+  complete loss of reputation in the case of dishonest or malicious behavior.
+  The designated validators take turns to create and propose blocks. Blocks must
+  be validated by the majority of other validators in order to become confirmed.
+  The advantages of the PoA consensus are fast and efficient centralized
+  agreement, high transaction throughput, low transaction confirmation time, low
+  computational overhead, low energy consumption, simple implementation. The
+  disadvantages of the PoA consensus are centralization of the blockchain
+  control by the designated validators, high security risk if validators are
+  compromised, the PoA consensus requires blockchain participants to trust the
+  designated validators. The PoA centralized consensus is most suitable for
+  high-throughput efficient permissioned or private blockchains
+
 ** Design and implementation
 
+*** Block proposer type
+
+- Block proposer type :: The block proposer type implements the single authority
+  multiple validators PoA centralized consensus. The single authority is also
+  the bootstrap node and holds the authority account that signs the genesis and
+  all proposed blocks. The single authority creates, signs and proposes through
+  the block relay mechanism new blocks to the list of known peers including
+  itself. On reception of a proposed block through the block relay mechanism
+  every other node, including the authority node itself, becomes a validator and
+  validates the block against the cloned state, and, if successful, applies the
+  block to the confirmed state, and further relays the confirmed block to the
+  list of known peers, other validators. The application of already applied
+  block relayed from other validators results in a block application error the
+  the duplicated block is not relayed any more. Relay of only successfully
+  applied blocks prevents propagation of duplicates of already applied blocks.
+  There is no possibility of a blockchain fork, as there is only the single
+  authority node that proposes blocks on the blockchain. The block proposer type
+  is fully integrated into the node graceful shutdown mechanism through the node
+  shared context hierarchy to signal the graceful shutdown and the node shared
+  wait group to wait for the concurrent node processes to gracefully terminate.
+  The block proposer type contains the authority account to sign the proposed
+  blocks, the confirmed state to apply the confirmed blocks, the pending state
+  with the list of pending transactions to create new blocks to be proposed, and
+  the block relayer to relay the proposed blocks. The advantages of using the
+  single authority PoA centralized consensus algorithm with multiple validators
+  are simple to understand and simple to implement algorithm, easily traceable
+  behavior helps to understand and troubleshoot the block proposal and
+  propagation in a peer-to-peer network
+  | ~ctx context.Context~     | Node shared context hierarchy |
+  | ~wg *sync.WaitGroup~      | Node shared wait group        |
+  | ~authority chain.Account~ | Authority account             |
+  | ~state *chain.State~      | Confirmed and pending states  |
+  | ~blkRelayer BlockRelayer~ | Block relayer                 |
+  #+BEGIN_SRC go
+type BlockProposer struct {
+  ctx context.Context
+  wg *sync.WaitGroup
+  authority chain.Account
+  state *chain.State
+  blkRelayer BlockRelayer
+}
+
+func NewBlockProposer(
+  ctx context.Context, wg *sync.WaitGroup, blkRelayer BlockRelayer,
+) *BlockProposer {
+  return &BlockProposer{ctx: ctx, wg: wg, blkRelayer: blkRelayer}
+}
+  #+END_SRC
+
+*** The propose blocks algorithm
+
+*** The message relay mechanism
+
+*** gRPC =BlockReceive= method
+
 ** Testing and usage
+
+*** Testing gRPC =BlockReceive= method
+
+*** Testing the block proposal and message relay

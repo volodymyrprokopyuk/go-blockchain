@@ -22,6 +22,7 @@ implementation* to *practical testing and usage*
 
 *** Blockchain state
 
+0. Getting started
 1. [[/doc/account.org][Account]]
 2. [[/doc/transaction.org][Transaction]]
 3. [[/doc/block.org][Block]]
@@ -33,7 +34,5 @@ implementation* to *practical testing and usage*
 6. [[/doc/peer-discovery.org][Peer discovery]]
 7. [[/doc/transaction-relay.org][Transaction relay]]
 8. [[/doc/block-proposer.org][Block proposer]]
-9. Block relay
-10. Event stream
-11. gRPC server
-12. Blockchain node
+9. Event stream
+10. Blockchain node

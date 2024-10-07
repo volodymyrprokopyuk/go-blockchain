@@ -63,7 +63,7 @@ func (p *BlockProposer) ProposeBlocks(maxPeriod time.Duration) {
       if p.blkRelayer != nil {
         p.blkRelayer.RelayBlock(blk)
       }
-      fmt.Printf("* Block proposed: %v", blk)
+      fmt.Printf("==> Block proposed: %v", blk)
     }
   }
 }
