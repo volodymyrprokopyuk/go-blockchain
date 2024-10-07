@@ -116,7 +116,7 @@ func TestTxRelay(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  // Send several signed transactions to the bootstrap node
+  // Sign and send several signed transactions to the bootstrap node
   sendTxs(t, ctx, acc, []uint64{12, 34}, bootState.Pending, bootAddr)
   // Verify that the initial account balance on the pending states of the new
   // node and the bootstrap node are equal

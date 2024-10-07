@@ -371,10 +371,10 @@ go test -v -cover -coverprofile=coverage.cov ./... -run AccountWriteRead
 *** Testing gRPC =AccountCreate= method
 
 The =TestAccountCreate= testing process
-- Set up the gRPC account service and the gRPC account client
-- Call the gRPC =AccountCreate= method with the owner-provided password to
-  create a new account on the blockchain
-- Verify that the returned account address length is correct
+- Set up the gRPC server and client
+- Create the gRPC account client
+- Call the =AccountCrate= method to create a new account
+- Verify that the created account can be read from the local key store
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run AccountCreate
 #+END_SRC
@@ -382,15 +382,18 @@ go test -v -cover -coverprofile=coverage.cov ./... -run AccountCreate
 *** Testing gRPC =AccountBalance= method
 
 The =TestAccountBalance= testing process
-- Create the genesis and the blockchain state
-- Set up the gRPC account service and the gRPC account client
-- Check balance of an existing account
-  - Call the gRPC =AccountBalance= method with the account address of the
-    initial owner from the genesis
+- Create and persist the genesis
+- Create the state from the genesis
+- Get the initial owner account and its balance from the genesis
+- Set up the gRPC server and client
+- Create the gRPC account client
+- Check the balance of an existing account
+  - Call the =AccountBalance= method to get the balance of an existing account
   - Verify that the correct balance is returned
-- Check balance of a non-existing account
-  - Call the gRPC =AccountBalance= method with a non-existing account address
-  - Verify that the not found error is returned
+- Check the balance of a non-existing account
+  - Call the =AccountBalance= method to get the balance of a non-existing
+    account
+  - Verify that the correct error is returned
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run AccountBalance
 #+END_SRC

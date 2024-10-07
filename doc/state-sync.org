@@ -431,10 +431,12 @@ func (s *BlockSrv) BlockSync(
 
 The =TestGenesisSync= testing process
 - Create and persist the genesis
-- Create and initialize the state from the genesis
-- Set up the gRPC block service and the gRPC block client
-- Call the gRPC =GenesisSync= method to fetch the genesis
-- Verify the signature of the received genesis
+- Create the state from the genesis
+- Set up the gRPC server and client
+- Create the gRPC block client
+- Call the =GenesysSync= method to fetch the genesis
+- Decode the received genesis
+- Verify that the signature of the received genesis is correct
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run GenesisSync
 #+END_SRC
@@ -443,15 +445,16 @@ go test -v -cover -coverprofile=coverage.cov ./... -run GenesisSync
 
 The =TestBlockSync= testing process
 - Create and persist the genesis
-- Create and initialize the state from the genesis
-- Create, verify, validate and persist to the local block store several blocks
-- Set up the gRPC block service and the gRPC block client
-- Call the gRPC =BlockSync= method to receive the newer confirmed blocks from
-  the server stream
-- For each received block
+- Create the state from the genesis
+- Create several confirmed blocks on the state and on the local block store
+- Set up the gRPC server and client
+- Create the gRPC block client
+- Call the =BlockSync= method to get the server stream of confirmed blocks
+- For each block received from the gRPC server stream
   - Decode the received block
-  - Verify the signature of the received block
-  - Check the correct block number regarding the last confirmed block
+  - Verify that the signature of the received block is correct
+  - Verify that the received block number and its parent hash equal to the
+    block number and the parent hash of the last confirmed block
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run BlockSync
 #+END_SRC

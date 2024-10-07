@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
@@ -27,7 +28,6 @@ const (
 )
 
 func createAccount() (chain.Account, error) {
-  // Create and persist a new account
   acc, err := chain.NewAccount()
   if err != nil {
     return chain.Account{}, err
@@ -40,17 +40,14 @@ func createAccount() (chain.Account, error) {
 }
 
 func createGenesis() (chain.SigGenesis, error) {
-  // Create and persist the authority account
   auth, err := createAccount()
   if err != nil {
     return chain.SigGenesis{}, err
   }
-  // Create and persist the initial owner account
   acc, err := createAccount()
   if err != nil {
     return chain.SigGenesis{}, err
   }
-  // Create and persist the genesis
   gen := chain.NewGenesis(chainName, auth.Address(), acc.Address(), ownerBalance)
   sgen, err := auth.SignGen(gen)
   if err != nil {
@@ -108,62 +105,69 @@ func grpcClientConn(
 
 func TestAccountCreate(t *testing.T) {
   defer os.RemoveAll(keyStoreDir)
+  ctx, cancel := context.WithCancel(context.Background())
+  defer cancel()
   // Set up the gRPC server and client
   conn := grpcClientConn(t, func(grpcSrv *grpc.Server) {
     acc := rpc.NewAccountSrv(keyStoreDir, nil)
     rpc.RegisterAccountServer(grpcSrv, acc)
   })
-  ctx := context.Background()
   // Create the gRPC account client
   cln := rpc.NewAccountClient(conn)
   req := &rpc.AccountCreateReq{Password: ownerPass}
-  // Call the AccountCrate method
+  // Call the AccountCrate method to create a new account
   res, err := cln.AccountCreate(ctx, req)
   if err != nil {
     t.Fatal(err)
   }
-  exp, got := 64, res.Address
-  if len(got) != exp {
-    t.Errorf("invalid account address: expected length %v, got %v", exp, got)
+  // Verify that the created account can be read from the local key store
+  path := filepath.Join(keyStoreDir, res.Address)
+  _, err = chain.ReadAccount(path, []byte(ownerPass))
+  if err != nil {
+    t.Fatal(err)
   }
 }
 
 func TestAccountBalance(t *testing.T) {
   defer os.RemoveAll(keyStoreDir)
   defer os.RemoveAll(blockStoreDir)
+  ctx, cancel := context.WithCancel(context.Background())
+  defer cancel()
   // Create and persist the genesis
   gen, err := createGenesis()
   if err != nil {
     t.Fatal(err)
   }
-  // Create the blockchain state
+  // Create the state from the genesis
   state := chain.NewState(gen)
-  // Retrieve the initial owner account and balance
+  // Get the initial owner account and its balance from the genesis
   ownerAcc, ownerBal := genesisAccount(gen)
   // Set up the gRPC server and client
   conn := grpcClientConn(t, func(grpcSrv *grpc.Server) {
     acc := rpc.NewAccountSrv(keyStoreDir, state)
     rpc.RegisterAccountServer(grpcSrv, acc)
   })
-  ctx := context.Background()
   // Create the gRPC account client
   cln := rpc.NewAccountClient(conn)
-  t.Run("balance exists", func(t *testing.T) {
-    // Call the AccountBalance method
+  t.Run("existing balance", func(t *testing.T) {
+    // Call the AccountBalance method to get the balance of an existing account
     req := &rpc.AccountBalanceReq{Address: string(ownerAcc)}
     res, err := cln.AccountBalance(ctx, req)
     if err != nil {
       t.Fatal(err)
     }
+    // Verify that the correct balance is returned
     got, exp := res.Balance, ownerBal
     if got != exp {
       t.Errorf("invalid balance: expected %v, got %v", exp, got)
     }
   })
-  t.Run("balance does not exist", func(t *testing.T) {
-    // Call the AccountBalance method
+  t.Run("non-existing balance", func(t *testing.T) {
+    // Call the AccountBalance method to get the balance of a non-existing
+    // account
     req := &rpc.AccountBalanceReq{Address: "non-existing"}
     _, err := cln.AccountBalance(ctx, req)
+    // Verify that the correct error is returned
     if err == nil {
       t.Fatalf("non-existing account exists: expected error, got none")
     }
