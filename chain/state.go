@@ -93,7 +93,7 @@ func (s *State) String() string {
   defer s.mtx.RUnlock()
   var bld strings.Builder
   bld.WriteString("* Balances and nonces\n")
-  format := "acc %.7s:                    %8d %8d\n"
+  format := "acc %-7.7s:                    %8d %8d\n"
   for acc, bal := range s.balances {
     nonce := s.nonces[acc]
     bld.WriteString(fmt.Sprintf(format, acc, bal, nonce))

@@ -7,11 +7,30 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	"github.com/volodymyrprokopyuk/go-blockchain/node/rpc"
 	grpc "google.golang.org/grpc"
 )
+
+func createTxs(acc chain.Account, values []uint64, pending *chain.State) error {
+  for _, value := range values {
+    tx := chain.NewTx(
+      acc.Address(), chain.Address("to"), value,
+      pending.Nonce(acc.Address()) + 1,
+    )
+    stx, err := acc.SignTx(tx)
+    if err != nil {
+      return err
+    }
+    err = pending.ApplyTx(stx)
+    if err != nil {
+      return err
+    }
+  }
+  return nil
+}
 
 func createBlocks(gen chain.SigGenesis, state *chain.State) error {
   path := filepath.Join(keyStoreDir, string(gen.Authority))
@@ -184,5 +203,84 @@ func TestBlockSync(t *testing.T) {
       t.Fatalf("invalid parent hash: \n%v", blk)
     }
     lastBlock = blk
+  }
+}
+
+func TestBlockReceive(t *testing.T) {
+  defer os.RemoveAll(keyStoreDir)
+  defer os.RemoveAll(blockStoreDir)
+  ctx, cancel := context.WithCancel(context.Background())
+  defer cancel()
+  // Create and persist the genesis
+  gen, err := createGenesis()
+  if err != nil {
+    t.Fatal(err)
+  }
+  // Create the state from the genesis
+  state := chain.NewState(gen)
+  // Get the initial owner account and its balance from the genesis
+  ownerAcc, ownerBal := genesisAccount(gen)
+  // Re-create the initial owner account from the genesis
+  path := filepath.Join(keyStoreDir, string(ownerAcc))
+  acc, err := chain.ReadAccount(path, []byte(ownerPass))
+  if err != nil {
+    t.Fatal(err)
+  }
+  // Re-create the authority account from the genesis to sign blocks
+  path = filepath.Join(keyStoreDir, string(gen.Authority))
+  auth, err := chain.ReadAccount(path, []byte(authPass))
+  if err != nil {
+    t.Fatal(err)
+  }
+  // Create several transactions on the pending state
+  err = createTxs(acc, []uint64{12, 34}, state.Pending)
+  if err != nil {
+    t.Fatal(err)
+  }
+  // Create a new block on the cloned state
+  clone := state.Clone()
+  blk, err := clone.CreateBlock(auth)
+  if err != nil {
+    t.Fatal(err)
+  }
+  // Set up the gRPC server and gRPC client
+  conn := grpcClientConn(t, func(grpcSrv *grpc.Server) {
+    blk := rpc.NewBlockSrv(blockStoreDir, nil, state, nil)
+    rpc.RegisterBlockServer(grpcSrv, blk)
+  })
+  // Create the gRPC block client
+  cln := rpc.NewBlockClient(conn)
+  // Call the BlockReceive method go get the gRPC client stream to relay
+  // validated blocks
+  stream, err := cln.BlockReceive(ctx)
+  if err != nil {
+    t.Fatal(err)
+  }
+  defer stream.CloseAndRecv()
+  // Start relaying validated blocks to the gRPC client stream
+  for _, blk := range []chain.SigBlock{blk} {
+    // Encode the validated block
+    jblk, err := json.Marshal(blk)
+    if err != nil {
+      t.Fatal(err)
+    }
+    // Send the encoded block over the gRPC client stream
+    req := &rpc.BlockReceiveReq{Block: jblk}
+    err = stream.Send(req)
+    if err != nil {
+      t.Fatal(err)
+    }
+    // Wait for the relayed block to be received and processed
+    time.Sleep(50 * time.Millisecond)
+  }
+  // Verify that the balance of the initial owner account on the confirmed state
+  // after receiving the relayed block is correct
+  got, exist := state.Balance(acc.Address())
+  if !exist {
+    t.Errorf("balance does not exist %v", acc.Address())
+  }
+  exp := ownerBal - 12 - 34
+  if got != exp {
+    t.Errorf("invalid balance: expected %v, got %v", exp, got)
   }
 }

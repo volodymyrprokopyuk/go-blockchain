@@ -72,14 +72,247 @@ func NewBlockProposer(
 }
   #+END_SRC
 
-*** The propose blocks algorithm
+*** The block proposer algorithm
 
-*** The message relay mechanism
+- Block proposer algorithm :: The block proposer algorithm combines the node
+  graceful shutdown algorithm with the periodic block creation, signing, and
+  proposal. The block proposer algorithm in this blockchain is only performed on
+  the authority node that is also the bootstrap node. The block proposal happens
+  periodically with a random delay to introduce some randomness to the moments
+  of block proposal. The random delay in the block proposal is parameterized by
+  the max period ensuring that the next block proposal happens in between the
+  time frame of [1/2, 3/2] of the max period. The block proposal algorithm
+  resets the block proposal timer with the random delay for the next block
+  proposal. Then the new block with all pending transactions is created from the
+  cloned state. The non-empty new block is than applied to the cloned state and,
+  if successful, the block is proposed through the block relay mechanism on the
+  peer-to-peer network for other validators to validate. On any error during the
+  block creation or the block application the failed block is not proposed to
+  the peer-to-peer network and the current block proposal cycle finishes without
+  proposing a block. The block proposer algorithm
+  - Schedule a timer with a random delay parameterized by the max period within
+    the timeframe of [1/2, 3/2] of the max period for the next block proposal
+  - Combine the node shared context cancellation channel with the random block
+    proposal timer channel
+    - When the node shared context cancellation happens, stop the block proposal
+      timer and return
+    - When the random block proposal timer expeires, reset the block proposal
+      timer with the next random block proposal moment, create a new block on
+      the cloned state, apply the block on the cloned state, if successful,
+      relay the proposed block to the peer-to-peer network
+  #+BEGIN_SRC go
+func randPeriod(maxPeriod time.Duration) time.Duration {
+  minPeriod := maxPeriod / 2
+  randSpan, _ := rand.Int(rand.Reader, big.NewInt(int64(maxPeriod)))
+  return minPeriod + time.Duration(randSpan.Int64())
+}
+
+func (p *BlockProposer) ProposeBlocks(maxPeriod time.Duration) {
+  defer p.wg.Done()
+  randPropose := time.NewTimer(randPeriod(maxPeriod))
+  for {
+    select {
+    case <- p.ctx.Done():
+      randPropose.Stop()
+      return
+    case <- randPropose.C:
+      randPropose.Reset(randPeriod(maxPeriod))
+      clone := p.state.Clone()
+      blk, err := clone.CreateBlock(p.authority)
+      if err != nil {
+        fmt.Println(err)
+        continue
+      }
+      if len(blk.Txs) == 0 {
+        continue
+      }
+      clone = p.state.Clone()
+      err = clone.ApplyBlock(blk)
+      if err != nil {
+        fmt.Println(err)
+        continue
+      }
+      if p.blkRelayer != nil {
+        p.blkRelayer.RelayBlock(blk)
+      }
+      fmt.Printf("==> Block propose\n%v", blk)
+    }
+  }
+}
+  #+END_SRC
+
+*** The block relay mechanism
+
+- Block relay mechanism :: The block relay mechanism propagates proposed blocks
+  through the peer-to-peer network to all validators including the authority
+  node that creates and proposes blocks using the self relay function of the
+  message relay mechanism. The block relay mechanism does not relay received
+  blocks do not pass the block validation. This happens when an already applied
+  block is relayed again to the validator. This design prevents propagation of
+  duplicate blocks. The block relay mechanism reuses the message relay
+  infrastructure that is also used for the transaction relay. Specifically, the
+  message relay algorithm is reused. The message relay algorithm is
+  parameterized with the signed block type and the block-specific gRPC relay
+  function to adapt to the block relay use case. The block relay mechanism also
+  uses the self relay function of the message relay infrastructure. The
+  authority node relays proposed blocks not only to the list of known peers, but
+  also to the authority node itself for block validation and block confirmation
+  using the self relay function. This design clearly separates the block
+  proposal function from the block validation and block confirmation functions
+  on the authority node reusing the same block validation and confirmation
+  mechanisms used by other validators
+- gRPC client streaming for block relay :: The gRPC client streaming relays
+  blocks from the outbound block relay channel to the gRPC client
+  stream of blocks. The gRPC client streaming is message type specific and
+  is parameterized in the message relay type with the gRPC relay generic
+  function. The gRPC relay generic function accepts the node shared context
+  hierarchy, the gRPC client connection, and the outbound block relay
+  channel. The gRPC client streaming creates the message-specific gRPC clients
+  and establishes the gRPC client stream. The gRPC client streaming combines the
+  node shared context cancellation channel for graceful shutdown with the
+  outbound block relay channel for streaming blocks to the peer.
+  When a new message is sent to the outbound block relay channel, the
+  message is encoded and sent over the gRPC client stream to the peer. The gRPC
+  client streaming
+  - Create the message-specific gRPC client
+  - Establish the gRPC client stream by calling the gRPC =BlockReceive= method
+  - Combine the node shared context hierarchy channel with the outbound
+    block relay channel
+    - When the node shared context hierarchy is canceled, close the gRPC client
+      connection and stop the block relay for the peer
+    - When a new block is sent to the outbound block relay channel,
+      forward the block to the established gRPC client stream
+  #+BEGIN_SRC go
+type GRPCMsgRelay[Msg any] func(
+  ctx context.Context, conn *grpc.ClientConn, chRelay chan Msg,
+) error
+
+var GRPCBlockRelay GRPCMsgRelay[chain.SigBlock] = func(
+  ctx context.Context, conn *grpc.ClientConn, chRelay chan chain.SigBlock,
+) error {
+  cln := rpc.NewBlockClient(conn)
+  stream, err := cln.BlockReceive(ctx)
+  if err != nil {
+    return err
+  }
+  defer stream.CloseAndRecv()
+  for {
+    select {
+    case <- ctx.Done():
+      return nil
+    case blk, open := <- chRelay:
+      if !open {
+        return nil
+      }
+      jblk, err := json.Marshal(blk)
+      if err != nil {
+        fmt.Println(err)
+        continue
+      }
+      req := &rpc.BlockReceiveReq{Block: jblk}
+      err = stream.Send(req)
+      if err != nil {
+        fmt.Println(err)
+        continue
+      }
+    }
+  }
+}
+  #+END_SRC
 
 *** gRPC =BlockReceive= method
+
+The gRPC =Block= service provides the =BlockReceive= method to receive blocks
+relayed from the peer-to-peer network of the blockchain. The block relay happens
+from the =ProposeBlocks= method of the block proposer and from the gRPC
+=BlockReceive= method to further relay validated blocks to other peers. The
+interface of the service
+#+BEGIN_SRC protobuf
+message BlockReceiveReq {
+  bytes Block = 1;
+}
+
+message BlockReceiveRes { }
+
+service Block {
+  rpc BlockReceive(stream BlockReceiveReq) returns (BlockReceiveRes);
+}
+#+END_SRC
+
+The implementation of the =BlockReceive= method
+- For each block received from the gRPC client stream
+  - Decode the block
+  - Apply the decoded block to the cloned state, if successful,
+  - Apply the cloned state to the confirmed state
+  - Persist the block to the local block store
+  - Relay the confirmed block to the list of known peers
+  - Publish the confirmed blocks with all confirmed transactions to the node
+    event stream
+#+BEGIN_SRC go
+func (s *BlockSrv) BlockReceive(
+  stream grpc.ClientStreamingServer[BlockReceiveReq, BlockReceiveRes],
+) error {
+  for {
+    req, err := stream.Recv()
+    if err == io.EOF {
+      res := &BlockReceiveRes{}
+      return stream.SendAndClose(res)
+    }
+    if err != nil {
+      return err
+    }
+    var blk chain.SigBlock
+    err = json.Unmarshal(req.Block, &blk)
+    if err != nil {
+      fmt.Println(err)
+      continue
+    }
+    fmt.Printf("<== Block receive\n%v", blk)
+    err = s.blkApplier.ApplyBlockToState(blk)
+    if err != nil {
+      fmt.Print(err)
+      continue
+    }
+    err = blk.Write(s.blockStoreDir)
+    if err != nil {
+      fmt.Println(err)
+      continue
+    }
+    if s.blkRelayer != nil {
+      s.blkRelayer.RelayBlock(blk)
+    }
+    if s.eventPub != nil {
+      s.publishBlockAndTxs(blk)
+    }
+  }
+}
+#+END_SRC
 
 ** Testing and usage
 
 *** Testing gRPC =BlockReceive= method
 
-*** Testing the block proposal and message relay
+The =TestBlockReceive= testing process
+- Create and persist the genesis
+- Create the state from the genesis
+- Get the initial owner account and its balance from the genesis
+- Re-create the initial owner account from the genesis
+- Re-create the authority account from the genesis to sign blocks
+- Create several transactions on the pending state
+- Create a new block on the cloned state
+- Set up the gRPC server and gRPC client
+- Create the gRPC block client
+- Call the =BlockReceive= method go get the gRPC client stream to relay
+  validated blocks
+- Start relaying validated blocks to the gRPC client stream. For the created
+  block
+  - Encode the validated block
+  - Send the encoded block over the gRPC client stream
+  - Wait for the relayed block to be received and processed
+- Verify that the balance of the initial owner account on the confirmed state
+  after receiving the relayed block is correct
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run BlockReceive
+#+END_SRC
+
+*** Testing the block proposer and the message relay

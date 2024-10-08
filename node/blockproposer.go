@@ -60,10 +60,10 @@ func (p *BlockProposer) ProposeBlocks(maxPeriod time.Duration) {
         fmt.Println(err)
         continue
       }
-      if p.blkRelayer != nil {
-        p.blkRelayer.RelayBlock(blk)
-      }
-      fmt.Printf("==> Block proposed: %v", blk)
+      // if p.blkRelayer != nil {
+      //   p.blkRelayer.RelayBlock(blk)
+      // }
+      fmt.Printf("==> Block propose\n%v", blk)
     }
   }
 }

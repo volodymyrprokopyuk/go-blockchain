@@ -20,8 +20,8 @@ end
 set own 1dc67739c409b169d8f981525366355694c7de9e24188d1814a7e2159857a878
 set ben 0b283b314c12c66ce7ad65da7d5ab3008d28e25a988308721f010e5a04f23247
 
-# txSignAndSend $boot $own $ben 2 $ownerpass
-# txSignAndSend $boot $ben $own 1 $ownerpass
+txSignAndSend $boot $own $ben 2 $ownerpass
+txSignAndSend $boot $ben $own 1 $ownerpass
 
 # ./bcn account balance --node $boot --account $own
 # ./bcn account balance --node $boot --account $ben

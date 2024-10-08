@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -91,19 +92,19 @@ func (n *Node) Start() error {
   go n.peerDisc.DiscoverPeers(5 * time.Second)
   n.wg.Add(1)
   go n.txRelay.RelayMsgs(5 * time.Second)
-  // if n.cfg.Bootstrap {
-  //   path := filepath.Join(n.cfg.KeyStoreDir, string(n.state.Authority()))
-  //   auth, err := chain.ReadAccount(path, []byte(n.cfg.AuthPass))
-  //   if err != nil {
-  //     return err
-  //   }
-  //   n.blockProp.authority = auth
-  //   n.blockProp.state = n.state
-  //   n.wg.Add(1)
-  //   go n.blockProp.proposeBlocks(10 * time.Second)
-  // }
-  // n.wg.Add(1)
-  // go n.blkRelay.relayMsgs()
+  if n.cfg.Bootstrap {
+    path := filepath.Join(n.cfg.KeyStoreDir, string(n.state.Authority()))
+    auth, err := chain.ReadAccount(path, []byte(n.cfg.AuthPass))
+    if err != nil {
+      return err
+    }
+    n.blockProp.authority = auth
+    n.blockProp.state = n.state
+    n.wg.Add(1)
+    go n.blockProp.ProposeBlocks(10 * time.Second)
+  }
+  n.wg.Add(1)
+  go n.blkRelay.RelayMsgs(5 * time.Second)
   select {
   case <- n.ctx.Done():
   case err = <- n.chErr:

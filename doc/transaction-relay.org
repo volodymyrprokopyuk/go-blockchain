@@ -322,26 +322,27 @@ func (r *MsgRelay[Msg, Relay]) peerRelay(peer string) chan Msg {
 }
   #+END_SRC
 
-- gRPC client streaming :: The gRPC client streaming relays messages from the
-  outbound message relay channel to the gRPC client stream of messages. The gRPC
-  client streaming is message type specific and is parameterized in the message
-  relay type with the gRPC relay generic function. The gRPC relay generic
-  function accepts the node shared context hierarchy, the gRPC client connection
-  and the outbound message relay channel. The gRPC client streaming creates the
-  message-specific gRPC clients and establishes the gRPC client stream. The gRPC
-  client streaming combines the node shared context cancellation channel for
-  graceful shutdown with the outbound message relay channel for streaming
-  messages to the peer. When a new message is sent to the outbound message relay
-  channel, the message is encoded and sent over the gRPC client stream to the
-  peer. The gRPC client streaming
+- gRPC client streaming for transaction relay :: The gRPC client streaming
+  relays transactions from the outbound transaction relay channel to the gRPC
+  client stream of transactions. The gRPC client streaming is message type
+  specific and is parameterized in the message relay type with the gRPC relay
+  generic function. The gRPC relay generic function accepts the node shared
+  context hierarchy, the gRPC client connection, and the outbound transaction
+  relay channel. The gRPC client streaming creates the message-specific gRPC
+  clients and establishes the gRPC client stream. The gRPC client streaming
+  combines the node shared context cancellation channel for graceful shutdown
+  with the outbound transaction relay channel for streaming transactions to the
+  peer. When a new message is sent to the outbound transaction relay channel,
+  the message is encoded and sent over the gRPC client stream to the peer. The
+  gRPC client streaming
   - Create the message-specific gRPC client
   - Establish the gRPC client stream by calling the gRPC =TxReceive= method
-  - Combine the node shared context hierarchy channel with the outbound message
-    relay channel
+  - Combine the node shared context hierarchy channel with the outbound
+    transaction relay channel
     - When the node shared context hierarchy is canceled, close the gRPC client
-      connection and stop the message relay for the peer
-    - When a new message is sent to the outbound message relay channel, forward
-      the message to the established gRPC client stream
+      connection and stop the transaction relay for the peer
+    - When a new transaction is sent to the outbound transaction relay channel,
+      forward the transaction to the established gRPC client stream
   #+BEGIN_SRC go
 type GRPCMsgRelay[Msg any] func(
   ctx context.Context, conn *grpc.ClientConn, chRelay chan Msg,

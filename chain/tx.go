@@ -68,7 +68,8 @@ func (t SigTx) Hash() Hash {
 
 func (t SigTx) String() string {
   return fmt.Sprintf(
-    "tx  %.7s: %.7s -> %.7s %8d %8d", t.Hash(), t.From, t.To, t.Value, t.Nonce,
+    "tx  %.7s: %-7.7s -> %-7.7s %8d %8d",
+    t.Hash(), t.From, t.To, t.Value, t.Nonce,
   )
 }
 

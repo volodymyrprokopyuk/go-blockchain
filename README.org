@@ -22,17 +22,17 @@ implementation* to *practical testing and usage*
 
 *** Blockchain state
 
-0. Getting started
-1. [[/doc/account.org][Account]]
-2. [[/doc/transaction.org][Transaction]]
-3. [[/doc/block.org][Block]]
-4. [[/doc/state.org][State]]
+1. Getting started
+2. [[/doc/account.org][Account]]
+3. [[/doc/transaction.org][Transaction]]
+4. [[/doc/block.org][Block]]
+5. [[/doc/state.org][State]]
 
 *** Blockchain node
 
-5. [@5] [[/doc/state-sync.org][State sync]]
-6. [[/doc/peer-discovery.org][Peer discovery]]
-7. [[/doc/transaction-relay.org][Transaction relay]]
-8. [[/doc/block-proposer.org][Block proposer]]
-9. Event stream
-10. Blockchain node
+6. [@6] [[/doc/state-sync.org][State sync]]
+7. [[/doc/peer-discovery.org][Peer discovery]]
+8. [[/doc/transaction-relay.org][Transaction relay]]
+9. [[/doc/block-proposer.org][Block proposer]]
+10. Event stream
+11. Blockchain node

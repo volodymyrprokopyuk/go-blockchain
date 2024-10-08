@@ -75,7 +75,7 @@ func (s *BlockSrv) BlockSync(
   return nil
 }
 
-func (s *BlockSrv) publishBlock(blk chain.SigBlock) {
+func (s *BlockSrv) publishBlockAndTxs(blk chain.SigBlock) {
   jblk, _ := json.Marshal(blk)
   event := chain.NewEvent(chain.EvBlock, "validated", jblk)
   s.eventPub.PublishEvent(event)
@@ -104,7 +104,7 @@ func (s *BlockSrv) BlockReceive(
       fmt.Println(err)
       continue
     }
-    fmt.Printf("* Block received\n%v", blk)
+    fmt.Printf("<== Block receive\n%v", blk)
     err = s.blkApplier.ApplyBlockToState(blk)
     if err != nil {
       fmt.Print(err)
@@ -119,7 +119,7 @@ func (s *BlockSrv) BlockReceive(
       s.blkRelayer.RelayBlock(blk)
     }
     if s.eventPub != nil {
-      s.publishBlock(blk)
+      s.publishBlockAndTxs(blk)
     }
   }
 }
