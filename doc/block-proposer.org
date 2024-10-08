@@ -259,7 +259,7 @@ func (s *BlockSrv) BlockReceive(
       return stream.SendAndClose(res)
     }
     if err != nil {
-      return err
+      return status.Errorf(codes.Internal, err.Error())
     }
     var blk chain.SigBlock
     err = json.Unmarshal(req.Block, &blk)
@@ -318,7 +318,27 @@ go test -v -cover -coverprofile=coverage.cov ./... -run BlockReceive
 *** Testing the block proposer and the message relay
 
 The =TestBlockProposer= testing process
--
+- Set up the bootstrap node
+  - Create the peer discovery without starting for the bootstrap node
+  - Initialize the state on the bootstrap node by creating the genesis
+  - Create and start the block relay for the bootstrap node
+  - Re-create the authority account from the genesis to sign blocks
+  - Create and start the block proposer on the bootstrap node
+  - Start the gRPC server on the bootstrap node
+- Set up the new node
+  - Create and start the peer discovery for the new node
+  - Wait for the peer discovery to discover peers
+  - Synchronize the state on the new node by fetching the genesis and confirmed
+    blocks from the bootstrap node
+  - Start the gRPC server on the new node
+  - Wait for the gRPC server of the new node to start
+- Get the initial owner account and its balance from the genesis
+- Re-create the initial owner account from the genesis
+- Sign and send several signed transactions to the bootstrap node
+- Wait for the block proposal to propose block and block relay to propagate the
+  proposed block
+- Verify that the initial account balance on the confirmed states of the new
+  node and the bootstrap node are equal
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run BlockProposer
 #+END_SRC

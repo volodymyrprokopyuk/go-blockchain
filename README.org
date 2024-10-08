@@ -1,8 +1,8 @@
 * Go blockchain
 
-Node: if you find this guide useful, please, share it with your friends, so they
-take the same advantage as you do by learning the blockchain concepts and how to
-build a blockchain in Go from scratch.
+Note: if you find this guide useful, please, *share the guide with your
+friends*, so they take the same advantage as you do by learning the fundamental
+blockchain concepts and practicing how to build a blockchain in Go from scratch
 
 ** Abstract
 
@@ -38,5 +38,6 @@ implementation* to *practical testing and usage*
 7. [[/doc/peer-discovery.org][Peer discovery]]
 8. [[/doc/transaction-relay.org][Transaction relay]]
 9. [[/doc/block-proposer.org][Block proposer]]
-10. Event stream
+10. [[/doc/event-stream.org][Event stream]]
 11. Blockchain node
+12. Blockchain search

@@ -416,7 +416,7 @@ func (s *TxSrv) TxReceive(
       return stream.SendAndClose(res)
     }
     if err != nil {
-      return err
+      return status.Errorf(codes.Internal, err.Error())
     }
     var tx chain.SigTx
     err = json.Unmarshal(req.Tx, &tx)

@@ -42,8 +42,7 @@ var GRPCTxRelay GRPCMsgRelay[chain.SigTx] = func(
       req := &rpc.TxReceiveReq{Tx: jtx}
       err = stream.Send(req)
       if err != nil {
-        fmt.Println(err)
-        continue
+        return err
       }
     }
   }
@@ -74,8 +73,7 @@ var GRPCBlockRelay GRPCMsgRelay[chain.SigBlock] = func(
       req := &rpc.BlockReceiveReq{Block: jblk}
       err = stream.Send(req)
       if err != nil {
-        fmt.Println(err)
-        continue
+        return err
       }
     }
   }

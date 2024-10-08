@@ -39,7 +39,7 @@ type Node struct {
   wg *sync.WaitGroup
   chErr chan error
   // events
-  evStream *eventStream
+  evStream *EventStream
   // components
   state *chain.State
   stateSync *StateSync
@@ -62,7 +62,7 @@ func NewNode(cfg NodeCfg) *Node {
   nd.wg = new(sync.WaitGroup)
   nd.chErr = make(chan error, 1)
   // events
-  nd.evStream = newEventStream(nd.ctx, nd.wg, 100)
+  nd.evStream = NewEventStream(nd.ctx, nd.wg, 100)
   // components
   peerDiscCfg := PeerDiscoveryCfg{
     NodeAddr: nd.cfg.NodeAddr,

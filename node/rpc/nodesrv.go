@@ -9,6 +9,8 @@ import (
 
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type PeerDiscoverer interface {
@@ -67,7 +69,7 @@ func (s *NodeSrv) StreamSubscribe(
         res := &StreamSubscribeRes{Event: jev}
         err = stream.Send(res)
         if err != nil {
-          return err
+          return status.Errorf(codes.Internal, err.Error())
         }
       }
     }

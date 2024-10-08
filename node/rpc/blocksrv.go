@@ -96,7 +96,7 @@ func (s *BlockSrv) BlockReceive(
       return stream.SendAndClose(res)
     }
     if err != nil {
-      return err
+      return status.Errorf(codes.Internal, err.Error())
     }
     var blk chain.SigBlock
     err = json.Unmarshal(req.Block, &blk)
@@ -129,25 +129,25 @@ func (s *BlockSrv) BlockSearch(
 ) error {
   blocks, closeBlocks, err := chain.ReadBlocks(s.blockStoreDir)
   if err != nil {
-    return err
+    return status.Errorf(codes.NotFound, err.Error())
   }
   defer closeBlocks()
   prefix := strings.HasPrefix
   for err, blk := range blocks {
     if err != nil {
-      return err
+      return status.Errorf(codes.Internal, err.Error())
     }
     if req.Number != 0 && blk.Number == req.Number ||
       len(req.Hash) > 0 && prefix(blk.Hash().String(), req.Hash) ||
       len(req.Parent) > 0 && prefix(blk.Parent.String(), req.Parent) {
       jblk, err := json.Marshal(blk)
       if err != nil {
-        return err
+        return status.Errorf(codes.Internal, err.Error())
       }
       res := &BlockSearchRes{Block: jblk}
       err = stream.Send(res)
       if err != nil {
-        return err
+        return status.Errorf(codes.Internal, err.Error())
       }
       break
     }

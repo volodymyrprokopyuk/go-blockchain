@@ -90,7 +90,7 @@ func (s *TxSrv) TxReceive(
       return stream.SendAndClose(res)
     }
     if err != nil {
-      return err
+      return status.Errorf(codes.Internal, err.Error())
     }
     var tx chain.SigTx
     err = json.Unmarshal(req.Tx, &tx)
@@ -132,19 +132,19 @@ func (s *TxSrv) TxSearch(
 ) error {
   blocks, closeBlocks, err := chain.ReadBlocks(s.blockStoreDir)
   if err != nil {
-    return err
+    return status.Errorf(codes.NotFound, err.Error())
   }
   defer closeBlocks()
   prefix := strings.HasPrefix
   block: for err, blk := range blocks {
     if err != nil {
-      return err
+      return status.Errorf(codes.Internal, err.Error())
     }
     for _, tx := range blk.Txs {
       if len(req.Hash) > 0 && prefix(tx.Hash().String(), req.Hash) {
         err = sendTxSearchRes(blk, tx, stream)
         if err != nil {
-          return err
+          return status.Errorf(codes.Internal, err.Error())
         }
         break block
       }
@@ -154,7 +154,7 @@ func (s *TxSrv) TxSearch(
           (prefix(string(tx.From), req.From) || prefix(string(tx.To), req.To)) {
         err := sendTxSearchRes(blk, tx, stream)
         if err != nil {
-          return err
+          return status.Errorf(codes.Internal, err.Error())
         }
       }
     }

@@ -8,7 +8,7 @@ import (
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
 )
 
-type eventStream struct {
+type EventStream struct {
   ctx context.Context
   wg *sync.WaitGroup
   chEvent chan chain.Event
@@ -16,20 +16,20 @@ type eventStream struct {
   chStreams map[string]chan chain.Event
 }
 
-func newEventStream(
+func NewEventStream(
   ctx context.Context, wg *sync.WaitGroup, cap int,
-) *eventStream {
-  return &eventStream{
+) *EventStream {
+  return &EventStream{
     ctx: ctx, wg: wg, chEvent: make(chan chain.Event, cap),
     chStreams: make(map[string]chan chain.Event),
   }
 }
 
-func (s *eventStream) PublishEvent(event chain.Event) {
+func (s *EventStream) PublishEvent(event chain.Event) {
   s.chEvent <- event
 }
 
-func (s *eventStream) AddSubscriber(sub string) chan chain.Event {
+func (s *EventStream) AddSubscriber(sub string) chan chain.Event {
   fmt.Printf("* Stream sub: %v\n", sub)
   s.mtx.Lock()
   defer s.mtx.Unlock()
@@ -38,7 +38,7 @@ func (s *eventStream) AddSubscriber(sub string) chan chain.Event {
   return chStream
 }
 
-func (s *eventStream) RemoveSubscriber(sub string) {
+func (s *EventStream) RemoveSubscriber(sub string) {
   fmt.Printf("* Stream sub remove: %v\n", sub)
   s.mtx.Lock()
   defer s.mtx.Unlock()
@@ -49,7 +49,7 @@ func (s *eventStream) RemoveSubscriber(sub string) {
   }
 }
 
-func (s *eventStream) streamEvents() {
+func (s *EventStream) StreamEvents() {
   defer s.wg.Done()
   for {
     select {
