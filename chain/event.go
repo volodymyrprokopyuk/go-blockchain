@@ -64,7 +64,7 @@ func (e Event) String() string {
     }
     return fmt.Sprintf("%v %v\n%v", e.Type, e.Action, blk)
   default:
-    return fmt.Sprintf("unsupported event type %v", e.Type)
+    return fmt.Sprintf("error: unsupported event type %v", e.Type)
   }
 }
 

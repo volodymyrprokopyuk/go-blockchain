@@ -79,8 +79,8 @@ func NewNode(cfg NodeCfg) *Node {
 
 func (n *Node) Start() error {
   defer n.ctxCancel()
-  // n.wg.Add(1)
-  // go n.evStream.streamEvents()
+  n.wg.Add(1)
+  go n.evStream.StreamEvents()
   state, err := n.stateSync.SyncState()
   if err != nil {
     return err

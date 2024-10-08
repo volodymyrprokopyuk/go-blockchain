@@ -2,6 +2,75 @@
 
 ** Concepts and purpose
 
+*** Streaming events from a node to subscribed clients
+
+- Node event stream :: The node event stream publishes important domain events
+  about the state transitions of the blockchain to external clients subscribed
+  to the node event stream. The node event stream is the mechanism to notify
+  external applications about state changes on the blockchain. State changes on
+  the blockchain include confirmation of a new block, confirmation of every
+  transaction in a confirmed block. Every node on the blockchain publishes
+  important domain events to the node event stream. The node event stream is
+  multiplexed over the subscribed clients, so every subscribed client gets a
+  replica of either all events published to the node event stream or a subset of
+  events in accordance with the requested event types e.g. only confirmed
+  blocks, or only confirmed transactions. When a client subscribes to the node
+  event stream, the client specifies the types of events that the client is
+  interested in. At any time the client can stop consuming events from the node
+  event stream. In this case the node stops producing domain events on this
+  specific channel. The node event stream multiplexed over client subscriptions
+  decouples the node infrastructure from external applications, takes advantage
+  of the scalability and resilience of the publish-subscribe style of
+  communication, and isolates each subscribed clients in a dedicated execution
+  flow that does not impact other subscribed clients in face of failure on a
+  specific subscription
+
 ** Design and implementation
+
+*** Event type and event publisher interface
+
+- Event type :: The =Event= type represents a domain events that informs about a
+  state transition on a blockchain node in particular and on the blockchain
+  network in general. The event type carries information about the type of event
+  that specifies the event object e.g. a transaction, a block; the action taken
+  on the event object e.g. validated; and the encoded body of the object
+  providing further details about the object. The set of supported types of
+  events is defined by the =EventType= type. The currently supported events are
+  all known events, transactions, blocks
+  | ~Type EventType~ | Type of event of the object |
+  | ~Action string~  | Action taken on the object  |
+  | ~Body []byte~    | Encoded body of the object  |
+  #+BEGIN_SRC go
+type EventType uint64
+
+const (
+  EvAll EventType = 0
+  EvTx EventType = 1
+  EvBlock EventType = 2
+)
+
+type Event struct {
+  Type EventType `json:"type"`
+  Action string `json:"action"`
+  Body []byte `json:"body"`
+}
+
+func NewEvent(evType EventType, action string, body []byte) Event {
+  return Event{Type: evType, Action: action, Body: body}
+}
+  #+END_SRC
+
+- Event publisher interface :: The =EventPublisher= interface provides a uniform
+  access for any node component to publish different types of events through to
+  the node event stream. The event publisher interface decouples every node
+  component e.g. the block proposer from a concrete implementation of node event
+  stream infrastructure. This design allows independent evolution of the node
+  event stream infrastructure without impacting node components that publish
+  domain events
+  #+BEGIN_SRC go
+type EventPublisher interface {
+  PublishEvent(event Event)
+}
+  #+END_SRC
 
 ** Testing and usage

@@ -143,7 +143,7 @@ func nodeSubscribeCmd(ctx context.Context) *cobra.Command {
         if err != nil {
           return err
         }
-        fmt.Printf("%v\n", event)
+        fmt.Printf("<~> %v\n", event)
       }
       return nil
     },

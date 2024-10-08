@@ -30,7 +30,7 @@ func (s *EventStream) PublishEvent(event chain.Event) {
 }
 
 func (s *EventStream) AddSubscriber(sub string) chan chain.Event {
-  fmt.Printf("* Stream sub: %v\n", sub)
+  fmt.Printf("<~> Stream: %v\n", sub)
   s.mtx.Lock()
   defer s.mtx.Unlock()
   chStream := make(chan chain.Event)
@@ -39,7 +39,7 @@ func (s *EventStream) AddSubscriber(sub string) chan chain.Event {
 }
 
 func (s *EventStream) RemoveSubscriber(sub string) {
-  fmt.Printf("* Stream sub remove: %v\n", sub)
+  fmt.Printf("<~> Unsubscribe: %v\n", sub)
   s.mtx.Lock()
   defer s.mtx.Unlock()
   chStream, exist := s.chStreams[sub]
