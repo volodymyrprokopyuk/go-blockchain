@@ -98,8 +98,8 @@ func (n *Node) Start() error {
     if err != nil {
       return err
     }
-    n.blockProp.authority = auth
-    n.blockProp.state = n.state
+    n.blockProp.SetAuthority(auth)
+    n.blockProp.SetState(n.state)
     n.wg.Add(1)
     go n.blockProp.ProposeBlocks(10 * time.Second)
   }

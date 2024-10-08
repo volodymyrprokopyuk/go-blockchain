@@ -29,6 +29,14 @@ func NewBlockProposer(
   return &BlockProposer{ctx: ctx, wg: wg, blkRelayer: blkRelayer}
 }
 
+func (p *BlockProposer) SetAuthority(auth chain.Account) {
+  p.authority = auth
+}
+
+func (p *BlockProposer) SetState(state *chain.State) {
+  p.state = state
+}
+
 func randPeriod(maxPeriod time.Duration) time.Duration {
   minPeriod := maxPeriod / 2
   randSpan, _ := rand.Int(rand.Reader, big.NewInt(int64(maxPeriod)))
@@ -60,9 +68,9 @@ func (p *BlockProposer) ProposeBlocks(maxPeriod time.Duration) {
         fmt.Println(err)
         continue
       }
-      // if p.blkRelayer != nil {
-      //   p.blkRelayer.RelayBlock(blk)
-      // }
+      if p.blkRelayer != nil {
+        p.blkRelayer.RelayBlock(blk)
+      }
       fmt.Printf("==> Block propose\n%v", blk)
     }
   }

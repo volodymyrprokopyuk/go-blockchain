@@ -316,3 +316,9 @@ go test -v -cover -coverprofile=coverage.cov ./... -run BlockReceive
 #+END_SRC
 
 *** Testing the block proposer and the message relay
+
+The =TestBlockProposer= testing process
+-
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run BlockProposer
+#+END_SRC
