@@ -30,22 +30,22 @@ func (s *EventStream) PublishEvent(event chain.Event) {
 }
 
 func (s *EventStream) AddSubscriber(sub string) chan chain.Event {
-  fmt.Printf("<~> Stream: %v\n", sub)
   s.mtx.Lock()
   defer s.mtx.Unlock()
   chStream := make(chan chain.Event)
   s.chStreams[sub] = chStream
+  fmt.Printf("<~> Stream: %v\n", sub)
   return chStream
 }
 
 func (s *EventStream) RemoveSubscriber(sub string) {
-  fmt.Printf("<~> Unsubscribe: %v\n", sub)
   s.mtx.Lock()
   defer s.mtx.Unlock()
   chStream, exist := s.chStreams[sub]
   if exist {
     close(chStream)
     delete(s.chStreams, sub)
+    fmt.Printf("<~> Unsubscribe: %v\n", sub)
   }
 }
 
@@ -54,6 +54,9 @@ func (s *EventStream) StreamEvents() {
   for {
     select {
     case <- s.ctx.Done():
+      for sub := range s.chStreams {
+        s.RemoveSubscriber(sub)
+      }
       return
     case event := <- s.chEvent:
       for _, chStream := range s.chStreams {
