@@ -318,4 +318,31 @@ go test -v -cover -coverprofile=coverage.cov ./... -run StreamSubscribe
 
 *** Testing the event stream
 
+The =TestEventStream= testing process
+- Set up the bootstrap node
+  - Create the peer discovery without starting for the bootstrap node
+  - Initialize the state on the bootstrap node by creating the genesis
+  - Create and start the block relay for the bootstrap node
+  - Re-create the authority account from the genesis to sign blocks
+  - Create and start the block proposer on the bootstrap node
+  - Create and start the event stream on the bootstrap node
+  - Start the gRPC server on the bootstrap node
+  - Wait for the gRPC server of the bootstrap node to start
+  - Get the initial owner account and its balance from the genesis
+  - Re-create the initial owner account from the genesis
+  - Sign and send several signed transactions to the bootstrap node
+- Set up the client that subscribes to the node event stream
+  - Set up a gRPC client connection with the bootstrap node
+  - Create the gRPC node client
+  - Call the =StreamSubscribe= method to subscribe to the node event stream and
+    establish the gRPC server stream of domain events
+  - Define the expected events to receive after a successful block proposal
+  - Start consuming events from the gRPC server stream of domain events. For
+    each received event
+    - Decode the received domain event
+    - Verify that the type and the action of the domain event are correct
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run EventStream
+#+END_SRC
+
 *** Using the =node subscribe= CLI command
