@@ -346,3 +346,45 @@ go test -v -cover -coverprofile=coverage.cov ./... -run EventStream
 #+END_SRC
 
 *** Using the =node subscribe= CLI command
+
+The gRPC =StreamSubscribe= method is exposed through the CLI. Subscribe a client
+to the node event stream and consume domain events
+- Start the bootstrap node
+  #+BEGIN_SRC fish
+set boot localhost:1122
+set authpass password
+./bcn node start --node $boot --bootstrap --authpass $authpass
+  #+END_SRC
+- Subscribe a client to the node event stream (in a new terminal)
+  - =--node= specifies the node address where the client subscribes
+  - =--events= specifies the event types of interest. Supported values are
+    =all=, =blk=, =tx=
+    #+BEGIN_SRC fish
+  ./bcn node subscribe --node $root --events blk,tx
+  # <~> blk validated
+  # blk       6: fac1c51 -> 202ac37
+  # tx  9596fbb: 1dc6773 -> 0b283b3        2        6
+  # tx  00b3fca: 0b283b3 -> 1dc6773        1        6
+  #
+  # <~> tx validated
+  # tx  9596fbb: 1dc6773 -> 0b283b3        2        6
+  # <~> tx validated
+  # tx  00b3fca: 0b283b3 -> 1dc6773        1        6
+    #+END_SRC
+- Define a shell function to create, sign, and send a transaction
+  #+BEGIN_SRC fish
+function txSignAndSend -a node from to value ownerpass
+  set tx (./bcn tx sign --node $node --from $from --to $to --value $value \
+    --ownerpass $ownerpass)
+  echo $tx
+  ./bcn tx send --node $node --sigtx $tx
+end
+  #+END_SRC
+- Create, sign, and send two valid transaction (in a new terminal)
+  #+BEGIN_SRC fish
+set acc1 1dc67739c409b169d8f981525366355694c7de9e24188d1814a7e2159857a878
+set acc2 0b283b314c12c66ce7ad65da7d5ab3008d28e25a988308721f010e5a04f23247
+set ownerpass password
+txSignAndSend $boot $acc1 $acc2 2 $ownerpass
+txSignAndSend $boot $acc2 $acc1 1 $ownerpass
+  #+END_SRC
