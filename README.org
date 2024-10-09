@@ -39,5 +39,5 @@ implementation* to *practical testing and usage*
 8. [[/doc/transaction-relay.org][Transaction relay]]
 9. [[/doc/block-proposer.org][Block proposer]]
 10. [[/doc/event-stream.org][Event stream]]
-11. Blockchain node
+11. [[/doc/blockchain-node.org][Blockchain node]]
 12. Blockchain search
