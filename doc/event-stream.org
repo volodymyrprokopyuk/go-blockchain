@@ -300,6 +300,22 @@ func (s *NodeSrv) StreamSubscribe(
 
 *** Testing gRPC =StreamSubscribe= method
 
+The =TestStreamSubscribe= testing process
+- Create and start the event stream on the node
+- Set up the gRPC server and client
+- Create the gRPC node client
+- Call the =StreamSubscribe= method to subscribe to the node event stream and
+  establish the gRPC server stream of domain events
+- Start publishing domain events to the node event stream through the event
+  publisher interface
+- Start consuming events from the gRPC server stream of domain events. For each
+  received domain event
+  - Decode the received domain event
+  - Verify that the type and the action of the domain event are correct
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run StreamSubscribe
+#+END_SRC
+
 *** Testing the event stream
 
 *** Using the =node subscribe= CLI command
