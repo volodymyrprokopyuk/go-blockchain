@@ -16,14 +16,14 @@ import (
 )
 
 type NodeCfg struct {
-  // addressing
+  // Addressing
   NodeAddr string
   Bootstrap bool
   SeedAddr string
-  // stores
+  // Stores
   KeyStoreDir string
   BlockStoreDir string
-  // genesis
+  // Genesis
   Chain string
   AuthPass string
   OwnerPass string
@@ -31,50 +31,49 @@ type NodeCfg struct {
 }
 
 type Node struct {
-  // configure
+  // Configuration
   cfg NodeCfg
-  // context
+  // Graceful shutdown
   ctx context.Context
   ctxCancel func()
   wg *sync.WaitGroup
   chErr chan error
-  // events
+  // Event stream
   evStream *EventStream
-  // components
+  // Blockchain state
   state *chain.State
   stateSync *StateSync
+  // gRPC server
   grpcSrv *grpc.Server
+  // Peer discovery
   peerDisc *PeerDiscovery
+  // Transaction relay
   txRelay *MsgRelay[chain.SigTx, GRPCMsgRelay[chain.SigTx]]
+  // Block proposer
   blockProp *BlockProposer
+  // Message relay
   blkRelay *MsgRelay[chain.SigBlock, GRPCMsgRelay[chain.SigBlock]]
 }
 
 func NewNode(cfg NodeCfg) *Node {
-  // configure
-  nd := &Node{cfg: cfg}
-  // context
   ctx, cancel := signal.NotifyContext(
     context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL,
   )
-  nd.ctx = ctx
-  nd.ctxCancel = cancel
-  nd.wg = new(sync.WaitGroup)
-  nd.chErr = make(chan error, 1)
-  // events
-  nd.evStream = NewEventStream(nd.ctx, nd.wg, 100)
-  // components
+  wg := new(sync.WaitGroup)
+  evStream := NewEventStream(ctx, wg, 100)
   peerDiscCfg := PeerDiscoveryCfg{
-    NodeAddr: nd.cfg.NodeAddr,
-    Bootstrap: nd.cfg.Bootstrap,
-    SeedAddr: nd.cfg.SeedAddr,
+    NodeAddr: cfg.NodeAddr, Bootstrap: cfg.Bootstrap, SeedAddr: cfg.SeedAddr,
   }
-  nd.peerDisc = NewPeerDiscovery(nd.ctx, nd.wg, peerDiscCfg)
-  nd.stateSync = NewStateSync(nd.ctx, nd.cfg, nd.peerDisc)
-  nd.txRelay = NewMsgRelay(nd.ctx, nd.wg, 100, GRPCTxRelay, false, nd.peerDisc)
-  nd.blkRelay = NewMsgRelay(nd.ctx, nd.wg, 10, GRPCBlockRelay, true, nd.peerDisc)
-  nd.blockProp = NewBlockProposer(nd.ctx, nd.wg, nd.blkRelay)
-  return nd
+  peerDisc := NewPeerDiscovery(ctx, wg, peerDiscCfg)
+  stateSync := NewStateSync(ctx, cfg, peerDisc)
+  txRelay := NewMsgRelay(ctx, wg, 100, GRPCTxRelay, false, peerDisc)
+  blkRelay := NewMsgRelay(ctx, wg, 10, GRPCBlockRelay, true, peerDisc)
+  blockProp := NewBlockProposer(ctx, wg, blkRelay)
+  return &Node{
+    cfg: cfg, ctx: ctx, ctxCancel: cancel, wg: wg, chErr: make(chan error, 1),
+    evStream: evStream, stateSync: stateSync, peerDisc: peerDisc,
+    txRelay: txRelay, blockProp: blockProp, blkRelay: blkRelay,
+  }
 }
 
 func (n *Node) Start() error {
