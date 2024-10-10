@@ -88,10 +88,31 @@
     exclusively through the gRPC services and methods. Every node provides a CLI
     for clients to interact with the node through the gRPC interface. The CLI
     can interact with both local and remote nodes in exactly the same way. All
-    inter-node communication also happens through the gRPC interface.
-    - gRPC client streaming
-    - gRPC server streaming
-    - gRPC request-response
+    inter-node communication happens through the gRPC interface. Communication
+    with clients and inter-node communication uses the gRPC request-response,
+    the gRPC client streaming and the gRPC server streaming
+    | gRPC service | gRPC method       | gRPC communication style |
+    |--------------+-------------------+--------------------------|
+    | =Account=    | =AccountCreate=   | gRPC request-response    |
+    | =Account=    | =AccountBalance=  | gRPC request-response    |
+    | =Tx=         | =TxSign=          | gRPC request-response    |
+    | =Tx=         | =TxSend=          | gRPC request-response    |
+    | =Tx=         | =TxReceive=       | gRPC client streaming    |
+    | =Tx=         | =TxSearch=        | gRPC server streaming    |
+    | =Block=      | =GenesisSync=     | gRPC request-response    |
+    | =Block=      | =BlockSync=       | gRPC server streaming    |
+    | =Block=      | =BlockReceive=    | gRPC client streaming    |
+    | =Block=      | =BlockSearch=     | gRPC server streaming    |
+    | =Node=       | =PeerDiscover=    | gRPC request-response    |
+    | =Node=       | =StreamSubscribe= | gRPC server streaming    |
+  - Node CLI :: The node CLI allows local and remote clients
+    | CLI command             | CLI options                    |
+    |-------------------------+--------------------------------|
+    | ~./bcn account create~  | - =--node= node address        |
+    |                         | - =--ownerpass= owner password |
+    | ~./bcn account balance~ | - =--node= node address        |
+    |                         | - =--account= account address  |
+  - Node graceful shutdown ::
 
 ** Design and implementation
 
