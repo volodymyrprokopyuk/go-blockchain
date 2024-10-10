@@ -103,16 +103,241 @@
   domain events that occur on the blockchain e.g. confirmed blocks, confirmed
   transactions
 
-*** The node gRPC server for clients and other nodes
+*** The node graceful shutdown mechanism
 
-- gRPC server :: All communication of clients with the blockchain node and all
-  communication between nodes in the peer-to-peer network happens exclusively
-  through the gRPC services and methods. Every node provides a CLI for clients
-  to interact with the node through the gRPC interface. The CLI can interact
-  with both local and remote nodes in exactly the same way. All inter-node
-  communication happens through the gRPC interface. Communication with clients
-  and inter-node communication uses the gRPC request-response, the gRPC client
-  streaming and the gRPC server streaming
+- Node graceful shutdown :: The node graceful shutdown mechanism provides a
+  reliable mechanism to notify graceful shutdown to all concurrent processes on
+  the blockchain node and wait for the graceful termination of concurrent node
+  processes before shutting down the node process. The node graceful shutdown
+  happens after the node process receives the =SIGINT=, the =SIGTERM=, or the
+  =SIGKILL= signal from the other process on the OS. The node graceful shutdown
+  mechanism contributes to clean shutdown of the blockchain node. The clean
+  shutdown of the node implies that after receiving the shutdown signal the node
+  stops accepting new connections on the gRPC interface, the node stops
+  accepting new requests on existing active gRPC connections, the node finishes
+  processing all requests that have been in progress when the shutdown signal
+  was received, the node correctly updates the confirmed and pending state, the
+  node finishes all pending operations on the local block store and closes the
+  local block store, the node stops communication with all connected peers and
+  closes all open connections with active peers. The node graceful shutdown
+  mechanism consists of the node shared context hierarchy that spreads all
+  concurrent node processes that have to be notified about the graceful
+  shutdown. When the node graceful shutdown signal is received, the node shared
+  context hierarchy is canceled. This notifies all concurrent node components
+  that the node graceful shutdown has started. The node graceful shutdown
+  mechanism consists of the shared wait group that spreads all concurrent node
+  processes that have to be notified about the graceful shutdown. When every
+  concurrent node process finishes the graceful shutdown, the process notifies
+  the node's main goroutine about the successful shutdown. The node's main
+  goroutine waits for all node concurrent processes to shutdown gracefully
+
+** Design and implementation
+
+*** Node type
+
+- Node type :: The =Node= type host all the concurrent node processes required
+  to discover peers; accept, validate, and relay transactions; propose,
+  validate, and relay blocks; apply validated blocks to the confirmed state,
+  append validated blocks to the local block store; stream domain events to
+  subscribed clients; and handle the node graceful shutdown including all
+  concurrent processes. The node type contains the node configuration including
+  the node and seed addresses, the node bootstrap flag, the directories for the
+  local key store and the local block store, the blockchain name, the authority
+  account password, the initial owner account password, the initial owner
+  account balance. The node type contains the node shared context hierarchy and
+  the node shared wait group to support the node graceful shutdown mechanism.
+  The node type hosts the event stream to deliver domain events to subscribed
+  clients. The node type contains the confirmed and pending state and the state
+  sync to initialize new nodes or synchronize out-of-sync nodes with the latest
+  state updates on the blockchain. The node type hosts the gRPC server for all
+  interactions between the node and other nodes, as well as interactions between
+  the node and clients. The node type contains the peer discovery to
+  automatically connect the node with other nodes on the peer-to-peer network.
+  The node type contains the transaction relay to propagate validated
+  transaction to the list of known peers. The node type contains the block
+  proposer to periodically create, sign, and propose new blocks with pending
+  transactions. The node type contains the block relay to propagate proposed and
+  validated blocks to the list of know peers including the authority node that
+  proposed the new block. The node type acts as an extensible container for
+  concurrent node processes that support correct operations of the node in
+  particular and the blockchain in general. The node graceful shutdown process
+  ensures that all concurrent node processes terminate gracefully without
+  throwing in-progress transactions and without corrupting the blockchain state
+  and the local block store. The node type
+  | ~cfg NodeCfg~                             | Node configuration                 |
+  | ~ctx context.Context~                     | Node shared context hierarchy      |
+  | ~ctxCancel func()~                        | Graceful shutdown context cancel   |
+  | ~wg *sync.WaitGroup~                      | Node shared wait group             |
+  | ~chErr chan error~                        | Concurrent processes error channel |
+  | ~evStream *EventStream~                   | Node event stream                  |
+  | ~state *chain.State~                      | Pending and confirmed state        |
+  | ~stateSync *StateSync~                    | State sync                         |
+  | ~grpcSrv *grpc.Server~                    | gRPC server                        |
+  | ~peerDisc *PeerDiscovery~                 | Peer discovery                     |
+  | ~txRelay *MsgRelay[SigTx, gRPCRealy]~     | Transaction relay                  |
+  | ~blockProp *BlockProposer~                | Block proposer                     |
+  | ~blkRelay *MsgRelay[SigBlock, gRPCRealy]~ | Block relay                        |
+  #+BEGIN_SRC go
+type Node struct {
+  cfg NodeCfg
+  // Graceful shutdown
+  ctx context.Context
+  ctxCancel func()
+  wg *sync.WaitGroup
+  chErr chan error
+  // Node components
+  evStream *EventStream
+  state *chain.State
+  stateSync *StateSync
+  grpcSrv *grpc.Server
+  peerDisc *PeerDiscovery
+  txRelay *MsgRelay[chain.SigTx, GRPCMsgRelay[chain.SigTx]]
+  blockProp *BlockProposer
+  blkRelay *MsgRelay[chain.SigBlock, GRPCMsgRelay[chain.SigBlock]]
+}
+
+func NewNode(cfg NodeCfg) *Node {
+  ctx, cancel := signal.NotifyContext(
+    context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL,
+  )
+  wg := new(sync.WaitGroup)
+  evStream := NewEventStream(ctx, wg, 100)
+  peerDiscCfg := PeerDiscoveryCfg{
+    NodeAddr: cfg.NodeAddr, Bootstrap: cfg.Bootstrap, SeedAddr: cfg.SeedAddr,
+  }
+  peerDisc := NewPeerDiscovery(ctx, wg, peerDiscCfg)
+  stateSync := NewStateSync(ctx, cfg, peerDisc)
+  txRelay := NewMsgRelay(ctx, wg, 100, GRPCTxRelay, false, peerDisc)
+  blkRelay := NewMsgRelay(ctx, wg, 10, GRPCBlockRelay, true, peerDisc)
+  blockProp := NewBlockProposer(ctx, wg, blkRelay)
+  return &Node{
+    cfg: cfg, ctx: ctx, ctxCancel: cancel, wg: wg, chErr: make(chan error, 1),
+    evStream: evStream, stateSync: stateSync, peerDisc: peerDisc,
+    txRelay: txRelay, blockProp: blockProp, blkRelay: blkRelay,
+  }
+}
+  #+END_SRC
+
+*** Starting the blockchain node
+
+- Node start :: The node start process initiates all the concurrent node
+  processes, sets up the node graceful shutdown mechanism, and waits for either
+  the signal to gracefully shutdown the node or an unrecoverable error from any
+  of the concurrent node processes. The node start process
+  - Defer the node shared context cancellation when the node process is stopped
+  - Start streaming domain events to subscribed clients
+  - Initialize the state and create the genesis of a new node or synchronize the
+    state and update the local block store of an out-of-sync node
+  - Start the gRPC server with the account, transaction, block, and node
+    services
+  - Start the peer discovery
+  - Start the transaction relay
+  - Start the block proposer if the node is the bootstrap and the authority node
+  - Start the block relay
+  - Wait for either the node cancellation signal on the node shared context
+    cancel channel or an unrecoverable error from any of the node concurrent
+    processes
+  - Gracefully shutdown the gRPC server
+  - Wait for all node concurrent processes to gracefully shutdown before
+    termination the main node process
+  #+BEGIN_SRC go
+func (n *Node) Start() error {
+  defer n.ctxCancel()
+  n.wg.Add(1)
+  go n.evStream.StreamEvents()
+  state, err := n.stateSync.SyncState()
+  if err != nil {
+    return err
+  }
+  n.state = state
+  n.wg.Add(1)
+  go n.servegRPC()
+  n.wg.Add(1)
+  go n.peerDisc.DiscoverPeers(5 * time.Second)
+  n.wg.Add(1)
+  go n.txRelay.RelayMsgs(5 * time.Second)
+  if n.cfg.Bootstrap {
+    path := filepath.Join(n.cfg.KeyStoreDir, string(n.state.Authority()))
+    auth, err := chain.ReadAccount(path, []byte(n.cfg.AuthPass))
+    if err != nil {
+      return err
+    }
+    n.blockProp.SetAuthority(auth)
+    n.blockProp.SetState(n.state)
+    n.wg.Add(1)
+    go n.blockProp.ProposeBlocks(10 * time.Second)
+  }
+  n.wg.Add(1)
+  go n.blkRelay.RelayMsgs(5 * time.Second)
+  select {
+  case <- n.ctx.Done():
+  case err = <- n.chErr:
+    fmt.Println(err)
+  }
+  n.ctxCancel() // restore default signal handling
+  n.grpcSrv.GracefulStop()
+  n.wg.Wait()
+  return err
+}
+  #+END_SRC
+
+*** The node gRPC server for clients and inter-node communication
+
+- gRPC server :: The gRPC server exposes the account, transaction, block, and
+  node services for clients and other nodes to interact with the node. Each gRPC
+  service exposes highly cohesive and loosely coupled blockchain functions under
+  the well-defined interface described by gRPC messages and methods. Each gRPC
+  service depends on specific node components in order to provide the defined
+  functions. The gRPC server process is on of the node concurrent processes, so
+  all requests combing from the gRPC server and all responses going to the gRPC
+  server are concurrent. All gRPC services and methods are concurrency safe as
+  they internally rely either on the mutex-based concurrency safe state
+  implementation or the channel-based concurrency safe implementation of other
+  node concurrent processes. The gRPC server
+  - Create a TCP listener on the node address
+  - Defer closing the TCP connection after the graceful shutdown of the gRPC
+    server
+  - Create a new gRPC server
+  - Register the node, account, transaction, and block gRPC services with the
+    gRPC server
+  - Start the gRPC server to accept connections
+  #+BEGIN_SRC go
+func (n *Node) servegRPC() {
+  defer n.wg.Done()
+  lis, err := net.Listen("tcp", n.cfg.NodeAddr)
+  if err != nil {
+    n.chErr <- err
+    return
+  }
+  defer lis.Close()
+  fmt.Printf("<=> gRPC %v\n", n.cfg.NodeAddr)
+  n.grpcSrv = grpc.NewServer()
+  node := rpc.NewNodeSrv(n.peerDisc, n.evStream)
+  rpc.RegisterNodeServer(n.grpcSrv, node)
+  acc := rpc.NewAccountSrv(n.cfg.KeyStoreDir, n.state)
+  rpc.RegisterAccountServer(n.grpcSrv, acc)
+  tx := rpc.NewTxSrv(
+    n.cfg.KeyStoreDir, n.cfg.BlockStoreDir, n.state.Pending, n.txRelay,
+  )
+  rpc.RegisterTxServer(n.grpcSrv, tx)
+  blk := rpc.NewBlockSrv(n.cfg.BlockStoreDir, n.evStream, n.state, n.blkRelay)
+  rpc.RegisterBlockServer(n.grpcSrv, blk)
+  err = n.grpcSrv.Serve(lis)
+  if err != nil {
+    n.chErr <- err
+    return
+  }
+}
+  #+END_SRC
+
+- gRPC services and methods :: All communication of clients with the blockchain
+  node and all communication between nodes in the peer-to-peer network happens
+  exclusively through the gRPC services and methods. Every node provides a CLI
+  for clients to interact with the node through the gRPC interface. The CLI can
+  interact with both local and remote nodes in exactly the same way. All
+  inter-node communication happens through the gRPC interface. Communication
+  with clients and inter-node communication uses the gRPC request-response, the
+  gRPC client streaming, and the gRPC server streaming
   | gRPC service | gRPC method       | gRPC communication style |
   |--------------+-------------------+--------------------------|
   | =Account=    | =AccountCreate=   | gRPC request-response    |
@@ -169,35 +394,5 @@
   |                         | =--balance= owner account balance              |
   | ~./bcn node subscribe~  | =--node= target node address                   |
   |                         | =--events= list of event types e.g. blk,tx,all |
-
-*** The node graceful shutdown mechanism
-
-- Node graceful shutdown :: The node graceful shutdown mechanism provides a
-  reliable mechanism to notify graceful shutdown to all concurrent processes on
-  the blockchain node and wait for the graceful termination of concurrent node
-  processes before shutting down the node process. The node graceful shutdown
-  happens after the node process receives the =SIGINT=, the =SIGTERM=, or the
-  =SIGKILL= signal from the other process on the OS. The node graceful shutdown
-  mechanism contributes to clean shutdown of the blockchain node. The clean
-  shutdown of the node implies that after receiving the shutdown signal the node
-  stops accepting new connections on the gRPC interface, the node stops
-  accepting new requests on existing active gRPC connections, the node finishes
-  processing all requests that have been in progress when the shutdown signal
-  was received, the node correctly updates the confirmed and pending state, the
-  node finishes all pending operations on the local block store and closes the
-  local block store, the node stops communication with all connected peers and
-  closes all open connections with active peers. The node graceful shutdown
-  mechanism consists of the node shared context hierarchy that spreads all
-  concurrent node processes that have to be notified about the graceful
-  shutdown. When the node graceful shutdown signal is received, the node shared
-  context hierarchy is canceled. This notifies all concurrent node components
-  that the node graceful shutdown has started. The node graceful shutdown
-  mechanism consists of the shared wait group that spreads all concurrent node
-  processes that have to be notified about the graceful shutdown. When every
-  concurrent node process finishes the graceful shutdown, the process notifies
-  the node's main goroutine about the successful shutdown. The node's main
-  goroutine waits for all node concurrent processes to shutdown gracefully
-
-** Design and implementation
 
 ** Testing and usage

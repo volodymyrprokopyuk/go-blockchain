@@ -31,27 +31,20 @@ type NodeCfg struct {
 }
 
 type Node struct {
-  // Configuration
   cfg NodeCfg
   // Graceful shutdown
   ctx context.Context
   ctxCancel func()
   wg *sync.WaitGroup
   chErr chan error
-  // Event stream
+  // Node components
   evStream *EventStream
-  // Blockchain state
   state *chain.State
   stateSync *StateSync
-  // gRPC server
   grpcSrv *grpc.Server
-  // Peer discovery
   peerDisc *PeerDiscovery
-  // Transaction relay
   txRelay *MsgRelay[chain.SigTx, GRPCMsgRelay[chain.SigTx]]
-  // Block proposer
   blockProp *BlockProposer
-  // Message relay
   blkRelay *MsgRelay[chain.SigBlock, GRPCMsgRelay[chain.SigBlock]]
 }
 
