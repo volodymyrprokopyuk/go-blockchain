@@ -73,10 +73,10 @@ func nodeStartCmd(_ context.Context) *cobra.Command {
   cmd.MarkFlagsOneRequired("bootstrap", "seed")
   cmd.Flags().String("keystore", "", "key store directory")
   cmd.Flags().String("blockstore", "", "block store directory")
-  cmd.Flags().String("chain", "blockchain", "name of the blockchain")
-  cmd.Flags().String("authpass", "", "password for the authority account")
-  cmd.Flags().String("ownerpass", "", "password for the genesis account")
-  cmd.Flags().Uint64("balance", 0, "initial balance for the genesis account")
+  cmd.Flags().String("chain", "blockchain", "blockchain name")
+  cmd.Flags().String("authpass", "", "authority account password")
+  cmd.Flags().String("ownerpass", "", "owner account password")
+  cmd.Flags().Uint64("balance", 0, "owner account balance")
   cmd.MarkFlagsRequiredTogether("bootstrap", "authpass")
   cmd.MarkFlagsRequiredTogether("ownerpass", "balance")
   return cmd
@@ -130,7 +130,7 @@ func grpcStreamSubscribe(
 func nodeSubscribeCmd(ctx context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "subscribe",
-    Short: "Subscribes to selected set of event types",
+    Short: "Subscribes to the selected set of event types from the node",
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
       evTypesStr, _ := cmd.Flags().GetStringSlice("events")
@@ -148,6 +148,6 @@ func nodeSubscribeCmd(ctx context.Context) *cobra.Command {
       return nil
     },
   }
-  cmd.Flags().StringSlice("events", []string{"all"}, "event types of interest")
+  cmd.Flags().StringSlice("events", []string{"all"}, "selected event types e.g. blk,tx")
   return cmd
 }

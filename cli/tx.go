@@ -44,13 +44,13 @@ func grpcTxSign(
 func txSignCmd(ctx context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "sign",
-    Short: "Signs a transaction",
+    Short: "Signs a new transaction with the owner account private key",
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
-      ownerPass, _ := cmd.Flags().GetString("ownerpass")
       from, _ := cmd.Flags().GetString("from")
       to, _ := cmd.Flags().GetString("to")
       value, _ := cmd.Flags().GetUint64("value")
+      ownerPass, _ := cmd.Flags().GetString("ownerpass")
       jtx, err := grpcTxSign(ctx, addr, from, to, value, ownerPass)
       if err != nil {
         return err
@@ -59,14 +59,14 @@ func txSignCmd(ctx context.Context) *cobra.Command {
       return nil
     },
   }
-  cmd.Flags().String("ownerpass", "", "password of debtor account")
-  _ = cmd.MarkFlagRequired("ownerpass")
-  cmd.Flags().String("from", "", "debtor address")
+  cmd.Flags().String("from", "", "sender address")
   _ = cmd.MarkFlagRequired("from")
-  cmd.Flags().String("to", "", "creditor address")
+  cmd.Flags().String("to", "", "recipient address")
   _ = cmd.MarkFlagRequired("to")
   cmd.Flags().Uint64("value", 0, "transfer amount")
   _ = cmd.MarkFlagRequired("value")
+  cmd.Flags().String("ownerpass", "", "owner account password")
+  _ = cmd.MarkFlagRequired("ownerpass")
   return cmd
 }
 
@@ -90,7 +90,7 @@ func grpcTxSend(ctx context.Context, addr, tx string) (string, error) {
 func txSendCmd(ctx context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "send",
-    Short: "Sends a signed transaction",
+    Short: "Sends the signed encoded transaction",
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
       tx, _ := cmd.Flags().GetString("sigtx")
@@ -102,7 +102,7 @@ func txSendCmd(ctx context.Context) *cobra.Command {
       return nil
     },
   }
-  cmd.Flags().String("sigtx", "", "signed transaction")
+  cmd.Flags().String("sigtx", "", "signed encoded transaction")
   _ = cmd.MarkFlagRequired("sigtx")
   return cmd
 }
@@ -151,7 +151,8 @@ func grpcTxSearch(
 func txSearchCmd(ctx context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "search",
-    Short: "Searches transactions by transaction hash, from, to, account address",
+    Short:
+    "Searches transactions by the transaction hash, from, to, and account address",
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
       hash, _ := cmd.Flags().GetString("hash")
@@ -177,10 +178,10 @@ func txSearchCmd(ctx context.Context) *cobra.Command {
       return nil
     },
   }
-  cmd.Flags().String("hash", "", "transaction hash")
-  cmd.Flags().String("from", "", "debtor address")
-  cmd.Flags().String("to", "", "creditor address")
-  cmd.Flags().String("account", "", "account address")
+  cmd.Flags().String("hash", "", "transaction hash prefix")
+  cmd.Flags().String("from", "", "sender address")
+  cmd.Flags().String("to", "", "recipient address")
+  cmd.Flags().String("account", "", "involved account address")
   cmd.MarkFlagsOneRequired("hash", "from", "to", "account")
   return cmd
 }

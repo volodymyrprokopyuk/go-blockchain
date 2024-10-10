@@ -41,7 +41,7 @@ func grpcAccountCreate(
 func accountCreateCmd(ctx context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "create",
-    Short: "Creates an account protected with a password",
+    Short: "Creates an account protected with the owner password",
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
       ownerPass, _ := cmd.Flags().GetString("ownerpass")
@@ -53,7 +53,7 @@ func accountCreateCmd(ctx context.Context) *cobra.Command {
       return nil
     },
   }
-  cmd.Flags().String("ownerpass", "", "password to encrypt the account private key")
+  cmd.Flags().String("ownerpass", "", "owner password")
   _ = cmd.MarkFlagRequired("ownerpass")
   return cmd
 }
@@ -78,7 +78,7 @@ func grpcAccountBalance(ctx context.Context, addr, acc string) (uint64, error) {
 func accountBalanceCmd(ctx context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "balance",
-    Short: "Returns an account balance",
+    Short: "Returns the balance of an account",
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
       acc, _ := cmd.Flags().GetString("account")

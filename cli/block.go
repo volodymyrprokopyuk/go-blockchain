@@ -66,7 +66,7 @@ func grpcBlockSearch(
 func blockSearchCmd(ctx context.Context) *cobra.Command {
   cmd := &cobra.Command{
     Use: "search",
-    Short: "Searches blocks by block number, block hash, or parent hash",
+    Short: "Searches blocks by the block number, block hash, and parent hash",
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
       number, _ := cmd.Flags().GetUint64("number")
@@ -93,7 +93,7 @@ func blockSearchCmd(ctx context.Context) *cobra.Command {
   }
   cmd.Flags().Uint64("number", 0, "block number")
   cmd.Flags().String("hash", "", "block hash prefix")
-  cmd.Flags().String("parent", "", "block parent prefix")
+  cmd.Flags().String("parent", "", "parent hash prefix")
   cmd.MarkFlagsMutuallyExclusive("number", "hash", "parent")
   cmd.MarkFlagsOneRequired("number", "hash", "parent")
   return cmd
