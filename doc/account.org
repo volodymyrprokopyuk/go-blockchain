@@ -425,7 +425,7 @@ a bootstrap and authority node
   blockchain
 - =--balance= specifies the balance for the initial owner account on the
   blockchain
-Initialize a bootstrap and authority blockchain node
+Initialize the bootstrap node and the authority node
 #+BEGIN_SRC fish
 set boot localhost:1122
 set authpass password

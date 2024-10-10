@@ -397,7 +397,7 @@ func (n *Node) servegRPC() {
 
 ** Testing and usage
 
-*** Testing the node start and operation
+*** Testing the node life cycle
 
 The =TestNodeStart= testing process
 - Set up the bootstrap node
@@ -427,3 +427,109 @@ The =TestNodeStart= testing process
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run NodeStart
 #+END_SRC
+
+*** Using the blockchain network with two nodes
+
+This use case demonstrates how the blockchain network with two nodes can be set
+up. The bootstrap node is also the authority node that proposes blocks and
+serves as the seed node for the initial peer discovery of the other node. A new
+blockchain account will be created on the other node. Then a transaction from
+the initial owner account on the bootstrap node will transfer funds to the new
+account created on the other node. Next a transaction from the new account on
+the other node will transfer funds to the initial owner account on the bootstrap
+node. Two clients will subscribe to the bootstrap node and the other node event
+stream to get notified when both transactions are confirmed
+- Initialize the blockchain by starting the bootstrap node with parameters for
+  the blockchain initial configuration
+  #+BEGIN_SRC fish
+set boot localhost:1122
+set authpass password
+set ownerpass password
+./bcn node start --node $boot --bootstrap --authpass $authpass \
+  --ownerpass $ownerpass --balance 1000
+  #+END_SRC
+- Start a new node with the seed node set to the bootstrap node (in a new
+  terminal)
+  #+BEGIN_SRC fish
+set node localhost:1123
+./bcn node start --node $node --seed $boot
+  #+END_SRC
+- Subscribed a client to the event stream of the bootstrap node (in a new
+  terminal)
+  #+BEGIN_SRC fish
+./bcn node subscribe --node $boot --events tx
+# <~> tx validated
+# tx  22b4d0e: 4f3748d -> bba08a5        2        1
+# <~> tx validated
+# tx  8e89528: bba08a5 -> 4f3748d        1        1
+  #+END_SRC
+- Subscribed another client to the event stream of the other node (in a new
+  terminal)
+  #+BEGIN_SRC fish
+./bcn node subscribe --node $node --events tx
+# <~> tx validated
+# tx  22b4d0e: 4f3748d -> bba08a5        2        1
+# <~> tx validated
+# tx  8e89528: bba08a5 -> 4f3748d        1        1
+  #+END_SRC
+- Create a new account on the other node
+  #+BEGIN_SRC fish
+./bcn account create --node $node --ownerpass $ownerpass
+# acc bba08a59c80977b2bbf5df4f9d09471ddf1592aa7b0133377c5df865e73a8b12
+  #+END_SRC
+- Define a shell function to create, sign, and send a transaction
+  #+BEGIN_SRC fish
+function txSignAndSend -a node from to value ownerpass
+  set tx (./bcn tx sign --node $node --from $from --to $to --value $value \
+    --ownerpass $ownerpass)
+  echo $tx
+  ./bcn tx send --node $node --sigtx $tx
+end
+  #+END_SRC
+- Create, sign, and send a transaction transferring funds from the initial owner
+  account from the genesis on the bootstrap node to the new account on the other
+  node
+  #+BEGIN_SRC fish
+set acc1 4f3748d4d46b695a85f1773b6cb86aa0837818d5df33550180c5b8da7c966a6f
+set acc2 bba08a59c80977b2bbf5df4f9d09471ddf1592aa7b0133377c5df865e73a8b12
+txSignAndSend $boot $acc1 $acc2 2 $ownerpass
+# tx 22b4d0e7f9354b82404b70075cea8f4703cfe531ce7df5fb850f26de3656e321
+  #+END_SRC
+- Create, sign, and send a transaction transferring funds from the new account
+  on the other node to the initial owner account from the genesis on the
+  bootstrap node
+  #+BEGIN_SRC fish
+set acc1 4f3748d4d46b695a85f1773b6cb86aa0837818d5df33550180c5b8da7c966a6f
+set acc2 bba08a59c80977b2bbf5df4f9d09471ddf1592aa7b0133377c5df865e73a8b12
+txSignAndSend $node $acc2 $acc1 1 $ownerpass
+# tx 8e895288bd3fa8c4046e844a598f4c64767a6631ae8fd4448c38b66d09b9f47b
+  #+END_SRC
+- Verify that confirmations of both validated transactions are received by both
+  subscribed clients to the bootstrap node and the other node (see commented
+  output above in the subscribed client terminals)
+- Check the balance of the initial owner account on the other node
+  #+BEGIN_SRC fish
+./bcn account balance --node $node --account $acc1
+# acc 4f3748d4d46b695a85f1773b6cb86aa0837818d5df33550180c5b8da7c966a6f: 999
+  #+END_SRC
+- Check the balance of the new account on the bootstrap node
+  #+BEGIN_SRC fish
+./bcn account balance --node $boot --account $acc2
+# acc bba08a59c80977b2bbf5df4f9d09471ddf1592aa7b0133377c5df865e73a8b12: 1
+  #+END_SRC
+- Search the first transaction by hash on the other node
+  #+BEGIN_SRC fish
+./bcn tx search --node $node --hash 22b4d0e
+# tx  22b4d0e: 4f3748d -> bba08a5        2        1    blk:        1    88b7a8e
+  #+END_SRC
+- Search the second transaction by hash on the bootstrap node
+  #+BEGIN_SRC fish
+./bcn tx search --node $boot --hash 8e89528
+# tx  8e89528: bba08a5 -> 4f3748d        1        1    blk:        2    78adb39
+  #+END_SRC
+- Search all transactions involving the initial owner account on the other node
+  #+BEGIN_SRC fish
+./bcn tx search --node $node --account $acc1
+# tx  22b4d0e: 4f3748d -> bba08a5        2        1    blk:        1    88b7a8e
+# tx  8e89528: bba08a5 -> 4f3748d        1        1    blk:        2    78adb39
+  #+END_SRC
