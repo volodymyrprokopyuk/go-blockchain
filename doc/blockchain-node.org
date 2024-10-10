@@ -144,26 +144,26 @@
   the node and seed addresses, the node bootstrap flag, the directories for the
   local key store and the local block store, the blockchain name, the authority
   account password, the initial owner account password, the initial owner
-  account balance. The node type contains the node shared context hierarchy and
-  the node shared wait group to support the node graceful shutdown mechanism.
-  The node type hosts the event stream to deliver domain events to subscribed
-  clients. The node type contains the confirmed and pending state and the state
-  sync to initialize new nodes or synchronize out-of-sync nodes with the latest
-  state updates on the blockchain. The node type hosts the gRPC server for all
-  interactions between the node and other nodes, as well as interactions between
-  the node and clients. The node type contains the peer discovery to
-  automatically connect the node with other nodes on the peer-to-peer network.
-  The node type contains the transaction relay to propagate validated
-  transaction to the list of known peers. The node type contains the block
-  proposer to periodically create, sign, and propose new blocks with pending
-  transactions. The node type contains the block relay to propagate proposed and
-  validated blocks to the list of know peers including the authority node that
-  proposed the new block. The node type acts as an extensible container for
-  concurrent node processes that support correct operations of the node in
-  particular and the blockchain in general. The node graceful shutdown process
-  ensures that all concurrent node processes terminate gracefully without
-  throwing in-progress transactions and without corrupting the blockchain state
-  and the local block store. The node type
+  account balance, the period of concurrent node processes. The node type
+  contains the node shared context hierarchy and the node shared wait group to
+  support the node graceful shutdown mechanism. The node type hosts the event
+  stream to deliver domain events to subscribed clients. The node type contains
+  the confirmed and pending state and the state sync to initialize new nodes or
+  synchronize out-of-sync nodes with the latest state updates on the blockchain.
+  The node type hosts the gRPC server for all interactions between the node and
+  other nodes, as well as interactions between the node and clients. The node
+  type contains the peer discovery to automatically connect the node with other
+  nodes on the peer-to-peer network. The node type contains the transaction
+  relay to propagate validated transaction to the list of known peers. The node
+  type contains the block proposer to periodically create, sign, and propose new
+  blocks with pending transactions. The node type contains the block relay to
+  propagate proposed and validated blocks to the list of know peers including
+  the authority node that proposed the new block. The node type acts as an
+  extensible container for concurrent node processes that support correct
+  operations of the node in particular and the blockchain in general. The node
+  graceful shutdown process ensures that all concurrent node processes terminate
+  gracefully without throwing in-progress transactions and without corrupting
+  the blockchain state and the local block store. The node type
   | ~cfg NodeCfg~                             | Node configuration                 |
   | ~ctx context.Context~                     | Node shared context hierarchy      |
   | ~ctxCancel func()~                        | Graceful shutdown context cancel   |
@@ -253,9 +253,9 @@ func (n *Node) Start() error {
   n.wg.Add(1)
   go n.servegRPC()
   n.wg.Add(1)
-  go n.peerDisc.DiscoverPeers(5 * time.Second)
+  go n.peerDisc.DiscoverPeers(n.cfg.Period)
   n.wg.Add(1)
-  go n.txRelay.RelayMsgs(5 * time.Second)
+  go n.txRelay.RelayMsgs(n.cfg.Period)
   if n.cfg.Bootstrap {
     path := filepath.Join(n.cfg.KeyStoreDir, string(n.state.Authority()))
     auth, err := chain.ReadAccount(path, []byte(n.cfg.AuthPass))
@@ -265,10 +265,10 @@ func (n *Node) Start() error {
     n.blockProp.SetAuthority(auth)
     n.blockProp.SetState(n.state)
     n.wg.Add(1)
-    go n.blockProp.ProposeBlocks(10 * time.Second)
+    go n.blockProp.ProposeBlocks(n.cfg.Period * 2)
   }
   n.wg.Add(1)
-  go n.blkRelay.RelayMsgs(5 * time.Second)
+  go n.blkRelay.RelayMsgs(n.cfg.Period)
   select {
   case <- n.ctx.Done():
   case err = <- n.chErr:
@@ -396,3 +396,34 @@ func (n *Node) servegRPC() {
   |                         | =--events= list of event types e.g. blk,tx,all |
 
 ** Testing and usage
+
+*** Testing the node start and operation
+
+The =TestNodeStart= testing process
+- Set up the bootstrap node
+  - Configure the bootstrap node
+  - Start the bootstrap node in a separate goroutine
+  - Wait for the bootstrap node to start
+- Set up a gRPC client connection with the bootstrap node
+- Send several transactions to the bootstrap node in a separate goroutine
+  - Get the initial owner account and its balance from the genesis
+  - Re-create the initial owner account from the genesis
+  - Create the gRPC transaction client
+  - Start sending transaction to the bootstrap node
+    - Create and sign a new transaction
+    - Encode the signed transaction
+    - Call the gRPC =TxSend= method to the the signed encoded transaction
+- Set up the client that subscribes to the node event stream
+  - Set up a gRPC client connection with the bootstrap node
+  - Create the gRPC node client
+  - Call the =StreamSubscribe= method to subscribe to the node event stream and
+    establish the gRPC server stream of domain events
+  - Define the expected events to receive after a successful block proposal
+  - Start consuming events from the gRPC server stream of domain events. For
+    each received event
+    - Decode the received domain event
+    - Verify that the type and the action of the domain event are correct
+- Stop gracefully the node
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run NodeStart
+#+END_SRC

@@ -28,6 +28,8 @@ type NodeCfg struct {
   AuthPass string
   OwnerPass string
   Balance uint64
+  // Processes
+  Period time.Duration
 }
 
 type Node struct {
@@ -81,9 +83,9 @@ func (n *Node) Start() error {
   n.wg.Add(1)
   go n.servegRPC()
   n.wg.Add(1)
-  go n.peerDisc.DiscoverPeers(5 * time.Second)
+  go n.peerDisc.DiscoverPeers(n.cfg.Period)
   n.wg.Add(1)
-  go n.txRelay.RelayMsgs(5 * time.Second)
+  go n.txRelay.RelayMsgs(n.cfg.Period)
   if n.cfg.Bootstrap {
     path := filepath.Join(n.cfg.KeyStoreDir, string(n.state.Authority()))
     auth, err := chain.ReadAccount(path, []byte(n.cfg.AuthPass))
@@ -93,10 +95,10 @@ func (n *Node) Start() error {
     n.blockProp.SetAuthority(auth)
     n.blockProp.SetState(n.state)
     n.wg.Add(1)
-    go n.blockProp.ProposeBlocks(10 * time.Second)
+    go n.blockProp.ProposeBlocks(n.cfg.Period * 2)
   }
   n.wg.Add(1)
-  go n.blkRelay.RelayMsgs(5 * time.Second)
+  go n.blkRelay.RelayMsgs(n.cfg.Period)
   select {
   case <- n.ctx.Done():
   case err = <- n.chErr:
@@ -106,6 +108,10 @@ func (n *Node) Start() error {
   n.grpcSrv.GracefulStop()
   n.wg.Wait()
   return err
+}
+
+func (n *Node) GracefulStop() {
+  n.ctxCancel()
 }
 
 func (n *Node) servegRPC() {

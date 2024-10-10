@@ -26,6 +26,53 @@ func createEventStream(
   return evStream
 }
 
+func subscribeAndVerifyEvents(
+  t *testing.T, ctx context.Context, conn grpc.ClientConnInterface,
+) {
+  // Create the gRPC node client
+  cln := rpc.NewNodeClient(conn)
+  // Call the StreamSubscribe method to subscribe to the node event stream and
+  // establish the gRPC server stream of domain events
+  req := &rpc.StreamSubscribeReq{EventTypes: []uint64{0}}
+  stream, err := cln.StreamSubscribe(ctx, req)
+  if err != nil {
+    t.Fatal(err)
+  }
+  // Define the expected events to receive after a successful block proposal
+  expEvents := []chain.Event{
+    {Type: chain.EvBlock, Action: "validated", Body: nil},
+    {Type: chain.EvTx, Action: "validated", Body: nil},
+    {Type: chain.EvTx, Action: "validated", Body: nil},
+  }
+  // Start consuming events from the gRPC server stream of domain events
+  for i := range len(expEvents) {
+    // Receive a domain event
+    res, err := stream.Recv()
+    if err == io.EOF {
+      break
+    }
+    if err != nil {
+      t.Fatal(err)
+    }
+    // Decode the received domain event
+    var got chain.Event
+    err = json.Unmarshal(res.Event, &got)
+    if err != nil {
+      t.Fatal(err)
+    }
+    // Verify that the type and the action of the domain event are correct
+    exp := expEvents[i]
+    if got.Type != exp.Type {
+      t.Errorf("invalid event type: expected %v, got %v", exp.Type, got.Type)
+    }
+    if got.Action != exp.Action {
+      t.Errorf(
+        "invalid event action: expected %v, got %v", exp.Action, got.Action,
+      )
+    }
+  }
+}
+
 func TestEventStream(t *testing.T) {
   defer os.RemoveAll(bootKeyStoreDir)
   defer os.RemoveAll(bootBlockStoreDir)
@@ -85,46 +132,8 @@ func TestEventStream(t *testing.T) {
   if err != nil {
     t.Fatal(err)
   }
-  // Create the gRPC node client
-  cln := rpc.NewNodeClient(conn)
-  // Call the StreamSubscribe method to subscribe to the node event stream and
-  // establish the gRPC server stream of domain events
-  req := &rpc.StreamSubscribeReq{EventTypes: []uint64{0}}
-  stream, err := cln.StreamSubscribe(ctx, req)
-  if err != nil {
-    t.Fatal(err)
-  }
-  // Define the expected events to receive after a successful block proposal
-  expEvents := []chain.Event{
-    {Type: chain.EvBlock, Action: "validated", Body: nil},
-    {Type: chain.EvTx, Action: "validated", Body: nil},
-    {Type: chain.EvTx, Action: "validated", Body: nil},
-  }
-  // Start consuming events from the gRPC server stream of domain events
-  for i := range len(expEvents) {
-    // Receive a domain event
-    res, err := stream.Recv()
-    if err == io.EOF {
-      break
-    }
-    if err != nil {
-      t.Fatal(err)
-    }
-    // Decode the received domain event
-    var got chain.Event
-    err = json.Unmarshal(res.Event, &got)
-    if err != nil {
-      t.Fatal(err)
-    }
-    // Verify that the type and the action of the domain event are correct
-    exp := expEvents[i]
-    if got.Type != exp.Type {
-      t.Errorf("invalid event type: expected %v, got %v", exp.Type, got.Type)
-    }
-    if got.Action != exp.Action {
-      t.Errorf(
-        "invalid event action: expected %v, got %v", exp.Action, got.Action,
-      )
-    }
-  }
+  defer conn.Close()
+  // Subscribe to the event stream of the bootstrap node and verify that
+  // received events are correct
+  subscribeAndVerifyEvents(t, ctx, conn)
 }

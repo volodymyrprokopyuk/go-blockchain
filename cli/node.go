@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/volodymyrprokopyuk/go-blockchain/chain"
@@ -62,6 +63,7 @@ func nodeStartCmd(_ context.Context) *cobra.Command {
         NodeAddr: nodeAddr, Bootstrap: bootstrap, SeedAddr: seedAddr,
         KeyStoreDir: keyStoreDir, BlockStoreDir: blockStoreDir,
         Chain: name, AuthPass: authPass, OwnerPass: ownerPass, Balance: balance,
+        Period: 5 * time.Second,
       }
       nd := node.NewNode(cfg)
       return nd.Start()
