@@ -65,6 +65,23 @@ Security properties of a hash function
   - *Integrity of the transaction*. The transaction content is immutable since
     creation and has not been tampered with
 
+
+*** Transaction search
+
+- Transaction search :: The transaction search function locates confirmed
+  transactions on the blockchain after the transactions have been validated and
+  added to the confirmed state. The transaction search is performed against the
+  confirmed state of the blockchain. The difference between the transaction
+  search and the subscription to the node event stream is that the node event
+  stream allows clients to proactively subscribe to the validated transaction
+  event type before transactions are validated and the event will be delivered
+  only once, while the transaction search locates transaction on demand after
+  that have been validated as many times as required. The transaction search
+  locates validated transactions in the confirmed state by the transaction hash,
+  by the prefix of the sender account address, by the prefix of the recipient
+  account address, and by the prefix of the account involved as a sender or as a
+  recipient in a transaction
+
 ** Design and implementation
 
 *** Keccak256 hash function
@@ -274,6 +291,77 @@ func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
 }
 #+END_SRC
 
+*** gRPC =TxSearch= method
+
+The gRPC =Tx= service provides the =TxSearch= method to locate confirmed
+transactions on the blockchain. The interface of the service
+#+BEGIN_SRC protobuf
+message TxSearchReq {
+  string Hash = 1;
+  string From = 2;
+  string To = 3;
+  string Account = 4;
+}
+
+message TxSearchRes {
+  bytes Tx = 1;
+}
+
+service Tx {
+  rpc TxSearch(TxSearchReq) returns (stream TxSearchRes);
+}
+#+END_SRC
+
+The implementation of the =TxSearch= method
+- Create the iterator over the blocks in the local block store
+- Defer closing the iterator
+- Iterate of each block in the local block store in order. For each block
+  - Iterate over each transaction of the confirmed block. For each transaction
+    - Search by the transaction hash prefix
+      - Send the first transaction that matches the requested transaction hash
+        prefix over the gRPC server stream and stop the transaction search
+        process
+    - Search by the sender, recipient, or account address prefix
+      - Send every transaction that matches the search criteria over the gRPC
+        server stream and keep searching until all transactions in all blocks
+        are searched
+#+BEGIN_SRC go
+func (s *TxSrv) TxSearch(
+  req *TxSearchReq, stream grpc.ServerStreamingServer[TxSearchRes],
+) error {
+  blocks, closeBlocks, err := chain.ReadBlocks(s.blockStoreDir)
+  if err != nil {
+    return status.Errorf(codes.NotFound, err.Error())
+  }
+  defer closeBlocks()
+  prefix := strings.HasPrefix
+  block: for err, blk := range blocks {
+    if err != nil {
+      return status.Errorf(codes.Internal, err.Error())
+    }
+    for _, tx := range blk.Txs {
+      if len(req.Hash) > 0 && prefix(tx.Hash().String(), req.Hash) {
+        err = sendTxSearchRes(blk, tx, stream)
+        if err != nil {
+          return status.Errorf(codes.Internal, err.Error())
+        }
+        break block
+      }
+      if len(req.From) > 0 && prefix(string(tx.From), req.From) ||
+        len(req.To) > 0 && prefix(string(tx.To), req.To) ||
+        len(req.Account) > 0 &&
+          (prefix(string(tx.From), req.From) || prefix(string(tx.To), req.To)) {
+        err := sendTxSearchRes(blk, tx, stream)
+        if err != nil {
+          return status.Errorf(codes.Internal, err.Error())
+        }
+      }
+    }
+  }
+  return nil
+}
+#+END_SRC
+
 ** Testing and usage
 
 *** Testing transaction signing and verification
@@ -299,6 +387,27 @@ The =TestTxSign= testing process
 - Verify that the signature of the signed transaction is valid
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run TxSign
+#+END_SRC
+
+*** Testing gRPC =TxSearch= method
+
+The =TestTxSearch= testing process
+- Create and persist the genesis
+- Create the state from the genesis
+- Create several confirmed blocks on the state and on the local block store
+- Set up the gRPC server and client
+- Search by sender account address
+  - Get the initial owner account from the genesis
+  - Search transactions by the sender account address that equals to the initial
+    owner account address
+  - Verify that all transactions are found
+  - Verify that all found transactions satisfy the search criteria
+- Search by transaction hash
+  - Search transactions by the transaction hash of an existing transaction
+  - Verify that the transaction is found
+  - Verify that the found transaction matches the search criteria
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run TxSearch
 #+END_SRC
 
 *** Using =tx sign= CLI command

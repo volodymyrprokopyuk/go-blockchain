@@ -156,7 +156,7 @@ func TestBlockSync(t *testing.T) {
   })
   // Create the gRPC block client
   cln := rpc.NewBlockClient(conn)
-  // Call the BlockSync method to get the server stream of confirmed blocks
+  // Call the BlockSync method to get the gRPC server stream of confirmed blocks
   req := &rpc.BlockSyncReq{Number: lastBlock.Number + 1}
   stream, err := cln.BlockSync(ctx, req)
   if err != nil {

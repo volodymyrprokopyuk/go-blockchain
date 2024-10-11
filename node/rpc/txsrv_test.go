@@ -4,6 +4,7 @@ import (
 	context "context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,6 +16,42 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+func searchTxs(
+  t *testing.T, ctx context.Context,
+  conn grpc.ClientConnInterface, req *rpc.TxSearchReq,
+) []chain.SigTx {
+  // Create the gRPC transaction client
+  cln := rpc.NewTxClient(conn)
+  // Call the TxSearch method to get the gRPC server stream of transactions that
+  // match the search request
+  stream, err := cln.TxSearch(ctx, req)
+  if err != nil {
+    t.Fatal(err)
+  }
+  txs := make([]chain.SigTx, 0)
+  // Start receiving found transactions from the gRPC server stream
+  for {
+    // Receive a transaction from the server stream
+    res, err := stream.Recv()
+    if err == io.EOF {
+      break
+    }
+    if err != nil {
+      t.Fatal(err)
+    }
+    // Decode the received transaction
+    jtx := res.Tx
+    var tx chain.SigTx
+    err = json.Unmarshal(jtx, &tx)
+    if err != nil {
+      t.Fatal(err)
+    }
+    // Append the decoded transaction to the list of found transactions
+    txs = append(txs, tx)
+  }
+  return txs
+}
 
 func TestTxSign(t *testing.T) {
   defer os.RemoveAll(keyStoreDir)
@@ -221,3 +258,67 @@ func TestTxReceive(t *testing.T) {
     t.Errorf("invalid balance: expected %v, got %v", exp, got)
   }
 }
+
+func TestTxSearch(t *testing.T) {
+  defer os.RemoveAll(keyStoreDir)
+  defer os.RemoveAll(blockStoreDir)
+  ctx, cancel := context.WithCancel(context.Background())
+  defer cancel()
+  // Create and persist the genesis
+  gen, err := createGenesis()
+  if err != nil {
+    t.Fatal(err)
+  }
+  // Create the state from the genesis
+  state := chain.NewState(gen)
+  // Create several confirmed blocks on the state and on the local block store
+  err = createBlocks(gen, state)
+  if err != nil {
+    t.Fatal(err)
+  }
+  // Set up the gRPC server and client
+  conn := grpcClientConn(t, func(grpcSrv *grpc.Server) {
+    tx := rpc.NewTxSrv(keyStoreDir, blockStoreDir, state.Pending, nil)
+    rpc.RegisterTxServer(grpcSrv, tx)
+  })
+  var hash chain.Hash
+  t.Run("search by sender account address", func(t *testing.T) {
+    // Get the initial owner account from the genesis
+    ownerAcc, _ := genesisAccount(gen)
+    // Search transactions by the sender account address that equals to the
+    // initial owner account address
+    req := &rpc.TxSearchReq{From: string(ownerAcc)}
+    txs := searchTxs(t, ctx, conn, req)
+    // Verify that all transactions are found
+    got, exp := len(txs), 2
+    if got != exp {
+      t.Errorf("not all transactions are found: expected %v, got %v", exp, got)
+    }
+    // Verify that all found transactions satisfy the search criteria
+    for _, tx := range txs {
+      if (hash == chain.Hash{}) {
+        hash = tx.Hash()
+      }
+      if tx.From != ownerAcc {
+        t.Errorf("invalid transaction: wrong sender address")
+      }
+    }
+  })
+  t.Run("search by transaction hash", func(t *testing.T) {
+    // Search transactions by the transaction hash of an existing transaction
+    req := &rpc.TxSearchReq{Hash: hash.String()}
+    txs := searchTxs(t, ctx, conn, req)
+    // Verify that the transaction is found
+    if len(txs) != 1 {
+      t.Errorf("transaction by hash is not found")
+    }
+    // Verify that the found transaction matches the search criteria
+    for _, tx := range txs {
+      if tx.Hash() != hash {
+        t.Errorf("invalid transaction hash")
+      }
+      break
+    }
+  })
+}
+
