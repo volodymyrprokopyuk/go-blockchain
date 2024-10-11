@@ -65,22 +65,22 @@ Security properties of a hash function
   - *Integrity of the transaction*. The transaction content is immutable since
     creation and has not been tampered with
 
-
 *** Transaction search
 
 - Transaction search :: The transaction search function locates confirmed
   transactions on the blockchain after the transactions have been validated and
-  added to the confirmed state. The transaction search is performed against the
-  confirmed state of the blockchain. The difference between the transaction
-  search and the subscription to the node event stream is that the node event
-  stream allows clients to proactively subscribe to the validated transaction
-  event type before transactions are validated and the event will be delivered
-  only once, while the transaction search locates transaction on demand after
-  that have been validated as many times as required. The transaction search
-  locates validated transactions in the confirmed state by the transaction hash,
-  by the prefix of the sender account address, by the prefix of the recipient
-  account address, and by the prefix of the account involved as a sender or as a
-  recipient in a transaction
+  applied to the confirmed state and appended to the local block store. The
+  transaction search is performed against the local block store of the
+  blockchain. The difference between the transaction search and the subscription
+  to the node event stream is that the node event stream allows clients to
+  proactively subscribe to the validated transaction event type before
+  transactions are validated and the event will be delivered only once, while
+  the transaction search locates transactions on demand as many times as
+  required after transactions have been validated. The transaction search
+  locates validated transactions in the local block store by the prefix of the
+  transaction hash, by the prefix of the sender account address, by the prefix
+  of the recipient account address, and by the prefix of the account involved as
+  a sender or as a recipient in a transaction
 
 ** Design and implementation
 
@@ -294,7 +294,7 @@ func (s *TxSrv) TxSign(_ context.Context, req *TxSignReq) (*TxSignRes, error) {
 *** gRPC =TxSearch= method
 
 The gRPC =Tx= service provides the =TxSearch= method to locate confirmed
-transactions on the blockchain. The interface of the service
+transactions on the local block store. The interface of the service
 #+BEGIN_SRC protobuf
 message TxSearchReq {
   string Hash = 1;
@@ -315,7 +315,7 @@ service Tx {
 The implementation of the =TxSearch= method
 - Create the iterator over the blocks in the local block store
 - Defer closing the iterator
-- Iterate of each block in the local block store in order. For each block
+- Iterate over each block in the local block store in order. For each block
   - Iterate over each transaction of the confirmed block. For each transaction
     - Search by the transaction hash prefix
       - Send the first transaction that matches the requested transaction hash
@@ -413,7 +413,7 @@ go test -v -cover -coverprofile=coverage.cov ./... -run TxSearch
 *** Using =tx sign= CLI command
 
 The gRPC =TxSign= method is exposed through the CLI. Create and sign a new
-transaction to a blockchain node
+transaction on the bootstrap node
 - Start a blockchain node
   #+BEGIN_SRC fish
 set boot localhost:1122
@@ -441,4 +441,46 @@ set ownerpass password
   "time": "2024-09-29T09:57:28.65978649+02:00",
   "sig": "Cz+qV8DaD+sCnaLnTR2S49a/9nwsYbe2EF8Y6Upa/vYoGY7P9qSmzDSBBHQolg6KdxIiS/NrXvcevLiSYJpbvQE="
 }
+  #+END_SRC
+
+*** Using =tx search= CLI command
+
+The gRPC =TxSearch= method is exposed through the CLI. Sign, send, and search
+confirmed transactions on the bootstrap node
+- Initialize the blockchain by starting the bootstrap node with parameters for
+  the blockchain initial configuration
+  #+BEGIN_SRC fish
+set boot localhost:1122
+set authpass password
+set ownerpass password
+./bcn node start --node $boot --bootstrap --authpass $authpass \
+  --ownerpass $ownerpass --balance 1000
+  #+END_SRC
+- Define a shell function to create, sign, and send a transaction
+  #+BEGIN_SRC fish
+function txSignAndSend -a node from to value ownerpass
+  set tx (./bcn tx sign --node $node --from $from --to $to --value $value \
+    --ownerpass $ownerpass)
+  echo $tx
+  ./bcn tx send --node $node --sigtx $tx
+end
+  #+END_SRC
+- Create, sign, and send a transaction transferring funds from the initial owner
+  account from the genesis on the bootstrap node to the new account
+  #+BEGIN_SRC fish
+set acc1 4f3748d4d46b695a85f1773b6cb86aa0837818d5df33550180c5b8da7c966a6f
+set acc2 bba08a59c80977b2bbf5df4f9d09471ddf1592aa7b0133377c5df865e73a8b12
+txSignAndSend $boot $acc1 $acc2 2 $ownerpass
+# tx 22b4d0e7f9354b82404b70075cea8f4703cfe531ce7df5fb850f26de3656e321
+  #+END_SRC
+- Search the transaction by hash on the bootstrap node
+  #+BEGIN_SRC fish
+./bcn tx search --node $boot --hash 22b4d0e
+# tx  22b4d0e: 4f3748d -> bba08a5        2        1    blk:        1    88b7a8e
+  #+END_SRC
+- Search all transactions involving the initial owner account on the bootstrap
+  node
+  #+BEGIN_SRC fish
+./bcn tx search --node $boot --account $acc1
+# tx  22b4d0e: 4f3748d -> bba08a5        2        1    blk:        1    88b7a8e
   #+END_SRC

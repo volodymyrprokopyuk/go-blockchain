@@ -32,6 +32,42 @@ func createTxs(acc chain.Account, values []uint64, pending *chain.State) error {
   return nil
 }
 
+func searchBlocks(
+  t *testing.T, ctx context.Context,
+  conn grpc.ClientConnInterface, req *rpc.BlockSearchReq,
+) []chain.SigBlock {
+  // Create the gRPC block client
+  cln := rpc.NewBlockClient(conn)
+  // Call the BlocksSearch method to get the gRPC server stream of blcoks that
+  // match the search request
+  stream, err := cln.BlockSearch(ctx, req)
+  if err != nil {
+    t.Fatal(err)
+  }
+  blks := make([]chain.SigBlock, 0)
+  // Start receiving found blocks from the gRPC server stream
+  for {
+    // Receive a block from the server stream
+    res, err := stream.Recv()
+    if err == io.EOF {
+      break
+    }
+    if err != nil {
+      t.Fatal(err)
+    }
+    // Decode the received block
+    jblk := res.Block
+    var blk chain.SigBlock
+    err = json.Unmarshal(jblk, &blk)
+    if err != nil {
+      t.Fatal(err)
+    }
+    // Append the decoded transaction to the list of found transactions
+    blks = append(blks, blk)
+  }
+  return blks
+}
+
 func createBlocks(gen chain.SigGenesis, state *chain.State) error {
   path := filepath.Join(keyStoreDir, string(gen.Authority))
   auth, err := chain.ReadAccount(path, []byte(authPass))
@@ -283,4 +319,84 @@ func TestBlockReceive(t *testing.T) {
   if got != exp {
     t.Errorf("invalid balance: expected %v, got %v", exp, got)
   }
+}
+
+func TestBlockSearch(t *testing.T) {
+  defer os.RemoveAll(keyStoreDir)
+  defer os.RemoveAll(blockStoreDir)
+  ctx, cancel := context.WithCancel(context.Background())
+  defer cancel()
+  // Create and persist the genesis
+  gen, err := createGenesis()
+  if err != nil {
+    t.Fatal(err)
+  }
+  // Create the state from the genesis
+  state := chain.NewState(gen)
+  // Create several confirmed blocks on the state and on the local block store
+  err = createBlocks(gen, state)
+  if err != nil {
+    t.Fatal(err)
+  }
+  // Set up the gRPC server and client
+  conn := grpcClientConn(t, func(grpcSrv *grpc.Server) {
+    blk := rpc.NewBlockSrv(blockStoreDir, nil, state, nil)
+    rpc.RegisterBlockServer(grpcSrv, blk)
+  })
+  var hash, parent chain.Hash
+  t.Run("search by block number", func(t *testing.T) {
+    // Search blocks by the block number of an existing block
+    blkNumber := uint64(1)
+    req := &rpc.BlockSearchReq{Number: blkNumber}
+    blks := searchBlocks(t, ctx, conn, req)
+    // Verify that the block is found
+    if len(blks) != 1 {
+      t.Errorf("block by block number is not found")
+    }
+    // Verify that the found block has the requested number
+    for _, blk := range blks {
+      if (hash == chain.Hash{}) {
+        hash = blk.Hash()
+        parent = blk.Parent
+      }
+      if blk.Number != blkNumber {
+        t.Errorf(
+          "invalid block number: expected %v, got %v", blkNumber, blk.Number,
+        )
+      }
+      break
+    }
+  })
+  t.Run("search by block hash", func(t *testing.T) {
+    // Search blocks by the block hash of an existing block
+    req := &rpc.BlockSearchReq{Hash: hash.String()}
+    blks := searchBlocks(t, ctx, conn, req)
+    // Verify that the block is found
+    if len(blks) != 1 {
+      t.Errorf("block by block hash is not found")
+    }
+    // Verify that the found block has the requested hash
+    for _, blk := range blks {
+      if blk.Hash() != hash {
+        t.Errorf("invalid block hash")
+      }
+      break
+    }
+  })
+  t.Run("search by parent hash", func(t *testing.T) {
+    // Search blocks by the parent hash of an existing block
+    req := &rpc.BlockSearchReq{Parent: parent.String()}
+    blks := searchBlocks(t, ctx, conn, req)
+    // Verify that the block is found
+    if len(blks) != 1 {
+      t.Errorf("block by parent hash is not found")
+    }
+    // Verify that the found block has the requested parent hash
+    for _, blk := range blks {
+      if blk.Parent != parent {
+        t.Errorf("invalid parent hash")
+      }
+      break
+    }
+  })
 }

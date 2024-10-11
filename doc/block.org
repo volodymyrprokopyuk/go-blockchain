@@ -31,6 +31,20 @@
   the modified block and breakage of the parent hash linking mechanism of the
   blockchain. The parent hash of the first block is the hash of the genesis
 
+*** Block search
+
+- Block search :: The block search function locates confirmed blocks on the
+  blockchain after the blocks have been validated and applied to the confirmed
+  state and appended to the local block store. The block search is performed
+  against the local block store of the blockchain. The difference between the
+  block search and the subscription to the node event stream is that the node
+  event stream allows clients to proactively subscribe to the validated block
+  event type before blocks are validated and the event will be delivered only
+  once, while the block search locates blocks on demand as many times as
+  required after blocks have been validated. The block search locates validated
+  blocks in the local block store by the block number, the prefix of the block
+  hash, by the prefix of the parent hash
+
 ** Design and implementation
 
 *** Genesis and signed genesis types
@@ -386,6 +400,67 @@ func ReadBlocks(dir string) (
 }
   #+END_SRC
 
+
+*** gRPC =BlockSearch= method
+
+The gRPC =Block= service provides the =BlockSearch= method to located confirmed
+blocks on the local block store. The interface of the service
+#+BEGIN_SRC protobuf
+message BlockSearchReq {
+  uint64 Number = 1;
+  string Hash = 2;
+  string Parent = 3;
+}
+
+message BlockSearchRes {
+  bytes Block = 1;
+}
+
+service Block {
+  rpc BlockSearch(BlockSearchReq) returns (stream BlockSearchRes);
+}
+#+END_SRC
+
+The implementation of the =BlockSearch= method
+- Create the iterator over the blocks in the local block store
+- Defer closing the iterator
+- Iterate over each block in the local block store in order. For each block
+  - Send the first block that matches the requested block number, the block
+    hash prefix, or the parent hash prefix over the gRPC server stream and stop
+    the block search process
+#+BEGIN_SRC go
+func (s *BlockSrv) BlockSearch(
+  req *BlockSearchReq, stream grpc.ServerStreamingServer[BlockSearchRes],
+) error {
+  blocks, closeBlocks, err := chain.ReadBlocks(s.blockStoreDir)
+  if err != nil {
+    return status.Errorf(codes.NotFound, err.Error())
+  }
+  defer closeBlocks()
+  prefix := strings.HasPrefix
+  for err, blk := range blocks {
+    if err != nil {
+      return status.Errorf(codes.Internal, err.Error())
+    }
+    if req.Number != 0 && blk.Number == req.Number ||
+      len(req.Hash) > 0 && prefix(blk.Hash().String(), req.Hash) ||
+      len(req.Parent) > 0 && prefix(blk.Parent.String(), req.Parent) {
+      jblk, err := json.Marshal(blk)
+      if err != nil {
+        return status.Errorf(codes.Internal, err.Error())
+      }
+      res := &BlockSearchRes{Block: jblk}
+      err = stream.Send(res)
+      if err != nil {
+        return status.Errorf(codes.Internal, err.Error())
+      }
+      break
+    }
+  }
+  return nil
+}
+#+END_SRC
+
 ** Testing and usage
 
 *** Testing genesis signing and verification
@@ -416,3 +491,87 @@ The =TestBlockSignBlockWriteReadVerifyBlock= testing process
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run VerifyBlock
 #+END_SRC
+
+*** Testing gRPC =BlockSearch= method
+
+The =TestBlockSearch= testing process
+- Create and persist the genesis
+- Create the state from the genesis
+- Create several confirmed blocks on the state and on the local block store
+- Set up the gRPC server and client
+- Search by block number
+  - Search blocks by the block number of an existing block
+  - Verify that the block is found
+  - Verify that the found block has the requested number
+- Search by block hash
+  - Search blocks by the block hash of an existing block
+  - Verify that the block is found
+  - Verify that the found block has the requested hash
+- Search by parent hash
+  - Search blocks by the parent hash of an existing block
+  - Verify that the block is found
+  - Verify that the found block has the requested parent hash
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run BlockSearch
+#+END_SRC
+
+*** Using =block search= CLI command
+
+The gRPC =BlockSearch= method is exposed through the CLI. Sign and send
+transactions to the bootstrap node. Confirm and search blocks
+- Initialize the blockchain by starting the bootstrap node with parameters for
+  the blockchain initial configuration
+  #+BEGIN_SRC fish
+set boot localhost:1122
+set authpass password
+set ownerpass password
+./bcn node start --node $boot --bootstrap --authpass $authpass \
+  --ownerpass $ownerpass --balance 1000
+  #+END_SRC
+- Create a new account on the bootstrap node
+  #+BEGIN_SRC fish
+./bcn account create --node $boot --ownerpass $ownerpass
+# acc 715aa9e36740bce382a543b10fd70cad0bc1796b04fd7e49677a2fdcd1eac95c
+  #+END_SRC
+- Define a shell function to create, sign, and send a transaction
+  #+BEGIN_SRC fish
+function txSignAndSend -a node from to value ownerpass
+  set tx (./bcn tx sign --node $node --from $from --to $to --value $value \
+    --ownerpass $ownerpass)
+  echo $tx
+  ./bcn tx send --node $node --sigtx $tx
+end
+  #+END_SRC
+- Create, sign, and send a transaction transferring funds from the initial owner
+  account from the genesis on the bootstrap node to the new account. Crate,
+  sign, and send a transaction transferring funds from the new account to the
+  initial owner account from the genesis on the bootstrap node
+  #+BEGIN_SRC fish
+set acc1 8824f522bb131453c83225b276a3a3f8f145c99fb3518e3a7219b3f2f3bc0a0c
+set acc2 715aa9e36740bce382a543b10fd70cad0bc1796b04fd7e49677a2fdcd1eac95c
+txSignAndSend $boot $acc1 $acc2 2 $ownerpass
+# tx 4c0f71713e414a9b1731b2c46447b42a4310717bee368854ed2d803ed1cb12b8
+txSignAndSend $boot $acc2 $acc1 1 $ownerpass
+# tx 9c45326c313fa1a369c0de55bf5cf3f05285aad9e78d1ca0f9ae90a0b7ec8146
+  #+END_SRC
+- Search the block by the block number
+  #+BEGIN_SRC fish
+./bcn blocks search --node $boot --number 1
+# blk       1: 7eaef7a -> c721f59
+# tx  4c0f717: 8824f52 -> 715aa9e        2        1
+# tx  9c45326: 715aa9e -> 8824f52        1        1
+  #+END_SRC
+- Search the block by the block hash
+  #+BEGIN_SRC fish
+./bcn blocks search --node $boot --hash 7eaef7a
+# blk       1: 7eaef7a -> c721f59
+# tx  4c0f717: 8824f52 -> 715aa9e        2        1
+# tx  9c45326: 715aa9e -> 8824f52        1        1
+  #+END_SRC
+- Search the block by the parent hash
+  #+BEGIN_SRC fish
+./bcn blocks search --node $boot --parent c721f59
+# blk       1: 7eaef7a -> c721f59
+# tx  4c0f717: 8824f52 -> 715aa9e        2        1
+# tx  9c45326: 715aa9e -> 8824f52        1        1
+  #+END_SRC

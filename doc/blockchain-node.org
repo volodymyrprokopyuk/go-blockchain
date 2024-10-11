@@ -499,8 +499,6 @@ txSignAndSend $boot $acc1 $acc2 2 $ownerpass
   on the other node to the initial owner account from the genesis on the
   bootstrap node
   #+BEGIN_SRC fish
-set acc1 4f3748d4d46b695a85f1773b6cb86aa0837818d5df33550180c5b8da7c966a6f
-set acc2 bba08a59c80977b2bbf5df4f9d09471ddf1592aa7b0133377c5df865e73a8b12
 txSignAndSend $node $acc2 $acc1 1 $ownerpass
 # tx 8e895288bd3fa8c4046e844a598f4c64767a6631ae8fd4448c38b66d09b9f47b
   #+END_SRC

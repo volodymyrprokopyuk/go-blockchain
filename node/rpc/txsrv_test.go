@@ -20,7 +20,7 @@ import (
 func searchTxs(
   t *testing.T, ctx context.Context,
   conn grpc.ClientConnInterface, req *rpc.TxSearchReq,
-) []chain.SigTx {
+) []chain.SearchTx {
   // Create the gRPC transaction client
   cln := rpc.NewTxClient(conn)
   // Call the TxSearch method to get the gRPC server stream of transactions that
@@ -29,7 +29,7 @@ func searchTxs(
   if err != nil {
     t.Fatal(err)
   }
-  txs := make([]chain.SigTx, 0)
+  txs := make([]chain.SearchTx, 0)
   // Start receiving found transactions from the gRPC server stream
   for {
     // Receive a transaction from the server stream
@@ -42,7 +42,7 @@ func searchTxs(
     }
     // Decode the received transaction
     jtx := res.Tx
-    var tx chain.SigTx
+    var tx chain.SearchTx
     err = json.Unmarshal(jtx, &tx)
     if err != nil {
       t.Fatal(err)

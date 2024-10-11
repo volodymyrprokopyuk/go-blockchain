@@ -17,10 +17,10 @@ function txSignAndSend -a node from to value ownerpass
   ./bcn tx send --node $node --sigtx $tx
 end
 
-set acc1 4f3748d4d46b695a85f1773b6cb86aa0837818d5df33550180c5b8da7c966a6f
-set acc2 bba08a59c80977b2bbf5df4f9d09471ddf1592aa7b0133377c5df865e73a8b12
-# txSignAndSend $boot $acc1 $acc2 2 $ownerpass
-# txSignAndSend $node $acc2 $acc1 1 $ownerpass
+set acc1 8824f522bb131453c83225b276a3a3f8f145c99fb3518e3a7219b3f2f3bc0a0c
+set acc2 715aa9e36740bce382a543b10fd70cad0bc1796b04fd7e49677a2fdcd1eac95c
+txSignAndSend $boot $acc1 $acc2 2 $ownerpass
+txSignAndSend $boot $acc2 $acc1 1 $ownerpass
 
 # ./bcn account balance --node $boot --account $own
 # ./bcn account balance --node $boot --account $ben
