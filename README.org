@@ -18,16 +18,16 @@ implementation* to *practical testing and usage*
 
 ** Learning path
 
-| Chapter | Blockchain concepts | Cryptography, concurrency, networking, Go |
-|---------+---------------------+-------------------------------------------|
-|         |                     |                                           |
-
 ** Contents
 
 *** Blockchain state
 
 1. Getting started
 2. [[/doc/account.org][Account]]
+| Blockchain concepts | Cryptography, concurrency, networking, Go |
+|---------------------+-------------------------------------------|
+| Blockchain accounts | Key pairs                                 |
+| Account address     | AES-GCM encryption                        |
 3. [[/doc/transaction.org][Transaction]]
 4. [[/doc/block.org][Block]]
 5. [[/doc/state.org][State]]
