@@ -15,7 +15,7 @@ func ChainCmd(ctx context.Context) *cobra.Command {
     SilenceErrors: true,
   }
   cmd.PersistentFlags().String("node", "", "target node address host:port")
-  cmd.MarkFlagRequired("node")
+  _ = cmd.MarkFlagRequired("node")
   cmd.AddCommand(nodeCmd(ctx), accountCmd(ctx), txCmd(ctx), blockCmd(ctx))
   return cmd
 }

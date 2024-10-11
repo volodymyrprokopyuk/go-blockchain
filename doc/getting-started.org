@@ -1,0 +1,55 @@
+* Getting started
+
+** Prerequisites
+
+| Operating system     | Linux Arch | rolling release |
+| Programming language | Go         | v1.23.2         |
+| Linux shell          | Fish       | v3.7.1          |
+
+** Dependencies
+
+| ProtoBuf compiler          | =protobuf=                   | v28.2   |
+| ProtoBuf Go plugin         | =google.golang.org/protobuf= | v1.35.1 |
+| ProtoBuf gRPC Go plugin    | =google.golang.org/grpc=     | v1.67.1 |
+| Keccak256 hash, Argon2 KDF | =golang.org/x/crypto=        | v0.28.0 |
+| Secp256k1 elliptic curve   | =github.com/dustinxie/ecc=   | latest  |
+| CLI library                | =github.com/spf13/cobra=     | v1.8.1  |
+
+** Installation
+
+- Install the Go programming language and the Fish Linux shell
+#+BEGIN_SRC fish
+yay -S go fish
+#+END_SRC
+- Install the ProtoBuf compiler, the ProtoBuf Go plugin, and the ProtoBuf gRPC
+  Go plugin
+#+BEGIN_SRC fish
+yay -S protobuf
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+#+END_SRC
+- Clone the Go blockchain repository, generate the gRPC stubs, and build the
+  blockchain executable =bcn=
+#+BEGIN_SRC fish
+git clone https://github.com/volodymyrprokopyuk/go-blockchain.git
+cd go-blockchain
+go get ./...
+./grpc.fish
+go build -o bcn
+#+END_SRC
+- Set up Fish completions for the blockchain executable =bcn=
+#+BEGIN_SRC fish
+cp bcn $GOPATH
+./bcn completion fish > ~/.config/fish/completions/bcn.fish
+#+END_SRC
+
+** Testing
+
+- Run the whole test suite storing the test coverage to a file
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run .
+#+END_SRC
+- Show the HTML test coverage report in the browser
+#+BEGIN_SRC fish
+go tool cover -html=coverage.cov
+#+END_SRC

@@ -72,6 +72,9 @@ func createBlocks(
     return err
   }
   aux, err := chain.NewAccount()
+  if err != nil {
+    return err
+  }
   err = aux.Write(keyStoreDir, []byte(ownerPass))
   if err != nil {
     return err

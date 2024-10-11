@@ -36,7 +36,7 @@ func (s *AccountSrv) AccountCreate(
   }
   acc, err := chain.NewAccount()
   if err != nil {
-    return nil, status.Errorf(codes.Internal , err.Error())
+    return nil, status.Errorf(codes.Internal, err.Error())
   }
   err = acc.Write(s.keyStoreDir, pass)
   if err != nil {

@@ -37,47 +37,17 @@ implementation* to *practical testing and usage* of the developed blockchain
 
 *** Blockchain state
 
-1. [@1] Getting started
+1. [@1] [[/doc/getting-started.org][Getting started]]
 2. [@2] [[/doc/account.org][Account]]
-| Blockchain concepts | Cryptography, concurrency, networking, Go |
-|---------------------+-------------------------------------------|
-|                     |                                           |
 3. [@3] [[/doc/transaction.org][Transaction]]
-| Blockchain concepts | Cryptography, concurrency, networking, Go |
-|---------------------+-------------------------------------------|
-|                     |                                           |
 4. [@4] [[/doc/block.org][Block]]
-| Blockchain concepts | Cryptography, concurrency, networking, Go |
-|---------------------+-------------------------------------------|
-|                     |                                           |
 5. [@5] [[/doc/state.org][State]]
-| Blockchain concepts | Cryptography, concurrency, networking, Go |
-|---------------------+-------------------------------------------|
-|                     |                                           |
 
 *** Blockchain node
 
 6. [@6] [[/doc/state-sync.org][State sync]]
-| Blockchain concepts | Cryptography, concurrency, networking, Go |
-|---------------------+-------------------------------------------|
-|                     |                                           |
 7. [@7] [[/doc/peer-discovery.org][Peer discovery]]
-| Blockchain concepts | Cryptography, concurrency, networking, Go |
-|---------------------+-------------------------------------------|
-|                     |                                           |
 8. [@8] [[/doc/transaction-relay.org][Transaction relay]]
-| Blockchain concepts | Cryptography, concurrency, networking, Go |
-|---------------------+-------------------------------------------|
-|                     |                                           |
 9. [@9] [[/doc/block-proposer.org][Block proposer]]
-| Blockchain concepts | Cryptography, concurrency, networking, Go |
-|---------------------+-------------------------------------------|
-|                     |                                           |
 10. [@10] [[/doc/event-stream.org][Event stream]]
-| Blockchain concepts | Cryptography, concurrency, networking, Go |
-|---------------------+-------------------------------------------|
-|                     |                                           |
 11. [@11] [[/doc/blockchain-node.org][Blockchain node]]
-| Blockchain concepts | Cryptography, concurrency, networking, Go |
-|---------------------+-------------------------------------------|
-|                     |                                           |
