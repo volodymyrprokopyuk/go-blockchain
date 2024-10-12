@@ -433,17 +433,17 @@ other nodes on the blockchain including the authority node itself
 
 - Bootstrap and authority node initialization :: The parameters to initialize
   the bootstrap node and the authority node
-- =--node= specifies the node address
-- =--bootstrap= makes the node a bootstrap node for the initial peer discovery
-  and also makes the node the authority node for signing the genesis, proposing
-  and signing new blocks
-- =--authpass= provides a password for the authority account to sign the genesis
-  and proposed blocks on the blockchain
-- =--ownerpass= provides a password for the initial owner account on the
-  blockchain
-- =--balance= specifies the balance for the initial owner account on the
-  blockchain
-Initialize the bootstrap node and the authority node
+  - =--node= specifies the node address
+  - =--bootstrap= makes the node the bootstrap node for the initial peer
+    discovery, and also makes the node the authority node for signing the
+    genesis, proposing and signing new blocks
+  - =--authpass= provides a password for the authority account to sign the
+    genesis and proposed blocks on the blockchain
+  - =--ownerpass= provides a password for the initial owner account on the
+    blockchain
+  - =--balance= specifies the balance for the initial owner account on the
+    blockchain
+  Initialize the bootstrap node and the authority node
 #+BEGIN_SRC fish
 set boot localhost:1122
 set authpass password
@@ -452,21 +452,22 @@ set ownerpass password
   --ownerpass $ownerpass --balance 1000
 #+END_SRC
 
-*Start of already initialized bootstrap and authority node*. Start an already
-initialized bootstrap and authority node
+- Bootstrap and authority node start :: Start the already initialized bootstrap
+  and authority node
 #+BEGIN_SRC fish
 ./bcn node start --node $boot --bootstrap --authpass $authpass
 #+END_SRC
 
 *** Using =account create= CLI command
 
-The gRPC =AccountCreate= method is exposed through the CLI. Create a new
-account on the blockchain and store its key pair on the blockchain node
-- Start a blockchain node
+The gRPC =AccountCreate= method is exposed through the CLI. Create and persist a
+new account on the local key store of the blockchain node
+- Start the bootstrap node
   #+BEGIN_SRC fish
 ./bcn node start --node $boot --bootstrap --authpass $authpass
   #+END_SRC
-- Create a new account (in a new terminal)
+- Create and persist a new account to the local key store of the bootstrap node
+  (in a new terminal)
   - =--node= specifies the node address
   - =--ownerpass= provides the password for the new account
   #+BEGIN_SRC fish
@@ -477,13 +478,13 @@ account on the blockchain and store its key pair on the blockchain node
 *** Using =account balance= CLI command
 
 The gRPC =AccountBalance= method is exposed through the CLI. Check the balance
-of an initial owner account or an account that have already transacted on the
-blockchain
-- Start a blockchain node
+of the initial owner account from the genesis or an account that have already
+transacted on the blockchain
+- Start the bootstrap node
   #+BEGIN_SRC fish
 ./bcn node start --node $boot --bootstrap --authpass $authpass
   #+END_SRC
-- Get the account address of the initial owner from the genesis file at
+- Get the account address of the initial owner account from the genesis file at
   =.keystore<port>/genesis.json=
   #+BEGIN_SRC json
 {
@@ -496,7 +497,7 @@ blockchain
   "sig": "yVlFB9LImlegWJ9XzLZ4Wslr+zTWBUQ1hanrzdABShN4KTZeYlc/jQbQerV68EKeqvpf8BmWOdmXhlRXA1wsOAA="
 }
   #+END_SRC
-- Get the balance of the initial owner account from the genesis file
+- Get the balance of the initial owner account from the genesis
   #+BEGIN_SRC fish
 set account d54173365ca6c47d482b0a06ba4f196049014145093778427383de19d66a76d7
 ./bcn account balance --node $boot --account $account
