@@ -27,10 +27,10 @@
   - Sign transaction :: The sign transaction operation creates a digital
     signature of the transaction with the private key of the signing account
   - Verify transaction :: The verify transaction signature operation recovers
-    the public key of the signing account from the transaction and the
-    transaction signature, derives the public address from the recovered public
-    key, and compares the derived public address with the public address of the
-    signing account
+    the public key of the signing account from the hash of the encoded
+    transaction and the transaction signature, derives the public address from
+    the recovered public key, and compares the derived public address with the
+    account address of the signing account
   - Check account balance :: The check account balance operation gets the
     current balance of the account from the confirmed state of the blockchain
   - List account transactions :: The list account transactions operation
@@ -45,7 +45,7 @@ private key and a public key
   that is used to derive the public key and digitally sign transactions. The
   private key must be kept in secret to preserve account authenticity and
   control account assets on the blockchain
-- Public key :: The public key is a pair of large numbers derived from hte
+- Public key :: The public key is a pair of large numbers derived from the
   private key. The public key is used to identify the account on the blockchain
   and verify transactions signed with the account private key. The public key
   can be safely shared with any participant on the blockchain
