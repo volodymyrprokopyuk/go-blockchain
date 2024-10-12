@@ -59,6 +59,8 @@ iterators/
 /search blocks/, /Keccak256 hash function/, /ECDSA Secp256k1 digital signature/,
 /ECDSA Secp256k1 block verification/, /gRPC server streaming/, /Go iterators/
 5. [@5] [[/doc/state.org][State]]
+/Blockchain state/, /confirmed state/, /pending state/, /apply transaction/,
+/transaction life cycle/, /create block/, /apply block/, /block life cycle/
 
 *** Blockchain node
 

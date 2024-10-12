@@ -4,102 +4,141 @@
 
 *** State balances and nonces
 
-- State :: The blockchain state is the central in-memory data structure
-  maintained on each blockchain node that tracks and reflects the confirmed and
-  pending states of the blockchain. The state contains a mapping between account
-  address and their /balances/. Account balances cannot be negative at any
-  moment. There is no debt in the blockchain. The state contains a mapping
-  between account addresses and the /nonce/ used in the last transaction of each
-  account. The nonce is a per account counter that increments with every new
-  transaction signed from the account. The nonce /prevents replay attacks/ when
-  a valid signed transaction in intercepted and replayed to the blockchain
-  network multiple times with the objective to perform multiple transfers of
-  funds from the sender account. The nonce /resolves the double spending
-  problem/ by making each transaction from the sender account unique, so the
-  same funds cannot be spent more than one time. The nonce ensures that
-  transactions from an account are /processed strictly in order/ of increasing
-  nonce values making replay attacks and double spending impossible. The state
-  contains a copy of the /last confirmed block/ that is used to validate the
-  next block that will be added to the blockchain
+- Blockchain state :: The blockchain state is the central in-memory data
+  structure maintained on each blockchain node. The blockchain state that tracks
+  and reflects the confirmed and pending state of the blockchain. The state
+  contains the mapping between account addresses and the account balances. The
+  account balances cannot be negative at any moment. There is no debt on the
+  blockchain. The state contains the mapping between account addresses and the
+  account nonces used in the last transaction of each account. The nonce is a
+  per account counter that increments with every new transaction signed from the
+  account. The nonce prevents the transaction replay attacks when the valid
+  signed transaction in intercepted and replayed to the blockchain network
+  multiple times with the objective to perform multiple transfers of funds from
+  the sender account. The nonce resolves the double spending problem by making
+  each transaction from the sender account unique, so the same funds cannot be
+  spent more than one time. The nonce ensures that transactions from the sender
+  account are processed strictly in order of increasing nonce values making the
+  transaction replay attacks and the double spending impossible. The state
+  contains a copy of the last confirmed block that is used to validate the next
+  proposed block that will be added to the blockchain if validated and confirmed
 
-*** Confirmed state vs pending state
+*** Confirmed state and pending state
 
-- Confirmed state vs pending state :: The blockchain state has two facets: the
-  confirmed state and the pending state. The pending state continuously and
-  progressively becomes the confirmed state rejecting invalid transactions. The
-  cycle starts by creating the pending state as a copy of the latest confirmed
-  state. Then new transactions are applied to the pending state. The transaction
-  application process validates a new transaction against balances and nonces of
-  the pending state. If the new transaction is valid, it is added to the list of
-  pending transactions. On the due time a new block containing the list of
-  pending transactions is created, proposed, and, finally, validated by
-  consensus between the validating nodes. The confirmed block is applied to the
-  current confirmed state that automatically becomes the next confirmed state.
-  Immediately after the update of the confirmed state a new pending state is
-  created as a copy of the latest confirmed state and the cycle restarts.
+- Confirmed state and pending state :: The blockchain state has two
+  perspectives: the confirmed state and the pending state. The pending state
+  continuously and progressively becomes the confirmed state rejecting invalid
+  transactions. The cycle begins by creating the pending state as a copy of the
+  latest confirmed state. Then new signed transactions are applied to the
+  pending state. The transaction application process validates a new signed
+  transaction against balances and nonces of the pending state. If the new
+  signed transaction is valid, the transaction is added to the list of pending
+  transactions. On the due time a new block containing the list of validated
+  pending transactions is created, signed by the authority account, proposed,
+  and, finally, validated by consensus between the validator nodes. The
+  confirmed block is applied to the current confirmed state that automatically
+  becomes the next confirmed state. Immediately after the update of the
+  confirmed state a new pending state is created as a copy of the latest
+  confirmed state and the cycle restarts
 
 *** Application of transactions to the pending state
 
-- Transaction application :: The transaction application process occurs four
-  times during the transaction life cycle on the blockchain
-  - *Transaction creation*. The first time a /new transaction/ is applied to the
-    /pending state/. The new transaction is either sent to the blockchain node
-    by an external client or relayed to the node from another node on the
-    blockchain network
-  - *Block creation*. The second time a /pending transaction/ is applied again
-    to the /cloned state/ when a new block is created and proposed for consensus
-    agreement
-  - *Block validation*. The third time a /transaction from the proposed block/
-    is applied to the /cloned state/ during the validation of the proposed block
-  - *Block confirmation*. The fourth time a /transaction from the validated
-    block/ is applied to the /confirmed state/ when the validated block is added
-    to the blockchain
-  The transaction application process validates a new transaction against one of
-  pending, cloned, or confirmed states by performing a set of checks
-  - Verify the /signature/ of the signed transaction
+- Apply transaction :: The transaction application process validates a new
+  signed transaction against one of the pending, cloned, or confirmed state by
+  performing the set of checks
+  - Verify the the /signature/ of the signed transaction is correct
   - Check the /transaction nonce/ against the state nonce for the sender account
   - Ensure that the sender account has /enough funds/ to satisfy the value
     amount
   Only validated transactions that has passed the transaction application
-  process will be included in the next block on the blockchain. If any of the
-  transaction checks fails the transaction is rejected and the rejection is
-  returned to the client that sent the transaction
+  process will be included in the next proposed block on the blockchain. If any
+  of the transaction checks fails the transaction is rejected and the rejection
+  reason is returned to the client that sent the transaction
+
+*** Transaction life cycle
+
+- Transaction life cycle :: The transaction application process occurs four
+  times during the transaction life cycle on the blockchain
+  - Create transaction :: The first time a /new transaction/ is applied to the
+    /pending state/. The new transaction is either sent to the blockchain node
+    by a client or relayed to the node from another node on the blockchain
+    network
+  - Create block :: The second time the /pending transaction/ is applied again
+    to the /cloned state/ when a new block is created, signed and proposed to
+    validators to reach the consensus agreement
+  - Validate block :: The third time the /transaction from the proposed block/
+    is applied to the /cloned state/ during the validation of the proposed block
+    on each validator node
+  - Confirm block :: The fourth time the /transaction from the validated block/
+    is applied to the /confirmed state/ when the validated block is added to the
+    blockchain
 
 *** Creation of new blocks from the pending state
 
-- Block creation :: The block creation process is either scheduled e.g. PoA,
-  PoS, or happens randomly e.g. PoW, PoET depending on the employed consensus
-  algorithm. The block creation process is performed on the cloned state. The
-  block creation process constructs a new block to be proposed and validated by
-  other nodes on the blockchain network. All pending transactions are sorted by
-  the transaction signing time to be applied in order per the sender account,
-  validated against the cloned state, and packed into a new block. The block
-  number is incremented by one regarding the number of the last confirmed block,
-  and the parent hash is set to the hash of the last block from the confirmed
-  state.
+- Create block :: The block creation process is either scheduled e.g. PoA
+  consensus, PoS consensus, or happens at random points in time e.g. PoW
+  consensus, PoET consensus depending on the employed consensus algorithm. The
+  block creation process in this blockchain happens only on the authority node.
+  The authority node performs the creation, signing and proposal of new blocks
+  to all other validator nodes including the authority node. The block creation
+  process is performed on the cloned state. The block creation process
+  constructs a new block to be proposed by the authority node and validated by
+  other validator nodes including the authority node. All pending transactions
+  are sorted by the transaction creation time to be applied in order per the
+  sender account, validated against the cloned state, and packed into a new
+  block. The block number is incremented by one regarding the number of the last
+  confirmed block. The parent hash is set to the hash of the last confirmed
+  block from the confirmed state.
 
 *** Application of proposed blocks to the cloned state
 
-- Block application :: The block application process occurs when a new proposed
-  block is relayed to the node from other nodes on the blockchain network or
+- Apply block :: The block application process occurs when a new proposed block
+  is relayed to the validator node from other nodes on the blockchain network or
   when the confirmed block is read from the local block store during the
-  initialization or synchronization of the state. The block application process
-  is first performed on the cloned state and, if successful, the cloned state is
-  applied to the confirmed state and a new block is appended to the block store.
-  The block application process performs a set of checks
-  - Verify the /signature/ of the proposed signed block
+  initialization or the synchronization of the state. The block application
+  process is first performed on the cloned state and, if successful, the cloned
+  state is applied to the confirmed state and the new block is appended to the
+  local block store. The block application process performs the set of checks
+  - Verify that the /signature/ of the proposed signed block is correct
   - Check the successive /block number/ against the block number of the last
     block from the confirmed state
   - Check the correct /parent hash/ against the hash of the last block from the
     confirmed state
   Only validated blocks are applied to the confirmed state and are immediately
-  appended to the block store. Validated blocks and transactions are published
-  to the node event stream. Any subscriber can read events from the node event
-  stream
+  appended to the local block store. Validated blocks and transactions are
+  published to the node event stream. Any subscribed client can read events from
+  the node event stream
+
+*** Block life cycle
+
+- Block life cycle :: The block life cycle takes the block from the block
+  creation and proposal at the authority node, through the block relay and
+  propagation to the validator nodes, to the block validation and confirmation
+  on every node of the blockchain. The block life cycle
+  - Create block :: The block creation process in this blockchain is scheduled
+    with a random delay only on the authority node. The block creation process
+    happens on the cloned state. On the due time the authority node creates a
+    block by including all validated transactions from the pending state. The
+    new block is signed by the authority account
+  - Propose block :: The new block signed by the authority account is proposed
+    to the validator nodes through the block relay mechanism. The proposed block
+    reaches all nodes of the peer-to-peer network including the authority node
+    that proposed the block
+  - Validate block :: The proposed block relayed from other nodes is validated
+    by applying the proposed block to the cloned state. If the block application
+    process is successful that block is considered validated. The validated
+    block is further relayed to the list of known peers. If the block
+    application process fails, the block is not relayed to the list of known
+    peer. Blocks, relayed more then once to the same node, fail the second block
+    application process and are not further relayed
+  - Confirm block :: The cloned state after the successful block application is
+    immediately applied to the confirmed state. At this moment the validated
+    block is considered confirmed. The confirmed block is appended to the local
+    block store of the node
 
 ** Design and implementation
 
-*** The concurrency safe blockchain state type
+*** Concurrency safe blockchain state type
 
 - =State= type :: The =State= type represents both the confirmed and the pending
   state of the blockchain. The state is maintained independently, but
@@ -415,7 +454,7 @@ func (s *State) ApplyBlock(blk SigBlock) error {
 }
   #+END_SRC
 
-*** gRPC =TxSend= methods
+*** gRPC =TxSend= method
 
 The gRPC =Tx= service provides the =TxSend= method to send signed transactions
 to a blockchain node. The blockchain node then applies the transaction to the

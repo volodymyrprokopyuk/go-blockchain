@@ -21,7 +21,7 @@
   must be either validated and added to the blockchain with all contained
   transactions or rejected completely even if some transactions are valid
 
-*** Chain of blocks and immutability
+*** Immutable chain of blocks
 
 - Chain of blocks :: Blocks on the blockchain are organized into a linked list
   of blocks where each blocks acts as a node of the linked list. Each block has
@@ -316,7 +316,7 @@ func VerifyBlock(blk SigBlock, authority Address) (bool, error) {
 
 *** Persistence and re-creation of blocks
 
-- Persis block :: The block persistence process
+- Persist block :: The block persistence process
   - Encode the signed block
   - Append the encoded and signed block to the block store file
   #+BEGIN_SRC go
@@ -507,15 +507,15 @@ The =TestBlockSearch= testing process
 - Create the state from the genesis
 - Create several confirmed blocks on the state and on the local block store
 - Set up the gRPC server and client
-- Search by block number
+- Search by the block number
   - Search blocks by the block number of an existing block
   - Verify that the block is found
   - Verify that the found block has the requested number
-- Search by block hash
+- Search by the block hash
   - Search blocks by the block hash of an existing block
   - Verify that the block is found
   - Verify that the found block has the requested hash
-- Search by parent hash
+- Search by the parent hash
   - Search blocks by the parent hash of an existing block
   - Verify that the block is found
   - Verify that the found block has the requested parent hash
@@ -526,7 +526,8 @@ go test -v -cover -coverprofile=coverage.cov ./... -run BlockSearch
 *** Using =block search= CLI command
 
 The gRPC =BlockSearch= method is exposed through the CLI. Sign and send
-transactions to the bootstrap node. Confirm and search blocks
+transactions to the bootstrap node. Search confirmed blocks to verify that the
+blocks contain the signed and sent transactions
 - Initialize the blockchain by starting the bootstrap node with parameters for
   the blockchain initial configuration
   #+BEGIN_SRC fish
