@@ -77,7 +77,7 @@ func TestTxSign(t *testing.T) {
   })
   // Create the gRPC transaction client
   cln := rpc.NewTxClient(conn)
-  // Call the TxSign method to sign a new transaction
+  // Call the TxSign method to sign the new transaction
   req := &rpc.TxSignReq{
     From: string(acc.Address()), To: "to", Value: 12, Password: ownerPass,
   }

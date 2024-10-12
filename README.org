@@ -51,8 +51,13 @@ with Argon2 KDF/
 /Blockchain transaction/, /transaction nonce/, /double spending problem/,
 /transaction replay attack/, /sign transaction/, /verify transaction/, /search
 transactions/, /Keccak256 hash function/, /ECDSA Secp256k1 digital signature/,
-/ECDSA Secp256k1 transaction verification/, /gRPC server streaming/
+/ECDSA Secp256k1 transaction verification/, /gRPC server streaming/, /Go
+iterators/
 4. [@4] [[/doc/block.org][Block]]
+/Blockchain genesis/, /blockchain block/, /chain of blocks/, /block store/,
+/persist genesis/, /re-create genesis/, /persist block/, /re-create block/,
+/search blocks/, /Keccak256 hash function/, /ECDSA Secp256k1 digital signature/,
+/ECDSA Secp256k1 block verification/, /gRPC server streaming/, /Go iterators/
 5. [@5] [[/doc/state.org][State]]
 
 *** Blockchain node

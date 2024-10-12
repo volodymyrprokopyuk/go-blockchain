@@ -4,46 +4,49 @@
 
 *** Genesis and blocks
 
-- Genesis :: The genesis file is used to initialize a blockchain. The genesis
-  file contains /initial configuration parameters of the blockchain/ e.g. the
-  name of the blockchain, the time of initiation of the blockchain; and the
-  /initial balances of owner accounts/. The genesis file may contain other
-  blockchain configuration parameters like the address of the authority account
-  that signs the genesis and all blocks on the blockchain
-- Block :: A block on the blockchain /contains a list of transactions/, acts as
-  a /node of a linked list/ of all blocks on the blockchain, and is a /unit of
-  integrity/ checking on the blockchain. A block represents a /unit of
-  consensus agreement/ between nodes on the blockchain. Blocks of transactions
-  are created and proposed by one nodes and validated and voted by other nodes.
-  Blocks can be digitally signed by proposing, validating, and voting nodes. A
-  block must be either validated and added to the blockchain with all listed
+- Blockchain genesis :: The blockchain genesis file is used to initialize a new
+  blockchain. The genesis file contains the initial configuration parameters of
+  the blockchain e.g. the name of the blockchain, the time of the initiation of
+  the blockchain; and the initial balances of the initial owner accounts. The
+  genesis file may contain other blockchain configuration parameters like the
+  address of the authority account that signs the genesis and all blocks on the
+  blockchain
+- Blockchain block :: The blockchain block contains a list of validated
+  transactions, acts as a node of a linked list of all blocks on the blockchain,
+  and is a unit of integrity checking on the blockchain. The block represents a
+  unit of consensus agreement between nodes on the blockchain. Blocks of
+  transactions are created, signed and proposed by the authority node and
+  validated and confirmed by the validator nodes. All proposed and confirmed
+  blocks on the blockchain are digitally signed by the authority node. A block
+  must be either validated and added to the blockchain with all contained
   transactions or rejected completely even if some transactions are valid
 
 *** Chain of blocks and immutability
 
-- Chain of blocks :: Blocks on the blockchain are organized into a /linked list
-  of blocks/ where every blocks acts as a node of the linked list. Each block
-  has a reference that contains the /hash of the parent block/. The parent hash
-  of every block is the /linking and integrity checking mechanism/ that ensures
-  /immutability/ of all blocks and contained transactions, /ordering/ of all
-  blocks and contained transactions. A minimal change in content or ordering of
-  blocks or contained transactions immediately results in a different hash of
-  the modified block and breakage of the parent hash linking mechanism of the
-  blockchain. The parent hash of the first block is the hash of the genesis
+- Chain of blocks :: Blocks on the blockchain are organized into a linked list
+  of blocks where each blocks acts as a node of the linked list. Each block has
+  the reference that contains the hash of the parent block. The parent hash of
+  every block represents the linking mechanism and the integrity checking
+  mechanism that ensures immutability of all blocks and contained transactions,
+  ordering of all blocks and contained transactions. A minimal change in content
+  or ordering of blocks or contained transactions immediately results in a
+  different hash of the modified block and breaks the parent hash linking
+  mechanism on the blockchain. The parent hash of the first block is the hash of
+  the genesis
 
 *** Block search
 
-- Block search :: The block search function locates confirmed blocks on the
-  blockchain after the blocks have been validated and applied to the confirmed
-  state and appended to the local block store. The block search is performed
-  against the local block store of the blockchain. The difference between the
-  block search and the subscription to the node event stream is that the node
-  event stream allows clients to proactively subscribe to the validated block
-  event type before blocks are validated and the event will be delivered only
-  once, while the block search locates blocks on demand as many times as
-  required after blocks have been validated. The block search locates validated
-  blocks in the local block store by the block number, the prefix of the block
-  hash, by the prefix of the parent hash
+- Block search :: The block search function locates validated confirmed blocks
+  on the blockchain after the blocks have been validated and applied to the
+  confirmed state and appended to the local block store. The block search is
+  performed against the local block store of the blockchain node. The difference
+  between the block search and the subscription to the node event stream is that
+  the node event stream allows clients to proactively subscribe to the validated
+  block event type before blocks are validated and the event will be delivered
+  only once, while the block search locates blocks on demand as many times as
+  required after blocks have been validated and confirmed. The block search
+  locates validated blocks in the local block store by the block number, the
+  prefix of the block hash, and by the prefix of the parent hash
 
 ** Design and implementation
 
@@ -54,14 +57,14 @@ the initial configuration of the blockchain and the =SigGenesis= type that also
 includes the signature of the genesis by the authority account. Most of the
 blockchain components work exclusively with the =SigGenesis= type
 
-- =Genesis= type :: The =Genesis= type contains the initial configuration of the
-  blockchain. Specifically the blockchain name, the authority account address
-  that signs the genesis and all blocks, the initial balances on the blockchain
-  that create the initial amount of money from thin air, the creation time the
-  genesis
+- Genesis type :: The =Genesis= type contains the initial configuration of the
+  blockchain. Specifically, the blockchain name, the authority account address
+  to sign the genesis and all proposed blocks, the initial balances on the
+  blockchain that create the initial amount of money from thin air, the creation
+  time of the genesis
   | ~Chain string~                | Blockchain name           |
   | ~Authority Address~           | Authority account address |
-  | ~Balances map[Address]uint64~ | Initial balances          |
+  | ~Balances map[Address]uint64~ | Initial account balances  |
   | ~Time time.Time~              | Creation time             |
   #+BEGIN_SRC go
 type Genesis struct {
@@ -84,11 +87,11 @@ func (g Genesis) Hash() Hash {
 }
   #+END_SRC
 
-- =SigGenesis= type :: The =SigGenesis= type embeds the =Genesis= type and
+- Signed genesis type :: The =SigGenesis= type embeds the =Genesis= type and
   includes the genesis signature. After the genesis is created and signed by the
   authority account, the genesis is immediately written to the genesis file
-  | ~Genesis~    | Embedded genesis content |
-  | ~Sig []byte~ | Genesis signature        |
+  | ~Genesis~    | Embedded original genesis                 |
+  | ~Sig []byte~ | Digital signature of the original genesis |
   #+BEGIN_SRC go
 type SigGenesis struct {
   Genesis
@@ -106,18 +109,18 @@ func (g SigGenesis) Hash() Hash {
 
 *** ECDSA signing and verification of genesis
 
-This blockchain uses the *Elliptic Curve Digital Signature Algorithm* (*ECDSA*)
-for signing and verification of the genesis. Specifically, the *Secp256k1
-elliptic curve* is used for for signing and verification of the genesis
+This blockchain uses the Elliptic Curve Digital Signature Algorithm (ECDSA) for
+signing and verification of the signed genesis. Specifically, the Secp256k1
+elliptic curve is used for signing and verification of the genesis
 
-- Secp256k1 genesis signing :: The genesis signing process requires the
-  owner-provided password and is performed from the =Account= instance. The
+- Secp256k1 sign genesis :: The genesis signing process requires the
+  owner-provided password and is performed from the authority account. The
   genesis signing process
   - Produce the Keccak256 hash of the genesis
   - Sign the Keccak256 hash of the genesis using the ECDSA algorithm on the
     Secp256k1 elliptic curve
-  - Construct a signed genesis by adding the produced digital signature to
-    the genesis
+  - Construct the signed genesis by adding the produced digital signature to
+    the original genesis
   #+BEGIN_SRC go
 func (a Account) SignGen(gen Genesis) (SigGenesis, error) {
   hash := gen.Hash().Bytes()
@@ -130,15 +133,16 @@ func (a Account) SignGen(gen Genesis) (SigGenesis, error) {
 }
   #+END_SRC
 
-- Secp256k1 genesis verification :: The genesis verification process
-  does not require any external information like the owner-provided password.
-  The signed genesis instance contains all the necessary information to
-  verify the signed genesis. The genesis verification process
+- Secp256k1 verify genesis :: The genesis verification process does not require
+  any external information like the owner-provided password. The signed genesis
+  instance contains all the necessary information to verify the signature of the
+  signed genesis. The genesis verification process
   - Recover the public key from the hash of the original embedded genesis and
     the genesis signature
-  - Construct the account address from the recovered public key
-  - If the constructed account address is equal to the account address of the
-    authority that signed the genesis, then the genesis signature is valid
+  - Derive the account address from the recovered public key
+  - If the derived account address is equal to the account address of the
+    authority account that signed the genesis, then the genesis signature is
+    valid
   #+BEGIN_SRC go
 func VerifyGen(gen SigGenesis) (bool, error) {
   hash := gen.Genesis.Hash().Bytes()
@@ -153,9 +157,9 @@ func VerifyGen(gen SigGenesis) (bool, error) {
 
 *** Persistence and re-creation of genesis
 
-- Genesis persistence :: The genesis persistence process
-  - Encode the genesis to JSON
-  - Write the encoded genesis to a file
+- Persist genesis :: The genesis persistence process
+  - Encode the signed genesis
+  - Persist the encoded and signed genesis to a file
   #+BEGIN_SRC go
 func (g SigGenesis) Write(dir string) error {
   jgen, err := json.Marshal(g)
@@ -171,7 +175,7 @@ func (g SigGenesis) Write(dir string) error {
 }
   #+END_SRC
 
-The structure of the persisted signed genesis
+The structure of the persisted and signed genesis
 #+BEGIN_SRC json
 {
   "chain": "blockchain",
@@ -184,9 +188,9 @@ The structure of the persisted signed genesis
 }
 #+END_SRC
 
-- Genesis re-creation :: The genesis re-creation process
-  - Read the encoded genesis from a file
-  - Decode the genesis from JSON
+- Re-create genesis :: The genesis re-creation process
+  - Read the encoded and signed genesis from a file
+  - Decode the signed genesis
   #+BEGIN_SRC go
 func ReadGenesis(dir string) (SigGenesis, error) {
   path := filepath.Join(dir, genesisFile)
@@ -203,12 +207,14 @@ func ReadGenesis(dir string) (SigGenesis, error) {
 *** Block and signed block types
 
 The implementation makes distinction between the =Block= type that contains the
-block number, the parent hash, and the list of transactions; and the =SigBlock=
-type that also includes the signature of the block by the authority account.
-Most of the blockchain components work exclusively with the =SigBlock= type
+block number, the parent hash, and the list of validated transactions; and the
+=SigBlock= type that also includes the signature of the block by the authority
+account. Most of the blockchain components work exclusively with the =SigBlock=
+type
 
-- =Block= type :: The =Block= type contains the block number, the hash of the
-  parent block, the list of transactions, the creation time of the block
+- Block type :: The =Block= type contains the block number, the hash of the
+  parent block, the list of validated transactions, the creation time of the
+  block
   | ~Number uint64~  | Block number         |
   | ~Parent Hash~    | Parent hash          |
   | ~Txs []SigTx~    | List of transactions |
@@ -230,11 +236,11 @@ func (b Block) Hash() Hash {
 }
   #+END_SRC
 
-- =SigBlock= type :: The =SigBlock= type embeds the =Block= type and includes
+- Signed block type :: The =SigBlock= type embeds the =Block= type and includes
   the block signature signed by the authority account. The string representation
-  of a signed block is defined to present the block to the end user
-  | ~Block~      | Embedded block content |
-  | ~Sig []byte~ | Block signature        |
+  of the signed block is defined to present the block to the end user
+  | ~Block~      | Embedded original block                 |
+  | ~Sig []byte~ | Digital signature of the original block |
   #+BEGIN_SRC go
 type SigBlock struct {
   Block
@@ -263,18 +269,18 @@ func (b SigBlock) String() string {
 
 *** ECDSA signing and verification of blocks
 
-This blockchain uses the *Elliptic Curve Digital Signature Algorithm* (*ECDSA*)
-for signing and verification of the blocks. Specifically, the *Secp256k1
-elliptic curve* is used for for signing and verification of the blocks
+This blockchain uses the Elliptic Curve Digital Signature Algorithm (ECDSA) for
+signing and verification of the signed blocks. Specifically, the Secp256k1
+elliptic curve is used for for signing and verification of signed blocks
 
-- Secp256k1 block signing :: The block signing process requires the
-  owner-provided password and is performed from the =Account= instance. The
-  block signing process
+- Secp256k1 sign block :: The block signing process requires the owner-provided
+  password and is performed from the authority account. The block signing
+  process
   - Produce the Keccak256 hash of the block
   - Sign the Keccak256 hash of the block using the ECDSA algorithm on the
     Secp256k1 elliptic curve
   - Construct a signed block by adding the produced digital signature to
-    the block
+    the original block
   #+BEGIN_SRC go
 func (a Account) SignBlock(blk Block) (SigBlock, error) {
   hash := blk.Hash().Bytes()
@@ -287,15 +293,15 @@ func (a Account) SignBlock(blk Block) (SigBlock, error) {
 }
   #+END_SRC
 
-- Secp256k1 block verification :: The block verification process does not
-  require any external information like the owner-provided password. The signed
-  block instance contains all the necessary information to verify the signed
-  block. The block verification process
+- Secp256k1 verify block :: The block verification process does not require any
+  external information like the owner-provided password. The signed block
+  instance contains all the necessary information to verify the signed block.
+  The block verification process
   - Recover the public key from the hash of the original embedded block and
     the block signature
-  - Construct the account address from the recovered public key
-  - If the constructed account address is equal to the account address of the
-    authority that signed the block, then the block signature is valid
+  - Derive the account address from the recovered public key
+  - If the derived account address is equal to the account address of the
+    authority account that signed the block, then the block signature is valid
   #+BEGIN_SRC go
 func VerifyBlock(blk SigBlock, authority Address) (bool, error) {
   hash := blk.Block.Hash().Bytes()
@@ -310,9 +316,9 @@ func VerifyBlock(blk SigBlock, authority Address) (bool, error) {
 
 *** Persistence and re-creation of blocks
 
-- Block persistence :: The block persistence process
-  - Encode the block to JSON
-  - Append the encoded block to the block store file
+- Persis block :: The block persistence process
+  - Encode the signed block
+  - Append the encoded and signed block to the block store file
   #+BEGIN_SRC go
 func (b SigBlock) Write(dir string) error {
   path := filepath.Join(dir, blocksFile)
@@ -325,7 +331,7 @@ func (b SigBlock) Write(dir string) error {
 }
   #+END_SRC
 
-The structure of the persisted encoded bock in the block store
+The structure of the persisted, encoded, and signed block in the block store
 #+BEGIN_SRC json
 {
   "number": 1,
@@ -353,19 +359,20 @@ The structure of the persisted encoded bock in the block store
 }
 #+END_SRC
 
-- Block re-creation :: The =ReadBlocs= function returns an iterator over the
-  signed blocks from a store file, the deferred function to close the block
-  store, and a possible error if the blocks store is not accessible. The
-  iterator returns a block and a possible error if the block store is corrupted.
-  The block re-creation process
-  - Open a block store file
-  - Prepare a deferred function to close the block store
-  - Create an iterator over the blocks in a block store
-  - For each block in a block store
+- Re-create block :: The =ReadBlocs= function returns the iterator over the
+  signed blocks from the block store file, the deferred function to close the
+  block store file, and a possible error if the blocks store is not accessible.
+  The iterator returns a signed block and a possible error if the block store is
+  corrupted. The block re-creation process
+  - Open the block store file
+  - Prepare the deferred function to close the block store file
+  - Create the iterator over the blocks in the block store
+  - For each block in the block store
     - Scan the encoded signed block
     - Decode the encoded signed block
-    - Yield the signed block to a client iterating over blocks
+    - Yield the signed block to the client iterating over the blocks
   - Return the block iterator and the deferred function to close the block store
+    file
   #+BEGIN_SRC go
 func ReadBlocks(dir string) (
   func(yield func(err error, blk SigBlock) bool), func(), error,
@@ -400,11 +407,12 @@ func ReadBlocks(dir string) (
 }
   #+END_SRC
 
-
 *** gRPC =BlockSearch= method
 
-The gRPC =Block= service provides the =BlockSearch= method to located confirmed
-blocks on the local block store. The interface of the service
+The gRPC =Block= service provides the =BlockSearch= method to locate validated
+and confirmed blocks on the local block store. The blocks that satisfy the
+search criteria are returned to the client through the gRPC server stream. The
+interface of the service
 #+BEGIN_SRC protobuf
 message BlockSearchReq {
   uint64 Number = 1;

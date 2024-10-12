@@ -44,7 +44,7 @@
   problem, transaction replay attacks, and ensure that each transaction from an
   account is processed in order
 
-*** Signing and verification of transaction
+*** Signing and verification of transactions
 
 - Digital signature :: The private signing key is used to produce a digital
   signature of a transaction. The corresponding public verifying key is used to
@@ -190,7 +190,7 @@ func (t SigTx) String() string {
 }
   #+END_SRC
 
-*** ECDSA signing and verification of transaction
+*** ECDSA signing and verification of transactions
 
 This blockchain uses the Elliptic Curve Digital Signature Algorithm (ECDSA) for
 signing and verification of signed transactions. Specifically, the Secp256k1
@@ -203,7 +203,7 @@ elliptic curve is used for signing and verification of signed transactions
   - Sign the Keccak256 hash of the transaction using the ECDSA algorithm on the
     Secp256k1 elliptic curve
   - Construct the signed transaction by adding the produced digital signature to
-    the input transaction
+    the original transaction
   #+BEGIN_SRC go
 func (a Account) SignTx(tx Tx) (SigTx, error) {
   hash := tx.Hash().Bytes()
@@ -389,7 +389,7 @@ The =TestTxSign= testing process
 - Create and persist a new account
 - Set up the gRPC server and client
 - Create the gRPC transaction client
-- Call the TxSign method to sign a new transaction
+- Call the =TxSign= method to sign the new transaction
 - Decode the signed transaction
 - Verify that the signature of the signed transaction is valid
 #+BEGIN_SRC fish
@@ -403,13 +403,13 @@ The =TestTxSearch= testing process
 - Create the state from the genesis
 - Create several confirmed blocks on the state and on the local block store
 - Set up the gRPC server and client
-- Search by sender account address
+- Search by the sender account address
   - Get the initial owner account from the genesis
   - Search transactions by the sender account address that equals to the initial
     owner account address
   - Verify that all transactions are found
   - Verify that all found transactions satisfy the search criteria
-- Search by transaction hash
+- Search by the transaction hash
   - Search transactions by the transaction hash of an existing transaction
   - Verify that the transaction is found
   - Verify that the found transaction matches the search criteria
@@ -421,7 +421,7 @@ go test -v -cover -coverprofile=coverage.cov ./... -run TxSearch
 
 The gRPC =TxSign= method is exposed through the CLI. Create and sign a new
 transaction on the bootstrap node
-- Start a blockchain node
+- Start the bootstrap node
   #+BEGIN_SRC fish
 set boot localhost:1122
 set authpass password
@@ -453,7 +453,7 @@ set ownerpass password
 *** Using =tx search= CLI command
 
 The gRPC =TxSearch= method is exposed through the CLI. Sign, send, and search
-confirmed transactions on the bootstrap node
+validated and confirmed transactions on the bootstrap node
 - Initialize the blockchain by starting the bootstrap node with parameters for
   the blockchain initial configuration
   #+BEGIN_SRC fish
