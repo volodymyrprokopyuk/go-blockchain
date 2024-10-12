@@ -28,8 +28,8 @@ yay -S protobuf
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 #+END_SRC
-- Clone the Go blockchain repository, generate the gRPC stubs, and build the
-  blockchain executable =bcn=
+- Clone the Go blockchain repository, generate the gRPC client and server stubs,
+  and build the blockchain executable =bcn=
 #+BEGIN_SRC fish
 git clone https://github.com/volodymyrprokopyuk/go-blockchain.git
 cd go-blockchain
@@ -37,7 +37,7 @@ go get ./...
 ./grpc.fish
 go build -o bcn
 #+END_SRC
-- Set up Fish completions for the blockchain executable =bcn=
+- Set up the Fish completions for the blockchain executable =bcn=
 #+BEGIN_SRC fish
 cp bcn $GOPATH
 ./bcn completion fish > ~/.config/fish/completions/bcn.fish
@@ -49,7 +49,7 @@ cp bcn $GOPATH
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run .
 #+END_SRC
-- Show the HTML test coverage report in the browser
+- Show the HTML test coverage report in a browser
 #+BEGIN_SRC fish
 go tool cover -html=coverage.cov
 #+END_SRC

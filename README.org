@@ -6,38 +6,43 @@ blockchain concepts and practicing how to build a blockchain in Go from scratch
 
 ** Abstract
 
-The *foundational* and *practical* guide for *effectively learning* fundamental
-blockchain concepts and *progressively building* a blockchain in Go from
-scratch. An interesting and challenging adventure that takes you from
-*foundational concepts and purpose* through *technical design and
-implementation* to *practical testing and usage* of the developed blockchain
+A *foundational* and *practical* guide for *effectively learning* the
+fundamental blockchain concepts and *progressively building* a blockchain from
+scratch in Go with gRPC. An interesting and challenging adventure that takes you
+from the *foundational concepts and purpose* through the *technical design and
+implementation* to the *practical testing and usage* of the proposed blockchain
 
-- Simple, yet non-trivial :: The guide introduce the blockchain concepts simple
-  to understand and technical design solutions simple to implement. However, the
-  proposed blockchain is not trivial. The blockchain has all key components of
-  modern blockchains: the state initialization and synchronization, the peer
-  discovery, the transaction relay, the block proposer, the block validators,
-  the PoA centralized consensus, the block relay, the event stream, the gRPC
-  server, and the graceful node shutdown
-- Concise, yet detailed :: The guide describes blockchain concepts and technical
-  design solutions in the concise and clear form, focusing on the purpose what
-  and the reasons why behind fundamental blockchain components. Enough details
-  behind technical design solutions are provided to support deep understanding
-  of internal working of components of the proposed blockchain
-- Practical, yet well-grounded :: The guide emphasizes the learn by doing
-  approach to effectively understanding the blockchain concepts and
-  progressively building the blockchain components from scratch. Practical
-  experience of developing, testing, and using the proposed blockchain is a
-  great motivator to get deeper understanding of the blockchain concepts and the
-  technical design solutions. Once the key mechanics of the blockchain
-  components are understood, the more abstract theoretical concepts naturally
-  fill the gaps of practical knowledge
+- Simple, yet non-trivial :: The guide introduces the blockchain concepts that
+  are /simple to understand/ and the technical design solutions that are /simple
+  to implement/. However, the /proposed blockchain is not trivial/. The
+  blockchain has all the key components of a modern blockchain: the state
+  initialization and synchronization, the peer discovery, the transaction relay,
+  the block proposer with the block validators being part of the Proof of
+  Authority (PoA) simple consensus, the block relay, the event stream of domain
+  events, the gRPC server, and the graceful node shutdown
+- Concise, yet detailed :: The guide describes the fundamental blockchain
+  concepts and the technical design solutions in the /concise and clear form/,
+  focusing on the /purpose what/ and the /reasons why/ behind the key blockchain
+  components. /Enough details/ behind the technical design solutions are
+  provided to support /deeper understanding/ of the internal working of the
+  components of the proposed blockchain
+- Practical, yet well-grounded :: The guide emphasizes the /learn by doing/
+  approach to effectively learning the fundamental blockchain concepts and
+  progressively building the blockchain components from scratch. /Practical
+  experience/ of developing, testing, and using the proposed blockchain is a
+  great motivator to get deeper understanding of the fundamental blockchain
+  concepts and the technical design solutions. Once the key mechanics of the
+  blockchain components are understood, the more /abstract theoretical concepts/
+  naturally fill the gaps in the knowledge acquired through practical
+  experiments
 
 ** Contents
 
 *** Blockchain state
 
 1. [@1] [[/doc/getting-started.org][Getting started]]
+/Prerequisites, dependencies, installation, testing/
+
 2. [@2] [[/doc/account.org][Account]]
 3. [@3] [[/doc/transaction.org][Transaction]]
 4. [@4] [[/doc/block.org][Block]]
