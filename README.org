@@ -42,8 +42,10 @@ implementation* to the *practical testing and usage* of the proposed blockchain
 
 1. [@1] [[/doc/getting-started.org][Getting started]]
 /Prerequisites, dependencies, installation, testing/
-
 2. [@2] [[/doc/account.org][Account]]
+/Blockchain Account, Account Address, Account Balance, Secp256k1 Account,
+Secp256k1 Key Pair, Keccak256 Account Address, Keccak256 Hash Function, Create
+Account, Persist Account, Re-Create Account, Aes-Gcm Encryption With Argon2 Kdf/
 3. [@3] [[/doc/transaction.org][Transaction]]
 4. [@4] [[/doc/block.org][Block]]
 5. [@5] [[/doc/state.org][State]]

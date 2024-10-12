@@ -115,7 +115,7 @@ func TestAccountCreate(t *testing.T) {
   // Create the gRPC account client
   cln := rpc.NewAccountClient(conn)
   req := &rpc.AccountCreateReq{Password: ownerPass}
-  // Call the AccountCrate method to create a new account
+  // Call the AccountCrate method to create and persist a new account
   res, err := cln.AccountCreate(ctx, req)
   if err != nil {
     t.Fatal(err)
@@ -156,7 +156,7 @@ func TestAccountBalance(t *testing.T) {
     if err != nil {
       t.Fatal(err)
     }
-    // Verify that the correct balance is returned
+    // Verify that balance is correct
     got, exp := res.Balance, ownerBal
     if got != exp {
       t.Errorf("invalid balance: expected %v, got %v", exp, got)

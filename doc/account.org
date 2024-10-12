@@ -2,53 +2,60 @@
 
 ** Concepts and purpose
 
-*** Accounts on the blockchain
+*** Blockchain account
 
-- Account :: An account represents a /digital identity/ on the blockchain. An
-  account represents /user's ownership of assets/ on the blockchain. An account
-  can hold, send and receive cryptocurrency and tokens. An account has an
-  associated /digital ledger/ of transactions and the /current balance/
+- Blockchain account :: The blockchain account represents a digital identity on
+  the blockchain. The blockchain account represents user's ownership of assets
+  on the blockchain. The blockchain account can hold, send, and receive
+  cryptocurrency and tokens. The blockchain account has the associated digital
+  ledger of debit and credit transactions and the current balance of the
+  account. The account components
+  - Private key :: The private key is a large randomly generated secret number
+    used to control assets on the blockchain by signing transactions that spend
+    funds from the account
+  - Account address :: The Account address is a hash of the public key, derived
+    from the corresponding private key, that uniquely identifies the account on
+    the blockchain
+  - Account balance :: The account balance is the amount of divisible
+    cryptocurrency or indivisible tokens controlled by the private key of the
+    account
+  - Account transactions :: The account transactions is a time-ordered list of
+    debit and credit transactions involving the account
+  Account operations
+  - Create account :: The create account operation derives the public address
+    and stores the password-protected private key
+  - Sign transaction :: The sign transaction operation creates a digital
+    signature of the transaction with the private key of the signing account
+  - Verify transaction :: The verify transaction signature operation recovers
+    the public key of the signing account from the transaction and the
+    transaction signature, derives the public address from the recovered public
+    key, and compares the derived public address with the public address of the
+    signing account
+  - Check account balance :: The check account balance operation gets the
+    current balance of the account from the confirmed state of the blockchain
+  - List account transactions :: The list account transactions operation
+    enumerates all debit and credit transactions involving the account
 
-Account components
-- *Private key* is a /large randomly generated secret number/ used to control
-  assets on the blockchain by signing transactions
-- *Public address* is a /hash of the public key/ (derived from the private key)
-  that uniquely identifies an account on the blockchain
-- *Current balance* is the /amount of divisible cryptocurrency/ or /indivisible
-  tokens/ controlled by the private key of an account
-- *Transactions* is a time-ordered /list of debit and credit transactions/
-  involving an account
+*** Private key and public key
 
-Operations on an account
-- *Create an account*, derive a public address, and store a password-protected
-  private key
-- *Sign a transaction* with the private key of an account
-- *Verify a transaction signature* against the public address of the signing
-  account
-- *Check the current balance* of cryptocurrency and tokens
-- *List transactions* enumerate debit and credit transactions involving an
-  account
+The account on the blockchain is represented by a key pair that consist of a
+private key and a public key
 
-*** Private and public keys
-
-Accounts on the blockchain are represented by key pairs each consisting of a
-private and a public key
-
-- Private key :: A private key is a /large randomly generated secret number/
-  that is used to /derive a public key/ and /digitally sign transactions/. A
-  private key *must be kept in secret* to /preserve account authenticity/ and
-  /control account assets/ on the blockchain
-- Public key :: A public key is a /pair of large numbers/ derived from a private
-  key. A public key is used to /identify an account/ on the blockchain and
-  /verify transactions/ signed with the corresponding private key. A public key
-  *can be safely shared* with any participant on the blockchain
+- Private key :: The private key is a large randomly generated secret number
+  that is used to derive the public key and digitally sign transactions. The
+  private key must be kept in secret to preserve account authenticity and
+  control account assets on the blockchain
+- Public key :: The public key is a pair of large numbers derived from hte
+  private key. The public key is used to identify the account on the blockchain
+  and verify transactions signed with the account private key. The public key
+  can be safely shared with any participant on the blockchain
 
 ** Design and implementation
 
 *** Secp256k1 key pair
 
-The implementation of this blockchain uses the *Elliptic-Curve Cryptography*
-(*ECC*). Specifically, the *Secp256k1 elliptic curve* is used for generation of
+The implementation of this blockchain uses the Elliptic-Curve Cryptography
+(ECC). Specifically, the Secp256k1 elliptic curve is used for generation of
 key pairs for accounts on the blockchain, as well as signing and verification of
 transactions on the blockchain
 
@@ -70,7 +77,7 @@ func newP256k1PublicKey(pub *ecdsa.PublicKey) p256k1PublicKey {
   #+END_SRC
 - Secp256k1 private key :: The private key holds the large random secret number
   =D= and embeds the derived public key =p256k1PublicKey=. The
-  ~*ecdsa.PublicKey~ and =*ecdsa.PrivateKey= components can be retrieved from a
+  ~*ecdsa.PublicKey~ and the =*ecdsa.PrivateKey= keys can be retrieved from the
   =p256k1PrivateKey= instance
   | ~p256k1PublicKey~ | Embedded public key        |
   | ~D *big.Int~      | Large random secret number |
@@ -96,16 +103,16 @@ func (k *p256k1PrivateKey) privateKey() *ecdsa.PrivateKey {
   #+END_SRC
 
 The =p256k1PublicKey= and =p256k1PrivateKey= types are used for JSON encoding
-and decoding of private and public keys, which, in turn, is used for persistence
-and retrieval of accounts on the blockchain
+and decoding of Secp256k1 private and public keys, which, in turn, is used for
+persistence and re-creation of accounts on the blockchain
 
 *** Account address with Keccak256 hash function
 
-- Account address :: An account address uniquely identifies an account on the
-  blockchain and can be safely shared with any participant on the blockchain. An
-  account address is the /Keccak256 hash of an encoded public key/ associated
-  with the account. The account =Address= is implemented as a type alias to a
-  =string=. An account address is calculated from a =*ecdsa.PublicKey=
+- Account address :: The account address uniquely identifies an account on the
+  blockchain and can be safely shared with any participant on the blockchain.
+  The account address is the Keccak256 hash of the encoded public key associated
+  with the account. The account address is implemented as a type alias to a
+  string. The account address is calculated from a =*ecdsa.PublicKey=
   #+BEGIN_SRC go
 type Address string
 
@@ -119,9 +126,10 @@ func NewAddress(pub *ecdsa.PublicKey) Address {
 
 *** Account with Secp256k1 key pair
 
-- Account :: An account contains a /Secp256k1 private key/ and an /account
-  address/ derived from the corresponding Secp256k1 public key. A new Secp256k1
-  key pair is generated when a new account is created
+- Account :: The account contains the Secp256k1 private key and the account
+  address derived from the corresponding Secp256k1 public key using the
+  Keccak256 hash function. A new Secp256k1 key pair is generated when a new
+  account is created
   | ~prv *ecdsa.PrivateKey~ | Secp256k1 private key   |
   | ~addr Address~          | Derived account address |
   #+BEGIN_SRC go
@@ -140,15 +148,17 @@ func NewAccount() (Account, error) {
 }
   #+END_SRC
 
-A private key is the only piece of information required to re-create an account
-after persistence to a secured file controlled by the owner of an account.
-Accounts on this blockchain are persisted to files with restricted access. A
-private key is encrypted with a password before being persisted to a file. Only
-the owner of an account can re-create and use a persisted account by providing
-the password
+The private key is the only piece of information required to re-create an
+account after persisting the account to an encrypted file protected with the
+owner-provided password. Accounts on this blockchain are persisted to files with
+restricted access. The encoded key pair of the account is encrypted with the
+owner-provided password before being persisted to a file with restricted access.
+Only the owner of the account can re-create the account and use the account to
+sign transactions by providing the correct password to decrypt the account key
+pair
 
 - Account persistence :: The account persistence process
-  - Encode a key pair to JSON
+  - Encode the account key pair
   - Encrypt the encoded key pair with the owner-provided password
   - Write the encrypted key pair to a file with restricted access
   #+BEGIN_SRC go
@@ -170,7 +180,7 @@ func (a Account) Write(dir string, pass []byte) error {
 }
   #+END_SRC
 
-The structure of an encoded key pair before encryption
+The structure of the encoded key pair before encryption
 #+BEGIN_SRC json
 {
   "curve": "P-256k1",
@@ -182,9 +192,9 @@ The structure of an encoded key pair before encryption
 
 - Account re-creation :: The account re-creation process
   - Read the encrypted key pair from a file
-  - Decrypt the the encrypted key pair with the owner-provided password
-  - Decode the encoded key pair to a private key
-  - Re-create the account from the decoded private key
+  - Decrypt the encrypted key pair with the owner-provided password
+  - Decode the encoded key pair
+  - Re-create the account from the decoded key pair
   #+BEGIN_SRC go
 func ReadAccount(path string, pass []byte) (Account, error) {
   cprv, err := os.ReadFile(path)
@@ -199,19 +209,20 @@ func ReadAccount(path string, pass []byte) (Account, error) {
 }
   #+END_SRC
 
-*** AES-GCM encryption with Argon2 KDF of Secp256k1 key pairs
+*** AES-GCM encryption with Argon2 KDF of Secp256k1 key pair
 
 - AES-GCM encryption with Argon2 KDF :: The encryption process
-  - *Argon2 key derivation function* (*KDF*) derives a cryptographically strong
+  - Argon2 Key Derivation Function (KDF) derives a cryptographically strong
     encryption key from the owner-provided password and a randomly generated
     salt
-  - Create the *AES block cipher* that uses the derived cryptographically strong
+  - Create the AES block cipher that uses the derived cryptographically strong
     encryption key
-  - Create the *AES-GCM encryption mode* from the AES block cipher
-  - AES-GCM encrypts the encoded key pair with the randomly generated nonce
+  - Create the AES-GCM encryption mode from the AES block cipher
+  - AES-GCM encrypts the encoded key pair with a randomly generated nonce
   - Pack the random salt, the random nonce, and the ciphertext all together into
-    a slice of bytes to be written to a file. Both the salt for the Argon2 KDF
-    and the nonce for the AES-GCM are public, but must be unique
+    a slice of bytes to be written to a file. Both the random salt for the
+    Argon2 KDF and the random nonce for the AES-GCM encryption are public, but
+    must be unique
   #+BEGIN_SRC go
 func encryptWithPassword(msg, pass []byte) ([]byte, error) {
   salt := make([]byte, encKeyLen)
@@ -240,11 +251,11 @@ func encryptWithPassword(msg, pass []byte) ([]byte, error) {
   #+END_SRC
 
 - AES-GCM decryption with Argon2 KDF :: The decryption process
-  - *Argon2 KDF* derives the encryption key from the owner-provided password and
+  - Argon2 KDF derives the encryption key from the owner-provided password and
     the random salt extracted from the ciphertext
-  - Create the *AES block cipher* that uses the derived cryptographically strong
+  - Create the AES block cipher that uses the derived cryptographically strong
     encryption key
-  - Create the *AES-GCM encryption mode* from the AES block cipher
+  - Create the AES-GCM encryption mode from the AES block cipher
   - AES-GCM decrypts the encoded key pair using the ciphertext and the random
     nonce extracted from the ciphertext
   #+BEGIN_SRC go
@@ -271,8 +282,9 @@ func decryptWithPassword(ciph, pass []byte) ([]byte, error) {
 
 *** gRPC =AccountCreate= method
 
-The gRPC =Account= service provides the =AccountCreate= method to create new
-accounts on the blockchain. The interface of the service
+The gRPC =Account= service provides the =AccountCreate= method to create and
+persist new accounts to the local key store of the blockchain node. The
+interface of the service
 #+BEGIN_SRC protobuf
 message AccountCreateReq {
   string Password = 1;
@@ -289,8 +301,8 @@ service Account {
 
 The implementation of the =AccountCreate= method
 - Validate the owner-provided password
-- Create a new account with the corresponding key pair
-- Write the key pair to the local key store of the node
+- Create a new account by generating the account key pair
+- Persist the generated account key pair to the local key store of the node
 #+BEGIN_SRC go
 func (s *AccountSrv) AccountCreate(
   _ context.Context, req *AccountCreateReq,
@@ -317,7 +329,8 @@ func (s *AccountSrv) AccountCreate(
 *** gRPC =AccountBalance= method
 
 The gRPC =Account= service provides the =AccountBalance= method to check the
-balance of an account. The interface of the service
+balance of an account from the confirmed state of the blockchain node. The
+interface of the service
 #+BEGIN_SRC protobuf
 message AccountBalanceReq {
   string Address = 1;
@@ -333,10 +346,10 @@ service Account {
 #+END_SRC
 
 The implementation of the =AccountBalance= method
-- Check the balance of the requested account if the balance entry exists in the
-  confirmed state. The account can be created, but the balance entry in the
-  confirmed state will be included only after the first transaction involving
-  the account
+- Check the balance of the requested account address if the balance entry exists
+  in the confirmed state of the blockchain node. An account can be created, but
+  the balance entry in the confirmed state will be included only after the first
+  transaction involving the account is validated and confirmed on the blockchain
 #+BEGIN_SRC go
 func (s *AccountSrv) AccountBalance(
   _ context.Context, req *AccountBalanceReq,
@@ -374,7 +387,7 @@ go test -v -cover -coverprofile=coverage.cov ./... -run AccountWriteRead
 The =TestAccountCreate= testing process
 - Set up the gRPC server and client
 - Create the gRPC account client
-- Call the =AccountCrate= method to create a new account
+- Call the =AccountCrate= method to create and persist a new account
 - Verify that the created account can be read from the local key store
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run AccountCreate
@@ -390,7 +403,7 @@ The =TestAccountBalance= testing process
 - Create the gRPC account client
 - Check the balance of an existing account
   - Call the =AccountBalance= method to get the balance of an existing account
-  - Verify that the correct balance is returned
+  - Verify that balance is correct
 - Check the balance of a non-existing account
   - Call the =AccountBalance= method to get the balance of a non-existing
     account
@@ -401,20 +414,25 @@ go test -v -cover -coverprofile=coverage.cov ./... -run AccountBalance
 
 *** Initializing and starting the bootstrap node
 
-This blockchain consists of the in-memory confirmed and pending state that holds
-confirmed balances and nonces of all accounts, a reference to the last confirmed
-block, and pending transactions sent by external clients or relayed by other
-nodes that are not yet validated and packed into a confirmed block. Every
-confirmed block is immediately appended to the local block store on every node.
-A blockchain node manages the blockchain state and interactions with other
-blockchain nodes connected through a peer-to-peer network. All interactions
-between blockchain nodes and with external clients are performed at any
-blockchain node through the gRPC interface. A single bootstrap node is
-autonomous, self-contained, and provides the same gRPC services as any other
-node on the peer-to-peer blockchain network
+The blockchain node in this blockchain consists of the in-memory confirmed and
+pending state that holds confirmed balances and nonces of all accounts, the
+reference to the last confirmed block, and that list of pending transactions
+sent by clients or relayed by other nodes that are not yet validated and packed
+into a confirmed block. Each proposed block is validated, and, if successful,
+the confirmed block is immediately appended to the local block store on every
+node. The blockchain node manages the blockchain state and interactions with
+other nodes connected through the peer-to-peer network. All interactions between
+blockchain nodes and with clients are performed at any blockchain node through
+the gRPC interface. A single blockchain node is autonomous, self-contained, and
+provides the same set of gRPC services as any other node on the peer-to-peer
+blockchain network. In this blockchain there is the single bootstrap and
+authority node. The bootstrap node serves as the seed node for other nodes
+during the initial peer discovery. The authority node signs the genesis and
+creates, signs, and proposes blocks on the blockchain to be validated by all
+other nodes on the blockchain including the authority node itself
 
-*Initialization of a bootstrap and authority node*. The parameters to initialize
-a bootstrap and authority node
+- Bootstrap and authority node initialization :: The parameters to initialize
+  the bootstrap node and the authority node
 - =--node= specifies the node address
 - =--bootstrap= makes the node a bootstrap node for the initial peer discovery
   and also makes the node the authority node for signing the genesis, proposing
