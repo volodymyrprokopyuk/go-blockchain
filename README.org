@@ -77,6 +77,9 @@ genesis/, /read blocks/, /synchronize blocks/, /Go iterators/
 discovery/, /peer discovery algorithm/, /node graceful shutdown mechanism/, /Go
 mutex concurrency/, /Go context/, /Go channel composition/
 8. [@8] [[/doc/transaction-relay.org][Transaction relay]]
+/Transaction relay/, /concurrency safe peers monitoring/, /concurrent generic
+message relay/, /gRPC client streaming/, /Go channel concurrency/, /Go channel
+composition/, /Go channel multiplexing/, /Go generics/
 9. [@9] [[/doc/block-proposer.org][Block proposer]]
 10. [@10] [[/doc/event-stream.org][Event stream]]
 11. [@11] [[/doc/blockchain-node.org][Blockchain node]]
