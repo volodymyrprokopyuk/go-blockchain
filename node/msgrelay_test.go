@@ -118,7 +118,7 @@ func TestTxRelay(t *testing.T) {
   }
   // Sign and send several signed transactions to the bootstrap node
   sendTxs(t, ctx, acc, []uint64{12, 34}, bootState.Pending, bootAddr)
-  // Verify that the initial account balance on the pending states of the new
+  // Verify that the initial account balance on the pending state of the new
   // node and the bootstrap node are equal
   expBalance := ownerBal - 12 - 34
   nodeBalance, exist := nodeState.Pending.Balance(acc.Address())

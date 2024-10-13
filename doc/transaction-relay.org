@@ -62,14 +62,14 @@
   remove channels ensure concurrency safe addition of new discovered peers and
   removal of closed peers, while reliably relaying messages to the known,
   healthy peers
-  - Message relay generic type :: The =MsgRelay= type is a generic type that
-    handles relay of both transactions and blocks in the peer-to-peer network of
-    the blockchain. The message relay type is parameterized with the message
-    type to relay transaction or blocks, and the generic gRPC relay function to
-    manage the corresponding gRPC client stream of transactions or blocks. This
-    design provides the flexible and resilient message relay, while reusing the
-    robust implementation of the common concurrent message relay logic without
-    code duplication that would be required if the message relay type were not
+  - Generic message relay :: The =MsgRelay= type is a generic type that handles
+    relay of both transactions and blocks in the peer-to-peer network of the
+    blockchain. The message relay type is parameterized with the message type to
+    relay transaction or blocks, and the generic gRPC relay function to manage
+    the corresponding gRPC client stream of transactions or blocks. This design
+    provides the flexible and resilient message relay, while reusing the robust
+    implementation of the common concurrent message relay logic without code
+    duplication that would be required if the message relay type were not
     generic
   - Concurrency safe message relay :: The message relay type is concurrency
     safe. The concurrency safety of the message relay type is achieved through
@@ -85,18 +85,18 @@
     with a peer at the top of the list. The relay of messages is fully
     concurrent on the basis of each known peer. Problems with relaying messages
     to one peer do not impact message relay to other peers
-  - Concurrent peer monitoring and disposition of closed connections :: The
-    message relay periodically and concurrently checks the list of known peers
-    of the node for new discovered peers to include into the message relay list
-    of peers. When a new peer is discovered a dedicated outbound relay channel
-    is created with an associated goroutine to forward relayed messages from the
-    inbound message channel through the outbound relay channel via the gRPC
-    client streaming to the new peer. After message relay error, the connection
-    is gracefully closed, the dedicated outbound relay channel is closed, and
-    the associated goroutine is gracefully terminated. This design contributes
-    to the resilience of the message relay, as new peers are progressively added
-    to the message relay list of peers, while the problematic peers are
-    gracefully closed and disposed in the concurrency safe way
+  - Concurrent peer monitoring :: The message relay periodically and
+    concurrently checks the list of known peers of the node for new discovered
+    peers to include into the message relay list of peers. When a new peer is
+    discovered a dedicated outbound relay channel is created with an associated
+    goroutine to forward relayed messages from the inbound message channel
+    through the outbound relay channel via the gRPC client streaming to the new
+    peer. After message relay error, the connection is gracefully closed, the
+    dedicated outbound relay channel is closed, and the associated goroutine is
+    gracefully terminated. This design contributes to the resilience of the
+    message relay, as new peers are progressively added to the message relay
+    list of peers, while the problematic peers are gracefully closed and
+    disposed in the concurrency safe way
   - Message relay gRPC client streaming :: This implementation uses the gRPC
     client streaming to relay messages from the outbound relay channels to every
     known peer. This design naturally forwards a stream of new transactions or
@@ -106,14 +106,14 @@
     e.g. the peer node goes offline. When a message relay error occurs, the gRPC
     client streaming connection is closed, the outbound relay channel is closed,
     and the associated message relay goroutine is gracefully terminated
-  | ~ctx context.Context~              | Node shared context hierarchy     |
-  | ~wg *sync.WaitGroup~               | Node shared wait group            |
-  | ~chMsg chan Msg~                   | Inbound generic message channel   |
-  | ~grpcRelay Relay~                  | gRPC generic client streaming     |
-  | ~selfRelay bool~                   | Self-relay configuration option   |
-  | ~peerReader PeerReader~            | Peer reader                       |
-  | ~wgRelays *sync.WaitGroup~         | Relays wait group                 |
-  | ~chPeerAdd, chPeerRem chan string~ | Peer add and peer remove channels |
+  | ~ctx context.Context~              | Node shared context hierarchy      |
+  | ~wg *sync.WaitGroup~               | Node shared wait group             |
+  | ~chMsg chan Msg~                   | Inbound generic message channel    |
+  | ~grpcRelay Relay~                  | gRPC generic client streaming      |
+  | ~selfRelay bool~                   | Self-relay configuration parameter |
+  | ~peerReader PeerReader~            | Peer reader                        |
+  | ~wgRelays *sync.WaitGroup~         | Relays wait group                  |
+  | ~chPeerAdd, chPeerRem chan string~ | Peer add and peer remove channels  |
   #+BEGIN_SRC go
 type MsgRelay[Msg any, Relay GRPCMsgRelay[Msg]] struct {
   ctx context.Context
@@ -141,13 +141,13 @@ func NewMsgRelay[Msg any, Relay GRPCMsgRelay[Msg]](
 
 *** Transaction relayer and block relayer interfaces
 
-The message relay exposes the single inbound channel to relay messages. The
-message relay for transactions and blocks happens through the =TxRelayer= and
-the =BlockRelayer= interfaces. These interfaces are implemented by the
-=MsgRelay= type. Places where the relayer interfaces are used
-- The transaction relayer interface is used by the =TxSend= and =TxReceive=
+The message relay exposes the single inbound message channel to relay messages.
+The message relay for transactions and blocks happens through the =TxRelayer=
+and the =BlockRelayer= interfaces respectively. These interfaces are implemented
+by the generic =MsgRelay= type. Places where the relayer interfaces are used
+- The =TxRelayer= interface is used by the =TxSend= and =TxReceive=
   methods of the =Tx= gRPC service
-- The block relayer interface is used by the =ProposeBlocks= method of the
+- The =BlockRelayer= interface is used by the =ProposeBlocks= method of the
   =BlockProposer= type and by the =BlockReceive= method of the =Block= gRPC
   service
 
@@ -172,38 +172,41 @@ func (r *MsgRelay[Msg, Relay]) RelayBlock(blk Msg) {
 *** Message relay generic algorithm
 
 - Message relay algorithm :: The message relay algorithm coordinates concurrent
-  processes of monitoring new discovered peers through the peer reader
-  interface, adding new peers for the message relay, removing offline peer from
+  processes of the monitoring new discovered peers through the peer reader
+  interface, adding new peers for the message relay, removing offline peers from
   the message relay, multiplexing the inbound message channel over the list of
-  message relay peers. The message relay algorithm starts a dedicated goroutine
-  to periodically read all known peers of the node. Each new peer is handled by
-  the peer add channel. If the peer is not in the list of message relay peers, A
-  new outbound message relay channel is created with an associated goroutine to
-  independently manage the message relay to the peer. A failure in communication
-  with a peer causes the failed peer to be handled by the peer remove channel.
-  The outbound message relay channel for the peer is closed, the associated
-  goroutine is terminated. Later the same peer, when online again, will be
-  handled by the peer add channel. Finally all messages from the inbound message
-  relay channel are multiplexed to all active outbound message relay channels.
-  The message relay algorithm is fully integrated in the node graceful shutdown
-  mechanism by monitoring the cancellation of the node shared context hierarchy,
-  waiting for all message relay goroutines to gracefully shutdown through the
-  relay wait group, and notifying the graceful shutdown of the message relay to
-  the node through the node shared wait group. The message relay algorithm
-  - Start a goroutine for monitoring the list of known peers
-  - Compose the channels for the node context cancellation, addition of new
-    peers, removal of closed peers, relay of messages by multiplexing the
+  outbound message relay channels. The message relay algorithm starts a
+  dedicated goroutine to periodically read all known peers of the node. Each new
+  peer is handled by the peer add channel. If the peer is not in the list of
+  message relay peers, A new outbound message relay channel is created with an
+  associated goroutine to independently and concurrently manage the message
+  relay to the peer. A failure in communication with a peer causes the failed
+  peer to be handled by the peer remove channel. The outbound message relay
+  channel for the peer is closed, the associated goroutine is gracefully
+  terminated. Later the same peer, when online again, will be handled by the
+  peer add channel. Finally all messages from the inbound message relay channel
+  are multiplexed to all active outbound message relay channels. The message
+  relay algorithm is fully integrated into the node graceful shutdown mechanism
+  by monitoring the cancellation of the node shared context hierarchy, waiting
+  for all message relay goroutines to gracefully terminate through the relays
+  wait group, and notifying the graceful shutdown of the message relay to the
+  node through the node shared wait group. The message relay algorithm
+  - Start a goroutine for concurrently monitoring the list of known peers
+  - Compose the cancellation channel of the node shared context hierarchy, the
+    add peer channel for adding new peers, the remove peer channel for removal
+    of closed peers, the inbound message relay channel for multiplexing the
     inbound message relay channel to the list of outbound message relay channels
-    - When the node shared context hierarchy is closed, close all active
+    - When the node shared context hierarchy is canceled, close all active
       outbound message relay channels, wait for all active message relay
-      goroutines to terminate and stop the message relay
+      goroutines to gracefully terminate, and stop the message relay
     - When a new peer is discovered, create a new outbound message relay
-      channel, start a new goroutine to handle the message relay to the peer
-    - When an active peer is closed, close the outbound message relay channel,
-      which causes the associated message relay goroutine to terminate
+      channel, start a new goroutine to handle the message relay to the new peer
+    - When an active peer connection is closed, close the outbound message relay
+      channel, which causes the associated message relay goroutine to terminate
+      gracefully
     - When a new message is sent to the inbound message relay channel, multiplex
-      the message over the list of active outbound message relay channels, so
-      the gRPC client streaming happens concurrently to all known active peers
+      the message over the list of active outbound message relay channels. The
+      gRPC client streaming to all known active peers is performed concurrently
   #+BEGIN_SRC go
 func (r *MsgRelay[Msg, Relay]) RelayMsgs(period time.Duration) {
   defer r.wg.Done()
@@ -252,16 +255,17 @@ func (r *MsgRelay[Msg, Relay]) RelayMsgs(period time.Duration) {
 
 *** Concurrent monitoring of new peers
 
-- Peers monitoring :: The peers monitoring process is concurrently started by
-  the message relay in order to keep relaying messages to new peers discovered
-  over time. The peers monitoring happens periodically through the =PeerReader=
-  interface. The peers monitoring process is fully integrated into the node
-  graceful shutdown mechanism. In each peers monitoring cycle the list of known
-  peers is sent to the peer add channel. Only new peers will result in creation
-  of the new outbound message relay channel with the associated goroutine. Based
-  on the value of the self relay configuration parameter either only known peers
-  or known peers the the node's own address are sent to the peer add channel.
-  The peers monitoring process
+- Monitor peers :: The concurrent peers monitoring process is started by the
+  message relay in order to keep relaying messages to new peers discovered over
+  the time. The concurrent peers monitoring is performed periodically through
+  the peer reader interface. The concurrent peers monitoring process is fully
+  integrated into the node graceful shutdown mechanism. In each peers monitoring
+  cycle the list of known peers is sent to the peer add channel. Only new peers
+  will result in creation of the new outbound message relay channel with the
+  associated message relay goroutine. Based on the value of the self relay
+  configuration parameter either only known peers or known peers the the node's
+  own address are sent to the peer add channel. The concurrent peers monitoring
+  process
   - Periodically read the list of known peers with or without the node's own
     address
   - Send all known peers to the peer add channel
@@ -289,26 +293,28 @@ func (r *MsgRelay[Msg, Relay]) addPeers(period time.Duration) {
 }
   #+END_SRC
 
-*** Outbound message relay through the gRPC client stream
+*** Outbound message relay through gRPC client streaming
 
-- Outbound message relay :: The outbound message relay happens through a
-  dedicated to the peer channel in the associated goroutine. This design allows
-  to increase throughput of relayed messages by handling concurrently message
-  relay to every active peer, increase resilience by isolating message relay in
-  a dedicated goroutine on the per peer basis. The message relay goroutines are
-  integrated into the message relay graceful shutdown mechanism through the node
-  shared context hierarchy and the dedicated relay wait group. The outbound
-  message relay creates a gRPC client connection with the peer and handles the
-  node shared context, the gRPC client connection and the outbound message relay
+- Outbound message relay :: The outbound message relay happens through the
+  dedicated to the peer outbound message relay channel in the associated
+  goroutine. This design allows to increase the throughput of relayed messages
+  by independently and concurrently handling message relay to each active peer,
+  to increase the resilience by isolating message relays in dedicated goroutines
+  on the per peer basis. The message relay goroutines are integrated into the
+  message relay graceful shutdown mechanism through the node shared context
+  hierarchy and the dedicated relays wait group. The outbound message relay
+  creates the gRPC client connection with the peer and passes the node shared
+  context hierarchy. the gRPC client connection, and the outbound message relay
   channel to the generic gRPC relay function that manages the gRPC client stream
-  of relayed messages. On any error establishing the gRPC client connection of
-  handling the gRPC client stream the peer is sent to the peer remove channel.
-  This mark the peer as inactive, closes the channel, and terminates the
-  associated goroutine. The outbound message relay process
-  - Starts a dedicated to the peer message relay goroutine
-  - The goroutine established the gRPC client connection with the peer
-  - The goroutine handles the node shared context, the gRPC client connection,
-    and the outbound message relay channel to the generic gRPC relay function
+  of relayed messages. On any error of establishing the gRPC client connection
+  or handling the gRPC client stream the peer is sent to the peer remove
+  channel. This mark the peer as inactive, closes the channel, and gracefully
+  terminates the associated goroutine. The outbound message relay process
+  - Start a dedicated to the peer message relay goroutine
+  - The goroutine establishes the gRPC client connection with the peer
+  - The goroutine passes the node shared context hierarchy, the gRPC client
+    connection, and the outbound message relay channel to the generic gRPC relay
+    function
   #+BEGIN_SRC go
 func (r *MsgRelay[Msg, Relay]) peerRelay(peer string) chan Msg {
   chRelay := make(chan Msg)
@@ -335,21 +341,22 @@ func (r *MsgRelay[Msg, Relay]) peerRelay(peer string) chan Msg {
 }
   #+END_SRC
 
-- gRPC client streaming for transaction relay :: The gRPC client streaming
-  relays transactions from the outbound transaction relay channel to the gRPC
-  client stream of transactions. The gRPC client streaming is message type
-  specific and is parameterized in the message relay type with the gRPC relay
-  generic function. The gRPC relay generic function accepts the node shared
-  context hierarchy, the gRPC client connection, and the outbound transaction
+- Transaction relay through gRPC client streaming :: The gRPC client streaming
+  relays transactions or blocks from the outbound message relay channel to the
+  gRPC client stream of transactions or blocks. The gRPC client streaming is
+  message type specific and is parameterized in the message relay type with the
+  gRPC relay generic function. The gRPC relay generic function accepts the node
+  shared context hierarchy, the gRPC client connection, and the outbound message
   relay channel. The gRPC client streaming creates the message-specific gRPC
-  clients and establishes the gRPC client stream. The gRPC client streaming
-  combines the node shared context cancellation channel for graceful shutdown
-  with the outbound transaction relay channel for streaming transactions to the
-  peer. When a new message is sent to the outbound transaction relay channel,
-  the message is encoded and sent over the gRPC client stream to the peer. The
-  gRPC client streaming
-  - Create the message-specific gRPC client
-  - Establish the gRPC client stream by calling the gRPC =TxReceive= method
+  client and establishes the gRPC client stream. The gRPC client streaming
+  combines the node shared context cancellation channel for the graceful
+  shutdown with the outbound message relay channel for streaming messages to the
+  peer. When a new message is sent to the outbound message relay channel, the
+  message is encoded and sent over the gRPC client stream to the peer. The
+  transaction relay through the gRPC client streaming
+  - Create the gRPC transaction client
+  - Call the gRPC =TxReceive= method to establish the gRPC client stream with
+    the peer
   - Combine the node shared context hierarchy channel with the outbound
     transaction relay channel
     - When the node shared context hierarchy is canceled, close the gRPC client
@@ -397,10 +404,11 @@ var GRPCTxRelay GRPCMsgRelay[chain.SigTx] = func(
 *** gRPC =TxReceive= method
 
 The gRPC =Tx= service provides the =TxReceive= method to receive transactions
-relayed from the peer-to-peer network of the blockchain. The transaction relay
-happens from the gRPC =TxSend= method and from the gRPC =TxReceive= method to
-further relay validated transactions to other peers. The interface of the
-service
+relayed from other peers on the blockchain. The transaction relay happens from
+the gRPC =TxSend= method and from the gRPC =TxReceive= method to further relay
+validated transactions to other peers. The transaction relay forwards
+transactions to other peers through the gRPC client streaming. The interface of
+the service
 #+BEGIN_SRC protobuf
 message TxReceiveReq {
   bytes Tx = 1;
@@ -417,7 +425,7 @@ The implementation of the =TxReceive= method
 - For each transaction received from the gRPC client stream
   - Decode the transaction
   - Apply the decoded transaction to the pending state, if successful,
-  - Relay the validated transaction to the list of known peers
+  - Relay further the validated transaction to the list of known peers
 #+BEGIN_SRC go
 func (s *TxSrv) TxReceive(
   stream grpc.ClientStreamingServer[TxReceiveReq, TxReceiveRes],
@@ -461,10 +469,10 @@ The =TestTxReceive= testing process
 - Re-create the initial owner account from the genesis
 - Set up the gRPC server and gRPC client
 - Create the gRPC transaction client
-- Call the TxReceive method to get the gRPC client stream to relay validated
+- Call the =TxReceive= method to get the gRPC client stream to relay validated
   transactions
-- Start relaying validated transactions to the gRPC client stream. For each
-  transaction to be relayed
+- Start relaying valid and invalid transactions to the gRPC client stream. For
+  each transaction
   - Create and sign a transaction
   - Encode the signed transaction
   - Call the gRPC =TxReceive= method to relay the encoded transaction
@@ -493,7 +501,7 @@ The =TestTxRelay= testing process
 - Get the initial owner account and its balance from the genesis
 - Re-create the initial owner account from the genesis
 - Sign and send several signed transactions to the bootstrap node
-- Verify that the initial account balance on the pending states of the new node
+- Verify that the initial account balance on the pending state of the new node
   and the bootstrap node are equal
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run TxRelay

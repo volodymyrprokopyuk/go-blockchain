@@ -222,7 +222,7 @@ func TestTxReceive(t *testing.T) {
     t.Fatal(err)
   }
   defer stream.CloseAndRecv()
-  // Start relaying validated transactions to the gRPC client stream
+  // Start relaying valid and invalid transactions to the gRPC client stream
   for _, value := range []uint64{12, 1000} {
     // Create and sign a transaction
     tx := chain.NewTx(
