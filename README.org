@@ -61,7 +61,8 @@ iterators/
 5. [@5] [[/doc/state.org][State]]
 /Blockchain state/, /confirmed state/, /pending state/, /apply transaction/,
 /transaction life cycle/, /create block/, /apply block/, /block life cycle/,
-/Go mutex concurrency/
+/concurrency safe application of transactions and blocks/, /Go mutex
+concurrency/
 
 *** Blockchain node
 

@@ -146,7 +146,7 @@ func TestTxSend(t *testing.T) {
       if err != nil {
         t.Fatal(err)
       }
-      // Call the TxSend method to send the signed transaction
+      // Call the TxSend method to send the signed transaction to the node
       jtx, err := json.Marshal(stx)
       if err != nil {
         t.Fatal(err)
@@ -156,8 +156,8 @@ func TestTxSend(t *testing.T) {
       if c.err == nil && err != nil {
         t.Error(err)
       }
-      // Verify that valid transactions are accepted and invalid transactions
-      // are rejected
+      // Verify that the valid transactions are accepted and the invalid
+      // transactions are rejected
       if c.err != nil && err == nil {
         t.Errorf("expected TxSend error, got none")
       }

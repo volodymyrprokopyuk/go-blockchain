@@ -71,7 +71,7 @@ func TestApplyTx(t *testing.T) {
   }
   t.Run("insufficient funds error", func(t *testing.T) {
     // Create and sign a transaction with the value amount that exceeds the
-    // balance of the sender
+    // balance of the sender account
     tx := chain.NewTx(
       acc.Address(), chain.Address("to"), 1000, pending.Nonce(acc.Address()) + 1,
     )
@@ -92,7 +92,8 @@ func TestApplyTx(t *testing.T) {
     if err != nil {
       t.Fatal(err)
     }
-    // Create and sign a transaction with the new account
+    // Create and sign a transaction from the sender account, but signed with
+    // the new account
     tx := chain.NewTx(
       acc.Address(), chain.Address("to"), 12, pending.Nonce(acc.Address()) + 1,
     )
