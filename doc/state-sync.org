@@ -4,70 +4,74 @@
 
 *** Initial state synchronization
 
-- State synchronization :: The initial state sync occurs when either the
-  bootstrap node first starts and initializes a new blockchain or when a node
-  syncs the confirmed state and the block store with the bootstrap node starting
-  from the genesis or from a specific block number. The state sync ensures
-  immutability and integrity of the blockchain by verifying signatures of the
-  genesis and every block in order, re-applying every block to the confirmed
-  state and the block store of every node. The state sync process is performed
-  during the bootstrap of a new blockchain. In this case only the genesis is
-  created and persisted, and the confirmed state of the bootstrap node is
-  initialized with the genesis balances. The state sync process brings a new
-  empty node or an out-of-sync node have the verified and validated confirmed
-  state as per the latest confirmed block
+- Synchronize state :: The initial state sync occurs when either the bootstrap
+  node first starts and initializes a new blockchain, or when a node syncs the
+  confirmed state and the local block store with the bootstrap node starting
+  from the genesis or from a specific block number. The state sync ensures the
+  immutability and the integrity of the blockchain by verifying signatures of
+  the genesis and every confirmed block in order, re-applying every confirmed
+  block to the confirmed state and the local block store of every node. The
+  state sync process is performed during the initialization of a new blockchain.
+  In this case only the genesis is created and persisted to the local block
+  store of the bootstrap node, and the confirmed state of the bootstrap node is
+  initialized with the genesis balances and the authority account address. The
+  state sync process brings a new empty node or an out-of-sync node to have the
+  verified and validated confirmed state as per the latest confirmed block on
+  the blockchain
 
 *** Bootstrap state initialization
 
-- Bootstrap state init :: The bootstrap state init is only performed once on the
-  bootstrap node during the initialization of a new blockchain. The bootstrap
-  state init creates, signs, and persists the genesis with the initial
-  blockchain configuration parameters including the blockchain name, the time of
-  signing the genesis, the authority account for signing the genesis and every
-  proposed block, the initial owner account with the initial balance. The
-  bootstrap state init process also initializes the confirmed state of the
-  bootstrap node with balances from the genesis
+- Initialize bootstrap state :: The bootstrap state initialization is only
+  performed once on the bootstrap node during the initialization of a new
+  blockchain. The bootstrap state initialization creates, signs, and persists
+  the genesis with the initial blockchain configuration parameters including the
+  blockchain name, the creation time of the genesis, the authority account for
+  signing the genesis and every proposed block, the initial owner account with
+  the initial balance. The bootstrap state initialization process also
+  initializes the confirmed state of the bootstrap node with balances from the
+  genesis
 
 *** Node state synchronization
 
-- Node state sync :: The node state sync occurs every time when a new node joins
-  the blockchain network and needs to verify and validate all confirmed blocks
-  on the blockchain starting from the genesis. In this case the genesis is
-  fetched from the bootstrap node, the genesis signature is verified, and the
-  genesis is persisted to the block store. All the confirmed blocks are fetched
-  either from the bootstrap node or any other know peer that has newer confirmed
-  blocks that the bootstrap node. The node state sync is also performed when an
-  out-of-sync node is catching up with the latest confirmed blocks on the
-  blockchain. In this case the genesis and the initial confirmed blocks are
-  already verified, validated, and persisted. The initial confirmed blocks are
-  read and applied to the confirmed state from the local block store. Only the
-  newer confirmed blocks are fetched from the bootstrap node and known peers.
-  Regardless of a new node or an out-of-sync node, every fetched node including
-  the genesis goes through the verification of the signature and the full
-  validation in the form of the block application. Every verified, validated,
-  and confirmed block is applied to the node's confirmed state and appended to
-  the block store. Once the node state sync process is finished the node is
-  ready to receive and relay new transactions, to receive and relay new proposed
-  blocks, and to verify and validated new proposed blocks. The node state sync
-  process is only executed when the node starts.
+- Synchronize node state :: The node state sync occurs every time when a new
+  node joins the blockchain network and needs to verify and validate all
+  confirmed blocks on the blockchain starting from the genesis. In this case the
+  genesis is fetched from the bootstrap node, the genesis signature is verified,
+  and the genesis is persisted to the local block store of the new node. All the
+  confirmed blocks are fetched either from the bootstrap node or any other know
+  peer that has newer confirmed blocks that the bootstrap node. The node state
+  sync is also performed when an out-of-sync node is catching up with the latest
+  confirmed blocks on the blockchain. In this case the genesis and the initial
+  confirmed blocks are already verified, validated, and persisted. The initial
+  confirmed blocks are read from the local block store and applied to the
+  confirmed state of the node. Only the newer confirmed blocks are fetched from
+  the bootstrap node and all known peers. Regardless of a new node or an
+  out-of-sync node, every fetched block including the genesis goes through the
+  verification of the signature and the full block validation process in the
+  form of the block application. Every verified, validated, and confirmed block
+  is applied to the confirmed state of the node and appended to the local block
+  store. Once the node state sync process is finished the node is ready to
+  receive, validate, and relay new transactions; to receive, validated, and
+  relay new proposed blocks. The node state sync process is only executed when
+  the node starts either from the empty state or from an out-of-sync state
 
 ** Design and implementation
 
-*** The state sync type
+*** State synchronization type
 
-- State sync type :: The =stateSync= type implements the state sync algorithm
-  and to initialize the bootstrap node or synchronize the peer node. The
-  =stateSync= type contains the node configuration including the node address,
-  the seed address, the key store directory, the block store directory, the
-  genesis configuration; the node context for the graceful shutdown, the
-  reference to the confirmed state for application of confirmed blocks read from
-  the local block store or fetched from all known peers, and the reference to
-  the peer discovery for fetching of the genesis and newer confirmed blocks. The
-  =stateSync= type
-  | ~cfg NodeCfg~           | Node configuration          |
-  | ~ctx context.Context~   | Node context                |
-  | ~state *chain.State~    | Confirmed and pending state |
-  | ~peerReader PeerReader~ | Peer reader                 |
+- State sync type :: The =StateSync= type implements the state sync algorithm to
+  initialize the bootstrap node or synchronize an out-of-sync node. The state
+  sync type contains the node configuration including the node address, the seed
+  address, the key store directory, the block store directory, the genesis
+  configuration; the node shared context hierarchy for the graceful shutdown,
+  the reference to the confirmed state for the application of confirmed blocks
+  read from the local block store or fetched from all known peers, and the
+  reference to the peer reader of the peer discovery for fetching of the genesis
+  and newer confirmed blocks. The state sync type
+  | ~cfg NodeCfg~           | Node configuration            |
+  | ~ctx context.Context~   | Node shared context hierarchy |
+  | ~state *chain.State~    | Confirmed and pending state   |
+  | ~peerReader PeerReader~ | Peer reader                   |
   #+BEGIN_SRC go
 type StateSync struct {
   cfg NodeCfg
@@ -82,29 +86,31 @@ func NewStateSync(
   return &StateSync{ctx: ctx, cfg: cfg, peerReader: peerReader}
 }
   #+END_SRC
-*** The state synchronization algorithm
 
-- State sync algorithm :: The state synchronization algorithm covers both the
-  bootstrap node initialization and the node synchronization. The algorithms
-  starts by reading the genesis from a local file system. If the genesis is not
-  present, the genesis is created for the bootstrap node or is fetched from the
-  bootstrap node for a peer node. In either case the genesis signature is
-  verified and the new blockchain state is initialized with the genesis. Next
-  the local block store is initialized if necessary. Then the confirmed blocks
-  from the local block store are read and applied to the confirmed state.
-  Finally the new confirmed blocks are fetched from all known peers, verified,
-  validated, and applied to the confirmed state. The state synchronization
-  algorithm
+*** State synchronization algorithm
+
+- State sync algorithm :: The state sync algorithm covers both the
+  initialization of the bootstrap node and the synchronization of an out-of-sync
+  node. The algorithm reads the genesis from the local block store. If the
+  genesis is not present in the local block store, the genesis is created for
+  the bootstrap node, or the genesis is fetched from the bootstrap node. In
+  either case the genesis signature is verified and the new blockchain state is
+  initialized with the genesis. Next the local block store is initialized if
+  necessary. Then the confirmed blocks from the local block store are read and
+  applied to the confirmed state. Finally, the new confirmed blocks are fetched
+  from all known peers, verified, validated, and applied to the confirmed state.
+  The state sync algorithm
   - Read the genesis from the local block store. If the genesis is not present
-    - For the bootstrap node create, sign, and persist the genesis
-    - For a peer node fetch the genesis from the bootstrap node, verify,
-      validate, and persist the genesis
-  - initialize the confirmed state with the genesis
+    - For the bootstrap node create, sign, and persist the genesis to the local
+      block store
+    - For a new node fetch the genesis from the bootstrap node, verify,
+      validate, and persist the genesis to the local block store
+  - Initialize the confirmed state with the genesis
   - Initialize the local block store if necessary
-  - Read, verify, validate, and apply to the confirmed state the confirmed
-    blocks from the local block store
-  - Fetch, verify, validate, and apply to the confirmed sate the confirmed
-    blocks from all know peers
+  - Verify, validate, and apply to the confirmed state the confirmed blocks read
+    from the local block store
+  - Verify, validate, and apply to the confirmed sate the confirmed blocks
+    fetched from all known peers
   #+BEGIN_SRC go
 func (s *StateSync) SyncState() (*chain.State, error) {
   gen, err := chain.ReadGenesis(s.cfg.BlockStoreDir)
@@ -146,10 +152,10 @@ func (s *StateSync) SyncState() (*chain.State, error) {
 }
   #+END_SRC
 
-*** Creating the genesis on the bootstrap node
+*** Creating genesis on bootstrap node
 
-- Genesis creation :: The genesis creation process is performed once on the
-  bootstrap node during the initialization of the blockchain. The authority
+- Create genesis :: The genesis creation process is performed once on the
+  bootstrap node during the initialization of a new blockchain. The authority
   account is created and protected with the authority account password. The
   authority account is used to sign the genesis and sign the proposed blocks on
   the blockchain. The initial owner account is created and protected with the
@@ -162,8 +168,8 @@ func (s *StateSync) SyncState() (*chain.State, error) {
     proposed blocks
   - Create and persist the initial owner account with the initial blockchain
     balance
-  - Create sign the genesis with the authority account
-  - Persis the genesis to the local block store of the bootstrap node
+  - Create and sign the genesis with the authority account
+  - Persist the genesis to the local block store of the bootstrap node
   #+BEGIN_SRC go
 func (s *StateSync) createGenesis() (chain.SigGenesis, error) {
   authPass := []byte(s.cfg.AuthPass)
@@ -209,20 +215,20 @@ func (s *StateSync) createGenesis() (chain.SigGenesis, error) {
 }
   #+END_SRC
 
-*** Fetching the genesis from the bootstrap node
+*** Fetching genesis from bootstrap node
 
-- Genesis sync :: The genesis sync process is performed once per node during the
-  node initialization on already initialized blockchain with the running
-  bootstrap node. The genesis syn process contributes to the immutability and
-  integrity of the blockchain by ensuring that exactly the same copy of the
+- Sync genesis :: The genesis sync process is performed once for every new node
+  when the new node joins the already initialized blockchain with the running
+  bootstrap node. The genesis sync process contributes to the immutability and
+  the integrity of the blockchain by ensuring that exactly the same copy of the
   genesis is stored in the local block store of every node on the blockchain.
   The genesis sync process fetches the encoded and signed genesis from the
-  bootstrap node by calling the =GenesisSync= method of the =Block= gRPC
-  service. Then the encoded genesis is decoded. Next the genesis signature is
-  verified. Finally the verified genesis is persisted to the local block store
-  of the node. The genesis sync process
+  bootstrap node. Then the encoded genesis is decoded. Next the genesis
+  signature is verified. Finally, the verified genesis is persisted to the local
+  block store of the new node. The genesis sync process
   - Fetch the encoded and signed genesis from the bootstrap node
-  - Decode and verify the genesis signature
+  - Decode the fetched genesis
+  - Verify that the genesis signature is valid
   - Persist the verified genesis to the local block store
   #+BEGIN_SRC go
 func (s *StateSync) syncGenesis() (chain.SigGenesis, error) {
@@ -250,23 +256,23 @@ func (s *StateSync) syncGenesis() (chain.SigGenesis, error) {
 }
   #+END_SRC
 
-*** Reading confirmed blocks from the local block store
+*** Reading confirmed blocks from block store
 
-- Block reading :: The block reading process is executed every time the node is
+- Read blocks :: The block reading process is executed every time the node is
   restarted. First the genesis is read and the state is initialized with the
   genesis. Then all confirmed blocks from the local block store are read in
-  order and applied to the state. The block reading process brings the node to
-  the state when the node left the last time. The block reading process creates
-  an iterator over the confirmed blocks in the local block store. Each confirmed
-  block returned in order by the iterator is applied to the cloned state, and,
-  if successful, the cloned state is applied to the confirmed state. The block
-  application process ensures integrity and immutability of the blockchain state
-  on every node. The block reading process
+  order and applied to the confirmed state. The block reading process brings the
+  node to the state when the node left off the last time. The block reading
+  process creates the iterator over the confirmed blocks in the local block
+  store. Each confirmed block returned in order by the iterator is applied to
+  the cloned state, and, if successful, the cloned state is applied to the
+  confirmed state. The block application process ensures the integrity and the
+  immutability of the blockchain state on every node. The block reading process
   - Create the iterator for reading the confirmed blocks in order from the local
     block store
   - Defer closing the block iterator
-  - Iterate over the confirmed blocks in order
-    - Apply each block to the cloned state, if successful
+  - Iterate over the confirmed blocks in order. For each confirmed block
+    - Apply the confirmed block to the cloned state, if successful
     - Apply the cloned state to the confirmed state
   #+BEGIN_SRC go
 func (s *StateSync) readBlocks() error {
@@ -292,22 +298,23 @@ func (s *StateSync) readBlocks() error {
 
 *** Fetching confirmed blocks from all known peers...
 
-- Block sync :: The block sync process propagates the recent confirmed blocks
-  through the blockchain network during the initialization of new nodes or the
-  synchronization of out-of-sync nodes on the blockchain. The block sync process
-  contributes to the immutability and integrity of the blockchain by ensuring
-  that exactly the same blocks in the same order are stored on every node on the
-  blockchain. For every known peer the block sync process fetches the new
-  confirmed blocks starting from the block number next to the last confirmed
-  block on the requesting node. Each fetched block is decoded. Then the block is
-  applied to the cloned state, and, if successful, the cloned state is applied
-  to the confirmed state. Finally, after successful application, the new
-  confirmed blocks is persisted to the local block store. The block sync process
-  - For every known peer fetch new confirmed blocks starting from the block
-    number next to the last confirmed block on the requesting node
-    - For every fetched block
+- Sync blocks :: The block sync process propagates the recent confirmed blocks
+  through the blockchain network during the initialization of a new node or the
+  synchronization of an out-of-sync node on the blockchain. The block sync
+  process contributes to the immutability and the integrity of the blockchain by
+  ensuring that exactly the same blocks in the same order are stored on every
+  node of the blockchain. For every known peer the block sync process fetches
+  the new confirmed blocks starting from the block number next to the last
+  confirmed block number on the requesting node. Each fetched block is decoded.
+  Then the block is applied to the cloned state, and, if successful, the cloned
+  state is applied to the confirmed state. Finally, after successful
+  application, the new confirmed block is persisted to the local block store.
+  The block sync process
+  - For each known peer fetch new confirmed blocks starting from the block
+    number next to the last confirmed block number on the requesting node
+    - For each fetched block
       - Decode the fetched block
-      - Apply the decoded block to the local state, if successful
+      - Apply the decoded block to the local cloned state, if successful
       - Apply the cloned state to the confirmed state
       - Persist the confirmed block to the local block store
   #+BEGIN_SRC go
@@ -360,7 +367,7 @@ service Block {
 #+END_SRC
 
 The implementation of the =GenesisSync= method
-- Read and return the encoded signed genesis
+- Read and return the encoded and signed genesis
 #+BEGIN_SRC go
 func (s *BlockSrv) GenesisSync(
   _ context.Context, req *GenesisSyncReq,
@@ -376,9 +383,10 @@ func (s *BlockSrv) GenesisSync(
 
 *** gRPC =BlockSync= method
 
-The gRPC =Block= service provides the =BlockSync= method to fetch from a peer
-node a server stream of the encoded and signed confirmed blocks starting from a
-specified block number. The interface of the service
+The gRPC =Block= service provides the =BlockSync= method to fetch the newer
+confirmed blocks the all known peers starting from a specified block number. All
+newer blocks starting from the specified block number are returned to the client
+through the gRPC server stream. The interface of the service
 #+BEGIN_SRC protobuf
 message BlockSyncReq {
   uint64 Number = 1;
@@ -394,10 +402,10 @@ service Block {
 #+END_SRC
 
 The implementation of the =BlockSync= method
-- Create an iterator for confirmed blocks from the local block store
+- Create the iterator for confirmed blocks from the local block store
 - Defer closing the block iterator
-- Send every block staring from the requested block number over the server
-  stream to a client
+- Send each block staring from the requested block number over the gRPC server
+  stream to the client
 #+BEGIN_SRC go
 func (s *BlockSrv) BlockSync(
   req *BlockSyncReq, stream grpc.ServerStreamingServer[BlockSyncRes],
@@ -449,7 +457,7 @@ The =TestBlockSync= testing process
 - Create several confirmed blocks on the state and on the local block store
 - Set up the gRPC server and client
 - Create the gRPC block client
-- Call the =BlockSync= method to get the server stream of confirmed blocks
+- Call the =BlockSync= method to get the gRPC server stream of confirmed blocks
 - Start receiving confirmed blocks from the gRPC server stream. For each block
   received from the gRPC server stream
   - Decode the received block
@@ -460,7 +468,7 @@ The =TestBlockSync= testing process
 go test -v -cover -coverprofile=coverage.cov ./... -run BlockSync
 #+END_SRC
 
-*** Testing the state sync
+*** Testing state synchronization
 
 The =TestStateSync= testing process
 - Set up the bootstrap node
@@ -474,10 +482,10 @@ The =TestStateSync= testing process
   - Wait for the gRPC server of the bootstrap node to start
 - Set up the new node
   - Create the peer discovery without starting for the new node
-  - Synchronize the state on the new node by fetching the genesis and confirmed
-    blocks from the bootstrap node
-    Verify that the last block number and the last block parent on the
-    confirmed sates of the the new node and the bootstrap node are equal
+  - Synchronize the state on the new node by fetching the genesis and all
+    confirmed blocks from the bootstrap node
+  - Verify that the last block number and the last block parent on the confirmed
+    sate of the the new node and the bootstrap node are equal
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run StateSync
 #+END_SRC
@@ -486,25 +494,26 @@ go test -v -cover -coverprofile=coverage.cov ./... -run StateSync
 
 The node start command is the main entry point for initialization, starting, and
 restarting of a blockchain node. There are two types of nodes on this blockchain
-- Bootstrap and authority node :: The bootstrap and authority node in this
-  blockchain is a single authority node that initializes the blockchain by
+- Bootstrap and authority node :: The bootstrap and the authority node in this
+  blockchain is the single authority node that initializes the blockchain by
   creating and signing the genesis on the first start; creates, signs, proposes,
   and relays new blocks; and serves as the bootstrap node for the initial peer
-  discovery. The bootstrap and authority node also accepts, validates and relays
-  new transactions to other peers; streams blockchain events e.g. confirmed
-  block, confirmed transaction to subscribed clients; maintains the confirmed
-  and pending in-memory state, and the on-disk local block store with confirmed
-  blocks
+  discovery. The bootstrap and the authority node also accepts, validates and
+  relays new transactions to other nodes; streams the blockchain events e.g.
+  confirmed blocks, confirmed transactions to the subscribed clients; maintains
+  the confirmed and the pending in-memory state, and the on-disk local block
+  store with confirmed blocks
 - Regular node :: The regular node participates in the peer discovery; accepts,
-  validates and relays new transactions from clients to other peers; receives,
-  validates, and relays new transactions and proposed blocks to other peers. The
-  regular node streams blockchain events e.g. confirmed block, confirmed
-  transaction to subscribed clients; maintains the confirmed and pending
-  in-memory state and the on-disk local block store with confirmed blocks
+  validates, and relays new transactions from clients to other nodes; receives,
+  validates, and relays new transactions and proposed blocks to other nodes. The
+  regular node streams the blockchain events e.g. confirmed blocks, confirmed
+  transactions to the subscribed clients; maintains the confirmed and the
+  pending in-memory state and the on-disk local block store with confirmed
+  blocks
 
 The =node start= parameters
 - =--node= specifies the node address
-- =--bootstrap= makes the node a bootstrap node for the initial peer discovery
+- =--bootstrap= makes the node the bootstrap node for the initial peer discovery
   and also makes the node the authority node for signing the genesis, proposing
   and signing new blocks
 - =--seed= specifies the seed bootstrap address for a regular node
@@ -514,14 +523,14 @@ The =node start= parameters
   store confirmed blocks on the blockchain
 - =--chain= specifies the name of the blockchain to be included in the genesis
 - =--authpass= provides a password for the authority account to sign the genesis
-  and proposed blocks on the blockchain
+  and all proposed blocks on the blockchain
 - =--ownerpass= provides a password for the initial owner account on the
   blockchain
 - =--balance= specifies the balance for the initial owner account on the
   blockchain
 
-Options for starting a blockchain node
-- Initialize the bootstrap and authority node
+Options for starting the blockchain node
+- Initialize the bootstrap and the authority node
 #+BEGIN_SRC fish
 set boot localhost:1122
 set authpass password
@@ -537,7 +546,7 @@ set ownerpass password
 # acc 1dc6773:                        1000        0
 # <=> gRPC localhost:1122
 #+END_SRC
-- Start already initialized the bootstrap and authority node
+- Start the already initialized bootstrap node and the authority node
 #+BEGIN_SRC fish
 ./bcn node start --node $boot --bootstrap --authpass $authpass
 # === Sync state

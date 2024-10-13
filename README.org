@@ -55,9 +55,10 @@ transactions/, /Keccak256 hash function/, /ECDSA Secp256k1 digital signature/,
 iterators/
 4. [@4] [[/doc/block.org][Block]]
 /Blockchain genesis/, /blockchain block/, /chain of blocks/, /block store/,
-/persist genesis/, /re-create genesis/, /persist block/, /re-create block/,
-/search blocks/, /Keccak256 hash function/, /ECDSA Secp256k1 digital signature/,
-/ECDSA Secp256k1 block verification/, /gRPC server streaming/, /Go iterators/
+/create genesis/, /persist genesis/, /re-create genesis/, /persist block/,
+/re-create block/, /search blocks/, /Keccak256 hash function/, /ECDSA Secp256k1
+digital signature/, /ECDSA Secp256k1 block verification/, /gRPC server
+streaming/, /Go iterators/
 5. [@5] [[/doc/state.org][State]]
 /Blockchain state/, /confirmed state/, /pending state/, /apply transaction/,
 /transaction life cycle/, /create block/, /apply block/, /block life cycle/,
@@ -67,6 +68,9 @@ concurrency/
 *** Blockchain node
 
 6. [@6] [[/doc/state-sync.org][State sync]]
+/Blockchain initialization/, /state synchronization algorithm/, /initialize
+bootstrap node/, /synchronize out-of-sync node/, /create genesis/, /synchronize
+genesis/, /read blocks/, /synchronize blocks/, /Go iterators/
 7. [@7] [[/doc/peer-discovery.org][Peer discovery]]
 8. [@8] [[/doc/transaction-relay.org][Transaction relay]]
 9. [@9] [[/doc/block-proposer.org][Block proposer]]
