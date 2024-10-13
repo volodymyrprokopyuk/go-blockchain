@@ -41,7 +41,8 @@ implementation* to the *practical testing and usage* of the proposed blockchain
 *** Blockchain state
 
 1. [@1] [[/doc/getting-started.org][Getting started]]
-/Prerequisites/, /dependencies/, /installation/, /testing/
+/Prerequisites/, /dependencies/, /installation/, /testing/, /directory
+structure/
 2. [@2] [[/doc/account.org][Account]]
 /Blockchain account/, /account address/, /account balance/, /create account/,
 /persist account/, /re-create account/, /Secp256k1 account/, /Keccak256 account
@@ -72,6 +73,9 @@ concurrency/
 bootstrap node/, /synchronize out-of-sync node/, /create genesis/, /synchronize
 genesis/, /read blocks/, /synchronize blocks/, /Go iterators/
 7. [@7] [[/doc/peer-discovery.org][Peer discovery]]
+/Peer discovery/, /bootstrap node/, /seed node/, /concurrency safe peer
+discovery/, /peer discovery algorithm/, /node graceful shutdown mechanism/, /Go
+mutex concurrency/, /Go context/, /Go channel composition/
 8. [@8] [[/doc/transaction-relay.org][Transaction relay]]
 9. [@9] [[/doc/block-proposer.org][Block proposer]]
 10. [@10] [[/doc/event-stream.org][Event stream]]
