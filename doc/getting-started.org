@@ -53,3 +53,40 @@ go test -v -cover -coverprofile=coverage.cov ./... -run .
 #+BEGIN_SRC fish
 go tool cover -html=coverage.cov
 #+END_SRC
+
+** Directory structure
+
+- =chain/= defines the core blockchain types
+  - =account.go= defines the address and the account types
+  - =block.go= defines the block and the signed block types
+  - =event.go= defines the event type
+  - =genesis.go= defines the genesis and the signed genesis types
+  - =state.go= defines the state type
+  - =tx.go= defines the hash, the transaction, and the signed transaction types
+- =cli/= defines the CLI of the blockchain for clients
+  - =account.go= defines the account create and the account balance commands
+  - =block.go= defines the block search command
+  - =chain.go= defines the main =bcn= command
+  - =node.go= defines the node start and the node subscribe commands
+  - =tx.go= defines the transaction sign, the transaction send, and the
+    transaction search commands
+- =doc/= defines the documentation of this blockchain
+- =node/= defines the key components of the blockchain node
+  - =blockproposer.go= defines the block proposer type
+  - =eventstream.go= defines the event stream type
+  - =msgrelay.go= defines the message relay generic type
+  - =node.go= defines the node type
+  - =peerdiscovery.go= defines the peer discovery type
+  - =statesync.go= defines the state sync type
+  - =rpc/= defines and implements the gRPC services and methods
+    - =account.proto= defines the gRPC account service and methods
+    - =accountsrv.go= implements the gRPC account service
+    - =block.proto= defines the gRPC block service and methods
+    - =blocksrv.go= implements the gRPC block service
+    - =node.proto= defines the gRPC node service and methods
+    - =nodesrv.go= implements the gRPC node service
+    - =tx.proto= defines the gRPC transaction service and methods
+    - =txsrv.go= implements the gRPC transaction service
+- =client.fish= defines the =txSignAndSend= helper function for clients
+- =grpc.fish= compiles the definitions of the gRPC services and methods
+- =main.go= defines the main entry point to the =bcn= blockchain executable
