@@ -4,57 +4,61 @@
 
 *** Proof of Authority centralized consensus
 
-- Proof of Authority :: The PoA centralized consensus relies on a designated set
-  of accountable validators that put at state their identity and reputation in
-  order to create and propose new blocks on the blockchain. The PoA consensus
-  requires other blockchain participants to trust the designated validators. The
-  designated validators are incentivized by the risk of reputational damage or
-  complete loss of reputation in the case of dishonest or malicious behavior.
-  The designated validators take turns to create and propose blocks. Blocks must
-  be validated by the majority of other validators in order to become confirmed.
-  The advantages of the PoA consensus are fast and efficient centralized
-  agreement, high transaction throughput, low transaction confirmation time, low
-  computational overhead, low energy consumption, simple implementation. The
-  disadvantages of the PoA consensus are centralization of the blockchain
-  control by the designated validators, high security risk if validators are
-  compromised, the PoA consensus requires blockchain participants to trust the
-  designated validators. The PoA centralized consensus is most suitable for
-  high-throughput efficient permissioned or private blockchains
+- Proof of Authority :: The PoA centralized consensus relies on the designated
+  set of accountable authority nodes that put at stake their identity and their
+  reputation in order to create, sign and propose new blocks on the blockchain.
+  The PoA consensus requires other validator nodes to trust the designated set
+  of authority nodes. The designated authority nodes are incentivized by the
+  risk of reputational damage or the complete loss of the reputation in the case
+  of dishonest or malicious behavior. The designated authority nodes take turns
+  to create, sign, and propose blocks. The proposed blocks must be validated by
+  the majority of other validator nodes in order to become confirmed. The
+  advantages of the PoA centralized consensus are the fast and efficient
+  centralized agreement, the high transaction throughput, the low transaction
+  confirmation time, the low computational overhead, the low energy consumption,
+  a simple implementation. The disadvantages of the PoA centralized consensus
+  are the centralization of control over the blockchain by the designated set of
+  authority nodes, the high security risk if some or all of authority nodes are
+  compromised, the PoA centralized consensus requires the validator nodes to
+  completely trust the designated set of authority nodes. The PoA centralized
+  consensus is the most suitable for high-throughput, efficient, permissioned or
+  private blockchains
 
 ** Design and implementation
 
 *** Block proposer type
 
 - Block proposer type :: The block proposer type implements the single authority
-  multiple validators PoA centralized consensus. The single authority is also
-  the bootstrap node and holds the authority account that signs the genesis and
-  all proposed blocks. The single authority creates, signs and proposes through
-  the block relay mechanism new blocks to the list of known peers including
-  itself. On reception of a proposed block through the block relay mechanism
-  every other node, including the authority node itself, becomes a validator and
-  validates the block against the cloned state, and, if successful, applies the
-  block to the confirmed state, and further relays the confirmed block to the
-  list of known peers, other validators. The application of already applied
-  block relayed from other validators results in a block application error the
-  the duplicated block is not relayed any more. Relay of only successfully
-  applied blocks prevents propagation of duplicates of already applied blocks.
-  There is no possibility of a blockchain fork, as there is only the single
-  authority node that proposes blocks on the blockchain. The block proposer type
-  is fully integrated into the node graceful shutdown mechanism through the node
-  shared context hierarchy to signal the graceful shutdown and the node shared
-  wait group to wait for the concurrent node processes to gracefully terminate.
-  The block proposer type contains the authority account to sign the proposed
-  blocks, the confirmed state to apply the confirmed blocks, the pending state
-  with the list of pending transactions to create new blocks to be proposed, and
-  the block relayer to relay the proposed blocks. The advantages of using the
-  single authority PoA centralized consensus algorithm with multiple validators
-  are simple to understand and simple to implement algorithm, easily traceable
-  behavior helps to understand and troubleshoot the block proposal and
-  propagation in a peer-to-peer network
+  multiple validators PoA centralized consensus. The single authority node is
+  also the bootstrap node and holds the authority account that signs the genesis
+  and all proposed blocks. The single authority creates, signs and proposes
+  through the block relay mechanism new blocks to the list of known peers
+  including the authority node itself. On reception of a proposed block through
+  the block relay mechanism every validator node, including the authority node
+  itself, validates the block against the cloned state, and, if successful,
+  applies the block to the confirmed state. After the successful block
+  application, the validated block is further relayed to the list of known
+  peers, other validator nodes on the blockchain. The application of already
+  applied block relayed from other validators results in a block application
+  error and the duplicated block is not relayed any more. Relay of only
+  successfully applied blocks prevents the propagation of duplicates of already
+  applied blocks. There is no possibility of the blockchain fork, as there is
+  only the single authority node that proposes blocks on the blockchain. The
+  block proposer type is fully integrated into the node graceful shutdown
+  mechanism through the node shared context hierarchy to signal the graceful
+  shutdown and the node shared wait group to wait for the concurrent node
+  processes to gracefully terminate. The block proposer type contains the
+  authority account to sign proposed blocks, the confirmed state to apply the
+  confirmed blocks, the pending state with the list of pending transactions to
+  create new blocks to be proposed, and the block relayer to relay the proposed
+  blocks. The advantages of using the single authority PoA centralized consensus
+  algorithm with multiple validators are the simple to understand and the simple
+  to implement algorithm, the easily traceable behavior helps to understand and
+  troubleshoot the block proposal and propagation in the peer-to-peer network
   | ~ctx context.Context~     | Node shared context hierarchy |
   | ~wg *sync.WaitGroup~      | Node shared wait group        |
   | ~authority chain.Account~ | Authority account             |
-  | ~state *chain.State~      | Confirmed and pending states  |
+  | ~state *chain.State~      | Confirmed and pending state   |
   | ~blkRelayer BlockRelayer~ | Block relayer                 |
   #+BEGIN_SRC go
 type BlockProposer struct {
@@ -72,34 +76,35 @@ func NewBlockProposer(
 }
   #+END_SRC
 
-*** The block proposer algorithm
+*** Block proposer algorithm
 
 - Block proposer algorithm :: The block proposer algorithm combines the node
-  graceful shutdown algorithm with the periodic block creation, signing, and
+  graceful shutdown mechanism with the periodic block creation, signing, and
   proposal. The block proposer algorithm in this blockchain is only performed on
   the authority node that is also the bootstrap node. The block proposal happens
   periodically with a random delay to introduce some randomness to the moments
-  of block proposal. The random delay in the block proposal is parameterized by
-  the max period ensuring that the next block proposal happens in between the
-  time frame of [1/2, 3/2] of the max period. The block proposal algorithm
-  resets the block proposal timer with the random delay for the next block
-  proposal. Then the new block with all pending transactions is created from the
-  cloned state. The non-empty new block is than applied to the cloned state and,
-  if successful, the block is proposed through the block relay mechanism on the
-  peer-to-peer network for other validators to validate. On any error during the
-  block creation or the block application the failed block is not proposed to
-  the peer-to-peer network and the current block proposal cycle finishes without
-  proposing a block. The block proposer algorithm
-  - Schedule a timer with a random delay parameterized by the max period within
-    the timeframe of [1/2, 3/2] of the max period for the next block proposal
-  - Combine the node shared context cancellation channel with the random block
-    proposal timer channel
+  when new blocks are proposed. The random delay in the block proposal is
+  parameterized by the max period ensuring that the next block proposal happens
+  in between the time frame of [1/2, 3/2] of the max period. The block proposal
+  algorithm resets the block proposal timer with the random delay for the next
+  block proposal. Then the new block with all pending transactions is created
+  from the cloned state. The non-empty new block is than applied to the cloned
+  state and, if successful, the block is proposed through the block relay
+  mechanism on the peer-to-peer network for other validators to validate. On any
+  error during the block creation or the block application, the failed block is
+  not proposed to the peer-to-peer network and the current block proposal cycle
+  finishes without proposing a block. The block proposer algorithm
+  - Schedule the timer with a random delay parameterized by the max period
+    within the time frame of [1/2, 3/2] of the max period for the next block
+    proposal
+  - Combine the cancellation channel of the node shared context hierarchy with
+    the timer channel of the random block proposal
     - When the node shared context cancellation happens, stop the block proposal
-      timer and return
-    - When the random block proposal timer expeires, reset the block proposal
+      timer and stop the block proposal process
+    - When the random block proposal timer expires, reset the block proposal
       timer with the next random block proposal moment, create a new block on
-      the cloned state, apply the block on the cloned state, if successful,
-      relay the proposed block to the peer-to-peer network
+      the cloned state, apply the block to the cloned state, if successful,
+      relay the proposed block to the peer-to-peer network of validator nodes
   #+BEGIN_SRC go
 func randPeriod(maxPeriod time.Duration) time.Duration {
   minPeriod := maxPeriod / 2
@@ -141,92 +146,92 @@ func (p *BlockProposer) ProposeBlocks(maxPeriod time.Duration) {
 }
   #+END_SRC
 
-*** The block relay mechanism
+*** Block relay mechanism
 
 - Block relay mechanism :: The block relay mechanism propagates proposed blocks
   through the peer-to-peer network to all validators including the authority
-  node that creates and proposes blocks using the self relay function of the
+  node that creates and proposes blocks using the self-relay function of the
   message relay mechanism. The block relay mechanism does not relay received
-  blocks do not pass the block validation. This happens when an already applied
-  block is relayed again to the validator. This design prevents propagation of
-  duplicate blocks. The block relay mechanism reuses the message relay
-  infrastructure that is also used for the transaction relay. Specifically, the
-  message relay algorithm is reused. The message relay algorithm is
-  parameterized with the signed block type and the block-specific gRPC relay
-  function to adapt to the block relay use case. The block relay mechanism also
-  uses the self relay function of the message relay infrastructure. The
-  authority node relays proposed blocks not only to the list of known peers, but
-  also to the authority node itself for block validation and block confirmation
-  using the self relay function. This design clearly separates the block
-  proposal function from the block validation and block confirmation functions
-  on the authority node reusing the same block validation and confirmation
-  mechanisms used by other validators
-- gRPC client streaming for block relay :: The gRPC client streaming relays
-  blocks from the outbound block relay channel to the gRPC client
-  stream of blocks. The gRPC client streaming is message type specific and
-  is parameterized in the message relay type with the gRPC relay generic
-  function. The gRPC relay generic function accepts the node shared context
-  hierarchy, the gRPC client connection, and the outbound block relay
-  channel. The gRPC client streaming creates the message-specific gRPC clients
-  and establishes the gRPC client stream. The gRPC client streaming combines the
-  node shared context cancellation channel for graceful shutdown with the
-  outbound block relay channel for streaming blocks to the peer.
-  When a new message is sent to the outbound block relay channel, the
-  message is encoded and sent over the gRPC client stream to the peer. The gRPC
-  client streaming
-  - Create the message-specific gRPC client
-  - Establish the gRPC client stream by calling the gRPC =BlockReceive= method
-  - Combine the node shared context hierarchy channel with the outbound
-    block relay channel
+  blocks the the received blocks do not pass the block application. This happens
+  when an already applied block is relayed again to the validator. This design
+  prevents propagation of duplicated blocks. The block relay mechanism reuses
+  the message relay infrastructure that is also used for the transaction relay.
+  Specifically, the message relay algorithm is reused. The message relay
+  algorithm is parameterized with the signed block type and the block-specific
+  gRPC relay function to adapt to the block relay use case. The block relay
+  mechanism also uses the self-relay function of the message relay
+  infrastructure. The authority node relays proposed blocks not only to the list
+  of known peers, but also to the authority node itself for the block validation
+  and the block confirmation using the self-relay function. This design clearly
+  separates the block proposal function from the block validation and block
+  confirmation functions on the authority node reusing the same block validation
+  and confirmation mechanisms used by other validators
+- Transaction relay through gRPC client streaming :: The gRPC client streaming
+  relays blocks from the outbound block relay channel to the gRPC client stream
+  of blocks. The gRPC client streaming is message type specific and is
+  parameterized in the message relay type with the gRPC relay generic function.
+  The gRPC relay generic function accepts the node shared context hierarchy, the
+  gRPC client connection, and the outbound block relay channel. The gRPC client
+  streaming creates the message-specific gRPC clients and establishes the gRPC
+  client stream. The gRPC client streaming combines the node shared context
+  cancellation channel for the graceful shutdown with the outbound block relay
+  channel for streaming blocks to the peer. When a new message is sent to the
+  outbound block relay channel, the message is encoded and sent over the gRPC
+  client stream to the peer. The block relay through the gRPC client streaming
+  - Create the gRPC block client
+  - Call the gRPC =BlockReceive= method to establish the gRPC client stream
+  - Combine the cancellation channel of the node shared context hierarchy with
+    the outbound block relay channel
     - When the node shared context hierarchy is canceled, close the gRPC client
-      connection and stop the block relay for the peer
+      connection and stop the block relay to the peer
     - When a new block is sent to the outbound block relay channel,
       forward the block to the established gRPC client stream
-  #+BEGIN_SRC go
-type GRPCMsgRelay[Msg any] func(
-  ctx context.Context, conn *grpc.ClientConn, chRelay chan Msg,
-) error
+    #+BEGIN_SRC go
+  type GRPCMsgRelay[Msg any] func(
+    ctx context.Context, conn *grpc.ClientConn, chRelay chan Msg,
+  ) error
 
-var GRPCBlockRelay GRPCMsgRelay[chain.SigBlock] = func(
-  ctx context.Context, conn *grpc.ClientConn, chRelay chan chain.SigBlock,
-) error {
-  cln := rpc.NewBlockClient(conn)
-  stream, err := cln.BlockReceive(ctx)
-  if err != nil {
-    return err
-  }
-  defer stream.CloseAndRecv()
-  for {
-    select {
-    case <- ctx.Done():
-      return nil
-    case blk, open := <- chRelay:
-      if !open {
+  var GRPCBlockRelay GRPCMsgRelay[chain.SigBlock] = func(
+    ctx context.Context, conn *grpc.ClientConn, chRelay chan chain.SigBlock,
+  ) error {
+    cln := rpc.NewBlockClient(conn)
+    stream, err := cln.BlockReceive(ctx)
+    if err != nil {
+      return err
+    }
+    defer stream.CloseAndRecv()
+    for {
+      select {
+      case <- ctx.Done():
         return nil
-      }
-      jblk, err := json.Marshal(blk)
-      if err != nil {
-        fmt.Println(err)
-        continue
-      }
-      req := &rpc.BlockReceiveReq{Block: jblk}
-      err = stream.Send(req)
-      if err != nil {
-        fmt.Println(err)
-        continue
+      case blk, open := <- chRelay:
+        if !open {
+          return nil
+        }
+        jblk, err := json.Marshal(blk)
+        if err != nil {
+          fmt.Println(err)
+          continue
+        }
+        req := &rpc.BlockReceiveReq{Block: jblk}
+        err = stream.Send(req)
+        if err != nil {
+          fmt.Println(err)
+          continue
+        }
       }
     }
   }
-}
-  #+END_SRC
+    #+END_SRC
 
 *** gRPC =BlockReceive= method
 
 The gRPC =Block= service provides the =BlockReceive= method to receive blocks
 relayed from the peer-to-peer network of the blockchain. The block relay happens
-from the =ProposeBlocks= method of the block proposer and from the gRPC
+from the =ProposeBlocks= method of the block proposer type and from the gRPC
 =BlockReceive= method to further relay validated blocks to other peers. The
-interface of the service
+block relay forwards blocks to other peers through the gRPC client streaming.
+The interface of the service
 #+BEGIN_SRC protobuf
 message BlockReceiveReq {
   bytes Block = 1;
@@ -244,7 +249,7 @@ The implementation of the =BlockReceive= method
   - Decode the block
   - Apply the decoded block to the cloned state, if successful,
   - Apply the cloned state to the confirmed state
-  - Persist the block to the local block store
+  - Persist the block to the local block store of the node
   - Relay the confirmed block to the list of known peers
   - Publish the confirmed blocks with all confirmed transactions to the node
     event stream
@@ -315,7 +320,7 @@ The =TestBlockReceive= testing process
 go test -v -cover -coverprofile=coverage.cov ./... -run BlockReceive
 #+END_SRC
 
-*** Testing the block proposer and the message relay
+*** Testing block proposer and message relay
 
 The =TestBlockProposer= testing process
 - Set up the bootstrap node
@@ -335,9 +340,9 @@ The =TestBlockProposer= testing process
 - Get the initial owner account and its balance from the genesis
 - Re-create the initial owner account from the genesis
 - Sign and send several signed transactions to the bootstrap node
-- Wait for the block proposal to propose block and block relay to propagate the
-  proposed block
-- Verify that the initial account balance on the confirmed states of the new
+- Wait for the block proposal to propose a block and the block relay to
+  propagate the proposed block
+- Verify that the initial account balance on the confirmed state of the new
   node and the bootstrap node are equal
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run BlockProposer

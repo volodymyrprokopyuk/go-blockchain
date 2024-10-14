@@ -81,5 +81,8 @@ mutex concurrency/, /Go context/, /Go channel composition/
 message relay/, /gRPC client streaming/, /Go channel concurrency/, /Go channel
 composition/, /Go channel multiplexing/, /Go generics/
 9. [@9] [[/doc/block-proposer.org][Block proposer]]
+/Proof of Authority consensus/, /block proposer algorithm/, /block relay/, /gRPC
+client streaming/, /Go channel concurrency/, /Go channel composition/, /Go
+channel multiplexing/, /Go generics/
 10. [@10] [[/doc/event-stream.org][Event stream]]
 11. [@11] [[/doc/blockchain-node.org][Blockchain node]]

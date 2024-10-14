@@ -357,10 +357,10 @@ func (r *MsgRelay[Msg, Relay]) peerRelay(peer string) chan Msg {
   - Create the gRPC transaction client
   - Call the gRPC =TxReceive= method to establish the gRPC client stream with
     the peer
-  - Combine the node shared context hierarchy channel with the outbound
-    transaction relay channel
+  - Combine the cancellation channel of the node shared context hierarchy with
+    the outbound transaction relay channel
     - When the node shared context hierarchy is canceled, close the gRPC client
-      connection and stop the transaction relay for the peer
+      connection and stop the transaction relay to the peer
     - When a new transaction is sent to the outbound transaction relay channel,
       forward the transaction to the established gRPC client stream
   #+BEGIN_SRC go

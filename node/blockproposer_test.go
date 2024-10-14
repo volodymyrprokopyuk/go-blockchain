@@ -104,10 +104,10 @@ func TestBlockProposer(t *testing.T) {
   }
   // Sign and send several signed transactions to the bootstrap node
   sendTxs(t, ctx, acc, []uint64{12, 34}, bootState.Pending, bootAddr)
-  // Wait for the block proposal to propose block and block relay to propagate
-  // the proposed block
+  // Wait for the block proposal to propose a block and the block relay to
+  // propagate the proposed block
   time.Sleep(500 * time.Millisecond)
-  // Verify that the initial account balance on the confirmed states of the new
+  // Verify that the initial account balance on the confirmed state of the new
   // node and the bootstrap node are equal
   expBalance := ownerBal - 12 - 34
   nodeBalance, exist := nodeState.Balance(acc.Address())
