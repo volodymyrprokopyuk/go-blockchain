@@ -2,86 +2,87 @@
 
 ** Concepts and purpose
 
-*** Peer discover and transaction relay
+*** Peer discovery and transaction relay
 
 - Blockchain node :: The blockchain node is the core component of the blockchain
   peer-to-peer network. The blockchain peer-to-peer network consists of a set of
-  autonomous and self-contained interconnected nodes. The set of interconnected
+  autonomous, self-contained and interconnected nodes. The set of interconnected
   nodes forms a distributed system where each node operates independently of
   other nodes and is interconnected with other nodes through peer-to-peer
   connections
 - Peer discovery :: The peer-to-peer connections are established automatically
   through the peer discovery mechanism. The peer discover mechanism starts with
-  a seed node address that usually is the bootstrap node and periodically
-  fetches the list of known peers from every known peer of a node. This design
-  ensures automatic discovery of new nodes that have been recently added to the
+  the seed node address that is the bootstrap node and periodically fetches the
+  list of known peers from every known peer of a node. This design ensures
+  automatic discovery of new peers that have been recently added to the
   blockchain and automatic disposition of connections with nodes that have gone
-  offline.
+  offline
 - Transaction relay :: After establishing peer-to-peer connections with other
-  nodes the node starts accepting new signed transactions from clients. All
-  validated accepted transactions from clients are automatically relayed to the
-  list of known peers in order to propagate new validated transactions through
-  the peer-to-peer network. Every node in the peer-to-peer network accumulates
-  relayed validated transaction in the local pending state. The local pending
-  state contains the new validated transactions to be included into the new
-  proposed block
+  nodes the node starts accepting new signed transactions from the clients. All
+  accepted from clients and validated by the node are automatically relayed to
+  the list of known peers in order to propagate new validated transactions
+  through the peer-to-peer network of nodes. Every node in the peer-to-peer
+  network accumulates relayed validated transaction in the local pending state.
+  The local pending state contains the new validated transactions to be included
+  into the new proposed block
 
-*** Block proposal, block relay, block confirmation
+*** Block proposer, block relay, block confirmation
 
 - Block proposer :: The block proposer is part of the consensus algorithm
   employed by the blockchain. This blockchain uses the Proof of Authority (PoA)
-  consensus algorithm. Specifically, in this blockchain only the authority node
-  holds the authority account that signs new proposed blocks. The authority node
-  periodically with a random delay creates a new blocks from the validated
+  centralized consensus. Specifically, in this blockchain only the authority
+  node holds the authority account that signs new proposed blocks. The authority
+  node periodically with a random delay creates new blocks from the validated
   transactions of the pending state, signs the block with the authority account
   and relays the signed proposed block to other validators to validate and
-  confirm the proposed block. Other validators are all the nodes on this
+  confirm the proposed blocks. Other validators are all the nodes on this
   blockchain including the authority node itself. The propagation of the new
   proposed blocks happens through the block relay
-- Block relay :: After a new block is created and signed by the authority node,
-  the proposed block is propagated through the peer-to-peer network using the
-  block relay mechanism. The block relay mechanism reuses the infrastructure of
-  the transaction relay with a notable difference that the block relay mechanism
-  uses the self-relay function, while the transaction relay mechanism does not.
-  The self-relay function relays the proposed block to the authority node itself
-  along with the list of known peers. This design separates the block proposal
-  function from the block validation and confirmation function. There is only
-  one block proposed in this blockchain. This design prevents forks on the
-  blockchain as all nodes either confirm a valided proposed block or reject an
-  invalid proposed block
-- Block confirmation :: Every proposed block received through the block relay
+- Block relay :: After a new block has been created and signed by the authority
+  node, the proposed block is propagated through the peer-to-peer network using
+  the block relay mechanism. The block relay mechanism reuses the infrastructure
+  of the transaction relay with a notable difference that the block relay
+  mechanism uses the self-relay function, while the transaction relay mechanism
+  does not. The self-relay function relays the proposed block to the authority
+  node itself along with the list of known peers. This design separates the
+  block proposal function from the block validation and confirmation function.
+  There is only one block proposer, the authority node, in this blockchain. This
+  design prevents forks on the blockchain as all nodes either confirm a
+  a single proposed and validated block or reject an invalid proposed block
+- Block confirmation :: Each proposed block received through the block relay
   mechanism is validated against the coned state, and, if successful, is applied
-  to the confirmed state of the node, and is appended to the local block store.
-  The block validation verifies that the proposed block number and parent hash
-  are in accordance with the latest confirmed state maintained on every node.
-  The block validation validates also all transactions from the proposed block
-  against the cloned state. If the proposed blocks is validated, the block
-  becomes confirmed and is applied to the confirmed state, as well as is
-  appended to the local block store. The block confirmation concludes the PoA
-  consensus algorithm initiated by the block proposer. This design ensures that
-  all nodes on the peer-to-peer network confirm validated blocks proposed and
-  signed by the authority node in exactly the same order with exactly the same
-  block content
+  to the confirmed state of the node, and is appended to the local block store
+  of the node. The block validation verifies that the proposed block number, the
+  parent hash, and the contained transactions are in accordance with the latest
+  confirmed state maintained on every node. The block validation validates also
+  all transactions from the proposed block against the cloned state. If the
+  proposed blocks is validated, the block becomes confirmed and is applied to
+  the confirmed state, as well as the block is appended to the local block
+  store. The block confirmation concludes the PoA consensus algorithm initiated
+  by the block proposer. This design ensures that all nodes on the peer-to-peer
+  network confirm validated blocks proposed and signed by the authority node in
+  exactly the same order with exactly the same block content
 
-*** Confirmed and pending state
+*** Confirmed state and pending state
 
-- State sync :: When a new node joins the peer to peer network, or an
+- State sync :: When a new node joins the peer-to-peer network, or an
   out-of-sync node becomes online again, the state sync process fetches the
   genesis from the bootstrap node and fetches all newer confirmed blocks from
   the list of known peers in order to synchronize the node with latest confirmed
-  state on the blockchain. The state sync process is also used when initializing
-  a completely new blockchain on the bootstrap node. In this case a new genesis
-  is persisted with the initial blockchain configuration include the initial
-  owner and the initial blockchain balance. The latest blockchain state
-  including both the last confirmed block and the list of pending transactions
-  are maintained in the state data structure on every node
+  state on the blockchain. The state sync process on the bootstrap node is also
+  used when initializing a completely new blockchain. In this case a new genesis
+  is persisted with the initial blockchain configuration including the authority
+  account address, the initial owner account, and the initial owner account
+  balance. The latest blockchain state including both the last confirmed block
+  and the list of pending validated transactions is maintained in the state data
+  structure on every node
 - Confirmed and pending state :: The confirmed and pending state is an in-memory
-  data structure that is maintained on every node in the peer-to-peer network.
-  The confirmed state reflects the account balances after applying transactions
-  from from confirmed by consensus block in order. The confirmed state is
+  data structure that is maintained on every node in the peer-to-peer network of
+  the blockchain. The confirmed state reflects the account balances after
+  applying in order transactions from confirmed blocks. The confirmed state is
   regularly updated with state changes from the next confirmed block on the
-  blockchain. The pending state accumulate new validated transactions sent
-  directly to the node by clients or relayed from other nodes. The list of
+  blockchain. The pending state accumulates new validated transactions sent
+  directly to the node by the clients or relayed from other nodes. The list of
   pending transactions is used to create, sign, and propose the next block by
   the authority node. The list of pending transactions is updated after the new
   proposed block is confirmed and applied to the confirmed state and added to
@@ -90,52 +91,52 @@
 
 *** Streaming domain events to clients
 
-- Event stream :: The node event stream mechanism exposes important domain
+- Event stream :: The node event stream mechanism publishes important domain
   events that occur on the blockchain node to be consumed by subscribed clients.
   The domain events that occur on the node are always available for any client
   to consume. The client subscribes to the node event stream by specifying the
-  types of event the client is interested in. On successful subscription events
-  of all requested event types are streamed to the subscribed client through the
-  gRPC server streaming. At any moment the client can close the streaming
-  without impacting event streaming to other clients subscribed to the same
-  node. The node event stream mechanism provides efficient, real-time
-  notification of external to the blockchain applications about the important
-  domain events that occur on the blockchain e.g. confirmed blocks, confirmed
-  transactions
+  types of event the client is willing to receive. On successful subscription
+  events of all requested event types are delivered to the subscribed client
+  through the gRPC server streaming. At any moment the client can close the
+  streaming without impacting event streaming to other clients subscribed to the
+  same node. The node event stream mechanism provides efficient, real-time
+  notification of external applications about the important domain events that
+  occur on the blockchain e.g. confirmed blocks, confirmed transactions
 
 *** The node graceful shutdown mechanism
 
 - Node graceful shutdown :: The node graceful shutdown mechanism provides a
   reliable mechanism to notify graceful shutdown to all concurrent processes on
-  the blockchain node and wait for the graceful termination of concurrent node
-  processes before shutting down the node process. The node graceful shutdown
-  happens after the node process receives the =SIGINT=, the =SIGTERM=, or the
-  =SIGKILL= signal from the other process on the OS. The node graceful shutdown
-  mechanism contributes to clean shutdown of the blockchain node. The clean
-  shutdown of the node implies that after receiving the shutdown signal the node
-  stops accepting new connections on the gRPC interface, the node stops
-  accepting new requests on existing active gRPC connections, the node finishes
-  processing all requests that have been in progress when the shutdown signal
-  was received, the node correctly updates the confirmed and pending state, the
-  node finishes all pending operations on the local block store and closes the
-  local block store, the node stops communication with all connected peers and
-  closes all open connections with active peers. The node graceful shutdown
-  mechanism consists of the node shared context hierarchy that spreads all
-  concurrent node processes that have to be notified about the graceful
-  shutdown. When the node graceful shutdown signal is received, the node shared
-  context hierarchy is canceled. This notifies all concurrent node components
-  that the node graceful shutdown has started. The node graceful shutdown
-  mechanism consists of the shared wait group that spreads all concurrent node
-  processes that have to be notified about the graceful shutdown. When every
-  concurrent node process finishes the graceful shutdown, the process notifies
-  the node's main goroutine about the successful shutdown. The node's main
-  goroutine waits for all node concurrent processes to shutdown gracefully
+  the blockchain node and wait for the graceful termination of node concurrent
+  processes before shutting down the node's main goroutine. The node graceful
+  shutdown happens after the node process receives the =SIGINT=, the =SIGTERM=,
+  or the =SIGKILL= signal from the other process on the OS. The node graceful
+  shutdown mechanism contributes to the clean shutdown of the blockchain node.
+  The clean shutdown of the node implies that after receiving the shutdown
+  signal the node stops accepting new connections on the gRPC interface, the
+  node stops accepting new requests on existing active gRPC connections, the
+  node finishes processing all requests that have been in progress when the
+  shutdown signal was received, the node correctly updates the confirmed and the
+  pending state, the node finishes all pending operations on the local block
+  store and closes the local block store, the node stops communication with all
+  connected peers and closes all open connections with active peers. The node
+  graceful shutdown mechanism consists of the node shared context hierarchy that
+  spreads all concurrent node processes that have to be notified about the
+  graceful shutdown. When the node graceful shutdown signal is received, the
+  node shared context hierarchy is canceled. This notifies all concurrent node
+  components that the node graceful shutdown has started. The node graceful
+  shutdown mechanism consists of the shared wait group that spreads all
+  concurrent node processes that have to notify the node about the graceful
+  termination success. When every concurrent node process terminates gracefully,
+  the process notifies the node's main goroutine about the successful
+  termination. The node's main goroutine waits for all node concurrent processes
+  to terminate gracefully, before terminating the node main process
 
 ** Design and implementation
 
 *** Node type
 
-- Node type :: The =Node= type host all the concurrent node processes required
+- Node type :: The =Node= type hosts all the concurrent node processes required
   to discover peers; accept, validate, and relay transactions; propose,
   validate, and relay blocks; apply validated blocks to the confirmed state,
   append validated blocks to the local block store; stream domain events to
@@ -146,24 +147,27 @@
   account password, the initial owner account password, the initial owner
   account balance, the period of concurrent node processes. The node type
   contains the node shared context hierarchy and the node shared wait group to
-  support the node graceful shutdown mechanism. The node type hosts the event
-  stream to deliver domain events to subscribed clients. The node type contains
-  the confirmed and pending state and the state sync to initialize new nodes or
-  synchronize out-of-sync nodes with the latest state updates on the blockchain.
-  The node type hosts the gRPC server for all interactions between the node and
-  other nodes, as well as interactions between the node and clients. The node
-  type contains the peer discovery to automatically connect the node with other
-  nodes on the peer-to-peer network. The node type contains the transaction
-  relay to propagate validated transaction to the list of known peers. The node
-  type contains the block proposer to periodically create, sign, and propose new
-  blocks with pending transactions. The node type contains the block relay to
-  propagate proposed and validated blocks to the list of know peers including
-  the authority node that proposed the new block. The node type acts as an
-  extensible container for concurrent node processes that support correct
-  operations of the node in particular and the blockchain in general. The node
-  graceful shutdown process ensures that all concurrent node processes terminate
-  gracefully without throwing in-progress transactions and without corrupting
-  the blockchain state and the local block store. The node type
+  support the node graceful shutdown mechanism. The node type hosts the node
+  event stream to deliver domain events to subscribed clients. The node type
+  contains the confirmed and pending state, and the state sync to initialize new
+  nodes or synchronize out-of-sync nodes with the latest state updates on the
+  blockchain. The node type hosts the gRPC server for all interactions between
+  the node and other nodes, as well as interactions between the node and the
+  clients. The node type contains the peer discovery to automatically connect
+  the node with other nodes on the peer-to-peer network. The node type contains
+  the transaction relay to propagate validated transaction to the list of known
+  peers. The node type contains the block proposer to periodically create, sign,
+  and propose new blocks with pending transactions. In this blockchain the block
+  proposer is only activated on the authority node. All nodes on the blockchain
+  including the authority node are the validator nodes. The node type contains
+  the block relay to propagate proposed and validated blocks to the list of know
+  peers including the authority node that proposed the new block. The node type
+  acts as an extensible container for node concurrent processes that support
+  correct operations of the node in particular and the blockchain in general.
+  The node graceful shutdown mechanism ensures that all node concurrent
+  processes terminate gracefully without unexpected terminations, without
+  throwing in-progress transactions, and without corrupting the blockchain state
+  and the local block store. The node type
   | ~cfg NodeCfg~                             | Node configuration                 |
   | ~ctx context.Context~                     | Node shared context hierarchy      |
   | ~ctxCancel func()~                        | Graceful shutdown context cancel   |
@@ -281,7 +285,7 @@ func (n *Node) Start() error {
 }
   #+END_SRC
 
-*** The node gRPC server for clients and inter-node communication
+*** The node gRPC server
 
 - gRPC server :: The gRPC server exposes the account, transaction, block, and
   node services for clients and other nodes to interact with the node. Each gRPC
@@ -353,7 +357,7 @@ func (n *Node) servegRPC() {
   | =Node=       | =PeerDiscover=    | gRPC request-response    |
   | =Node=       | =StreamSubscribe= | gRPC server streaming    |
 
-*** The node CLI for clients
+*** The node CLI
 
 - Node CLI :: The node CLI allows local and remote clients to start the
   blockchain node, subscribe to the node events, create new accounts on the
