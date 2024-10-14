@@ -43,7 +43,7 @@ func TestNodeStart(t *testing.T) {
   }()
   // Wait for the bootstrap node to start
   time.Sleep(100 * time.Millisecond)
-  // Set up a gRPC client connection with the bootstrap node
+  // Set up the gRPC client connection with the bootstrap node
   conn, err := grpc.NewClient(
     bootAddr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
@@ -86,7 +86,8 @@ func TestNodeStart(t *testing.T) {
         fmt.Println(err)
         return
       }
-      // Call the gRPC TxSend method to the the signed encoded transaction
+      // Call the gRPC TxSend method to send the signed encoded transaction to
+      // the bootstrap node
       req := &rpc.TxSendReq{Tx: jtx}
       _, err = txCln.TxSend(ctx, req)
       if err != nil {

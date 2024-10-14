@@ -92,4 +92,6 @@ channel multiplexing/, /Go generics/
 /Blockchain node/, /peer-to-peer network of nodes/, /peer discovery/, /state
 sync/, /confirmed state/, /pending state/, /transaction relay/, /Proof of
 Authority consensus/, /block proposer/, /block relay/, /block application/,
-/block confirmation/, /event stream/, /node graceful shutdown mechanism/
+/block confirmation/, /event stream/, /node graceful shutdown mechanism/, /node
+gRPC server/, /Node CLI/, /start node/, /blockchain peer-to-peer network with
+two nodes/

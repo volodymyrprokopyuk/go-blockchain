@@ -224,7 +224,7 @@ func NewNode(cfg NodeCfg) *Node {
 
 *** Starting the blockchain node
 
-- Node start :: The node start process initiates all the concurrent node
+- Start node :: The node start process initiates all the node concurrent
   processes, sets up the node graceful shutdown mechanism, and waits for either
   the signal to gracefully shutdown the node or an unrecoverable error from any
   of the concurrent node processes. The node start process
@@ -232,7 +232,7 @@ func NewNode(cfg NodeCfg) *Node {
   - Start streaming domain events to subscribed clients
   - Initialize the state and create the genesis of a new node or synchronize the
     state and update the local block store of an out-of-sync node
-  - Start the gRPC server with the account, transaction, block, and node
+  - Start the gRPC server with the account, transaction, block, and node gRPC
     services
   - Start the peer discovery
   - Start the transaction relay
@@ -243,7 +243,7 @@ func NewNode(cfg NodeCfg) *Node {
     processes
   - Gracefully shutdown the gRPC server
   - Wait for all node concurrent processes to gracefully shutdown before
-    termination the main node process
+    terminating the main node process
   #+BEGIN_SRC go
 func (n *Node) Start() error {
   defer n.ctxCancel()
@@ -288,19 +288,18 @@ func (n *Node) Start() error {
 *** The node gRPC server
 
 - gRPC server :: The gRPC server exposes the account, transaction, block, and
-  node services for clients and other nodes to interact with the node. Each gRPC
-  service exposes highly cohesive and loosely coupled blockchain functions under
-  the well-defined interface described by gRPC messages and methods. Each gRPC
-  service depends on specific node components in order to provide the defined
-  functions. The gRPC server process is on of the node concurrent processes, so
-  all requests combing from the gRPC server and all responses going to the gRPC
-  server are concurrent. All gRPC services and methods are concurrency safe as
-  they internally rely either on the mutex-based concurrency safe state
-  implementation or the channel-based concurrency safe implementation of other
-  node concurrent processes. The gRPC server
-  - Create a TCP listener on the node address
-  - Defer closing the TCP connection after the graceful shutdown of the gRPC
-    server
+  node gRPC services for clients and other nodes to interact with the node. Each
+  gRPC service exposes highly cohesive and loosely coupled blockchain functions
+  under the well-defined interface described by gRPC ProtoBuf messages and
+  methods. Each gRPC service depends on specific node components in order to
+  provide the defined functions. The gRPC server process is one of the node
+  concurrent processes, so all requests combing from the gRPC services and all
+  responses going to the gRPC services are concurrent. All gRPC services and
+  methods are concurrency safe as they internally rely either on the mutex-based
+  concurrency safe state implementation or the channel-based concurrency safe
+  implementation of other node concurrent processes. The gRPC server
+  - Create the TCP listener on the node address
+  - Defer closing the TCP connection after the graceful stop of the gRPC server
   - Create a new gRPC server
   - Register the node, account, transaction, and block gRPC services with the
     gRPC server
@@ -336,7 +335,7 @@ func (n *Node) servegRPC() {
 
 - gRPC services and methods :: All communication of clients with the blockchain
   node and all communication between nodes in the peer-to-peer network happens
-  exclusively through the gRPC services and methods. Every node provides a CLI
+  exclusively through the gRPC services and methods. Every node provides the CLI
   for clients to interact with the node through the gRPC interface. The CLI can
   interact with both local and remote nodes in exactly the same way. All
   inter-node communication happens through the gRPC interface. Communication
@@ -360,11 +359,11 @@ func (n *Node) servegRPC() {
 *** The node CLI
 
 - Node CLI :: The node CLI allows local and remote clients to start the
-  blockchain node, subscribe to the node events, create new accounts on the
-  blockchain, query the account balance, sign and send new transactions to the
-  blockchain node, search transactions, and search blocks. All communication
-  between the client and the node happens through the gRPC interface that is the
-  only interface to interact with the node
+  blockchain node, subscribe to the node event stream, create a new account on
+  the blockchain, query the account balance, sign and send new transactions to
+  the blockchain node, search transactions, and search blocks on the blockchain.
+  All communication between the client and the node happens through the gRPC
+  interface that is the only interface to interact with the node
   | CLI command             | CLI options                                    |
   |-------------------------+------------------------------------------------|
   | ~./bcn account create~  | =--node= target node address                   |
@@ -408,7 +407,7 @@ The =TestNodeStart= testing process
   - Configure the bootstrap node
   - Start the bootstrap node in a separate goroutine
   - Wait for the bootstrap node to start
-- Set up a gRPC client connection with the bootstrap node
+- Set up the gRPC client connection with the bootstrap node
 - Send several transactions to the bootstrap node in a separate goroutine
   - Get the initial owner account and its balance from the genesis
   - Re-create the initial owner account from the genesis
@@ -416,13 +415,15 @@ The =TestNodeStart= testing process
   - Start sending transaction to the bootstrap node
     - Create and sign a new transaction
     - Encode the signed transaction
-    - Call the gRPC =TxSend= method to the the signed encoded transaction
+    - Call the gRPC =TxSend= method to send the signed encoded transaction to
+      the bootstrap node
 - Set up the client that subscribes to the node event stream
-  - Set up a gRPC client connection with the bootstrap node
+  - Set up the gRPC client connection with the bootstrap node
   - Create the gRPC node client
   - Call the =StreamSubscribe= method to subscribe to the node event stream and
     establish the gRPC server stream of domain events
-  - Define the expected events to receive after a successful block proposal
+  - Define the expected events to receive after a successful block proposal and
+    the successful block confirmation
   - Start consuming events from the gRPC server stream of domain events. For
     each received event
     - Decode the received domain event
@@ -434,15 +435,16 @@ go test -v -cover -coverprofile=coverage.cov ./... -run NodeStart
 
 *** Using the blockchain network with two nodes
 
-This use case demonstrates how the blockchain network with two nodes can be set
-up. The bootstrap node is also the authority node that proposes blocks and
-serves as the seed node for the initial peer discovery of the other node. A new
-blockchain account will be created on the other node. Then a transaction from
-the initial owner account on the bootstrap node will transfer funds to the new
-account created on the other node. Next a transaction from the new account on
-the other node will transfer funds to the initial owner account on the bootstrap
-node. Two clients will subscribe to the bootstrap node and the other node event
-stream to get notified when both transactions are confirmed
+This use case demonstrates how the blockchain peer-to-peer network with two
+nodes can be set up and used to send transactions and confirm blocks. The
+bootstrap node is also the authority node that proposes blocks and serves as the
+seed node for the initial peer discovery of the other node. A new blockchain
+account will be created on the other node. Then a transaction from the initial
+owner account on the bootstrap node will transfer funds to the new account
+created on the other node. Next a transaction from the new account on the other
+node will transfer funds to the initial owner account on the bootstrap node. Two
+clients will subscribe to the bootstrap node and the other node event stream to
+get notified when both transactions are confirmed
 - Initialize the blockchain by starting the bootstrap node with parameters for
   the blockchain initial configuration
   #+BEGIN_SRC fish
@@ -458,7 +460,7 @@ set ownerpass password
 set node localhost:1123
 ./bcn node start --node $node --seed $boot
   #+END_SRC
-- Subscribed a client to the event stream of the bootstrap node (in a new
+- Subscribe a client to the event stream of the bootstrap node (in a new
   terminal)
   #+BEGIN_SRC fish
 ./bcn node subscribe --node $boot --events tx
@@ -467,7 +469,7 @@ set node localhost:1123
 # <~> tx validated
 # tx  8e89528: bba08a5 -> 4f3748d        1        1
   #+END_SRC
-- Subscribed another client to the event stream of the other node (in a new
+- Subscribe another client to the event stream of the other node (in a new
   terminal)
   #+BEGIN_SRC fish
 ./bcn node subscribe --node $node --events tx
