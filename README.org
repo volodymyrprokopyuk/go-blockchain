@@ -85,4 +85,7 @@ composition/, /Go channel multiplexing/, /Go generics/
 client streaming/, /Go channel concurrency/, /Go channel composition/, /Go
 channel multiplexing/, /Go generics/
 10. [@10] [[/doc/event-stream.org][Event stream]]
+/Node event stream/, /event publisher/, /concurrency safe event streaming/,
+/domain event multiplexing/, /gRPC server streaming/, /Go mutex concurrency/,
+/Go channel concurrency/, /Go channel composition/, /Go channel multiplexing/
 11. [@11] [[/doc/blockchain-node.org][Blockchain node]]

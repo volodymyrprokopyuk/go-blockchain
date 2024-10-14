@@ -2,44 +2,44 @@
 
 ** Concepts and purpose
 
-*** Streaming events from a node to subscribed clients
+*** Node event stream
 
 - Node event stream :: The node event stream publishes important domain events
-  about the state transitions of the blockchain to external clients subscribed
-  to the node event stream. The node event stream is the mechanism to notify
-  external applications about state changes on the blockchain. State changes on
-  the blockchain include confirmation of a new block, confirmation of every
-  transaction in a confirmed block. Every node on the blockchain publishes
+  about the state transitions of the blockchain to clients subscribed to the
+  node event stream. The node event stream is the mechanism to notify external
+  applications about state changes on the blockchain. State changes on the
+  blockchain include confirmation of a new block, confirmation of every
+  transaction from the confirmed block. Every node on the blockchain publishes
   important domain events to the node event stream. The node event stream is
-  multiplexed over the subscribed clients, so every subscribed client gets a
+  multiplexed over the subscribed clients, so each subscribed client gets a
   replica of either all events published to the node event stream or a subset of
   events in accordance with the requested event types e.g. only confirmed
   blocks, or only confirmed transactions. When a client subscribes to the node
   event stream, the client specifies the types of events that the client is
   interested in. At any time the client can stop consuming events from the node
-  event stream. In this case the node stops producing domain events on this
+  event stream. In this case the node stops forwarding domain events on this
   specific channel. The node event stream multiplexed over client subscriptions
   decouples the node infrastructure from external applications, takes advantage
   of the scalability and resilience of the publish-subscribe style of
-  communication, and isolates each subscribed clients in a dedicated execution
-  flow that does not impact other subscribed clients in face of failure on a
+  communication, and isolates each subscribed client in a dedicated execution
+  flow that does not impact other subscribed clients in face of failure of a
   specific subscription
 
 ** Design and implementation
 
 *** Event type and event publisher interface
 
-- Event type :: The =Event= type represents a domain events that informs about a
-  state transition on a blockchain node in particular and on the blockchain
+- Event type :: The =Event= type represents a domain event that informs about a
+  state transition on the blockchain node in particular and on the blockchain
   network in general. The event type carries information about the type of event
   that specifies the event object e.g. a transaction, a block; the action taken
-  on the event object e.g. validated; and the encoded body of the object
-  providing further details about the object. The set of supported types of
-  events is defined by the =EventType= type. The currently supported events are
-  all known events, transactions, blocks
-  | ~Type EventType~ | Type of event of the object |
-  | ~Action string~  | Action taken on the object  |
-  | ~Body []byte~    | Encoded body of the object  |
+  on the event object e.g. validated; and the encoded body of the event object
+  providing further details about the event object. The set of supported types
+  of events is defined by the =EventType= type. The currently supported events
+  are all known events, only transactions, only blocks
+  | ~Type EventType~ | Type of event of the event object |
+  | ~Action string~  | Action taken on the event object  |
+  | ~Body []byte~    | Encoded body of the event object  |
   #+BEGIN_SRC go
 type EventType uint64
 
@@ -60,13 +60,13 @@ func NewEvent(evType EventType, action string, body []byte) Event {
 }
   #+END_SRC
 
-- Event publisher interface :: The =EventPublisher= interface provides a uniform
-  access for any node component to publish different types of events through to
-  the node event stream. The event publisher interface decouples every node
-  component e.g. the block proposer from a concrete implementation of node event
-  stream infrastructure. This design allows independent evolution of the node
-  event stream infrastructure without impacting node components that publish
-  domain events
+- Event publisher interface :: The =EventPublisher= interface provides the
+  uniform access for any node component to publish different types of domain
+  events through to the node event stream. The event publisher interface
+  decouples each node component e.g. the block proposer from a concrete
+  implementation of the node event stream. This design allows independent
+  evolution of the node event stream implementation without impacting the node
+  components that publish domain events to the node event stream
   #+BEGIN_SRC go
 type EventPublisher interface {
   PublishEvent(event Event)
@@ -75,35 +75,36 @@ type EventPublisher interface {
 
 *** Event stream type
 
-- Event stream type :: The =EventStream= type connects the signle inbound event
+- Event stream type :: The =EventStream= type connects the single inbound event
   channel with the set of outbound event stream channels each dedicated to a
   subscribed client. The event stream type receives domain events published by
   node components through the event publisher interface and multiplexes the
-  received domain events to every subscribed client through the dedicated event
-  stream channel. The event stream is concurrency safe. The single inbound event
-  channel automatically handles concurrent requests to publish events from the
-  node components. A mutex is used to handle concurrent requests to add new
-  client subscriptions or removing closed client subscriptions. The event stream
-  type is fully integrated into the node graceful shutdown mechanism. The node
-  shared context hierarchy signals a graceful shutdown. The node shared wait
-  group lets time for node components to gracefully shutdown before terminating
-  the node's main goroutine. The event stream type implements the event
-  publisher interface. This allows any node component interested in publishing
-  events to depend only on the event publisher interface, rather that on the
-  entire event stream type. The event stream type contains the node shared
-  context hierarchy and the node shared wait group for the node graceful
-  shutdown mechanism. The event stream type contains the single inbound event
-  channel that receives all events published by all node components. The event
-  stream type contains the varying map of outbound client subscription channels
-  as clients are subscribed and unsubscribed from the node event stream. Adding
-  new client subscription to the map and removing closed client subscription
-  from the map is concurrency safe. The event stream type contains a mutex to
-  manage concurrency safe addition and removal of client subscriptions. Each
-  client subscription is identified by a randomly generated number. The varying
-  map keeps the relation between the subscriptions identified by randomly
-  generated numbers and corresponding outbound event stream channels. The events
-  published to the single inbound event channel are multiplexed by the event
-  stream type to each outbound event stream channel and further delivered to
+  received domain events to every subscribed client through the dedicated
+  outbound event stream channel. The event stream is concurrency safe. The
+  single inbound event channel automatically handles concurrent requests to
+  publish events from the node components. A mutex is used to handle concurrent
+  requests to add new client subscriptions and to remove closed client
+  subscriptions. The event stream type is fully integrated into the node
+  graceful shutdown mechanism. The node shared context hierarchy signals a
+  graceful shutdown. The node shared wait group gives time to node components to
+  terminate gracefully before terminating the node's main goroutine. The event
+  stream type implements the event publisher interface. This allows any node
+  component interested in publishing the domain events to depend only on the
+  event publisher interface, rather that on the entire event stream type. The
+  event stream type contains the node shared context hierarchy and the node
+  shared wait group for the node graceful shutdown mechanism. The event stream
+  type contains the single inbound event channel that receives all domain events
+  published by all node components. The event stream type contains the mapping
+  of outbound channels representing client subscriptions as clients are
+  subscribed and unsubscribed from the node event stream. Adding a new client
+  subscription to the map and removing closed client subscription from the map
+  is concurrency safe. The event stream type contains the mutex to manage
+  concurrency safe addition and removal of client subscriptions. Each client
+  subscription is identified by a randomly generated number. The mapping keeps
+  the relation between the subscriptions identified by randomly generated
+  numbers and corresponding outbound event stream channels. The events published
+  to the single inbound event channel are multiplexed by the event stream type
+  to each outbound event stream channel and further concurrently delivered to
   subscribed clients trough the gRPC server streaming
   | ~ctx context.Context~                   | Node shared context hierarchy         |
   | ~wg *sync.WaitGroup~                    | Node shared wait group                |
