@@ -38,13 +38,14 @@ func subscribeAndVerifyEvents(
   if err != nil {
     t.Fatal(err)
   }
-  // Define the expected events to receive after a successful block proposal
+  // Define the expected events to receive after the successful block proposal
+  // and the successful block confirmation
   expEvents := []chain.Event{
     {Type: chain.EvBlock, Action: "validated", Body: nil},
     {Type: chain.EvTx, Action: "validated", Body: nil},
     {Type: chain.EvTx, Action: "validated", Body: nil},
   }
-  // Start consuming events from the gRPC server stream of domain events
+  // Start consuming domain events from the gRPC server stream of domain events
   for i := range len(expEvents) {
     // Receive a domain event
     res, err := stream.Recv()

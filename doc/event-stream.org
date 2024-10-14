@@ -136,39 +136,38 @@ func (s *EventStream) PublishEvent(event chain.Event) {
 
 *** Adding and removing subscribers
 
-- Addition and removal of subscriptions :: The addition of new subscribed
-  clients to the node event stream and the removal of closed subscription
-  happens concurrently to the publishing of domain events and their multiplexing
-  to the outbound event stream channels. The mapping of client subscriptions to
-  the corresponding outbound event stream channels is concurrency safe and is
-  protected with a mutex. Each client subscription is identified by a randomly
-  generated number that is the key in the mapping. When a client subscription is
-  closed, the corresponding outbound event stream channel is closed and the
-  client subscription identified by the randomly generated number is removed
-  from the mapping. This design contributes to the resilience of concurrent
-  handling of coming and going client subscriptions, while maintaining reliable
-  delivery of published domain events to active client subscriptions, and
-  without impacting other concurrent processes on the node
-
+- Add and remove subscription :: The addition of new clients to the node event
+  stream and the removal of closed subscription happens concurrently to the
+  publishing of domain events and their multiplexing to the outbound event
+  stream channels. The mapping of client subscriptions to the corresponding
+  outbound event stream channels is concurrency safe and is protected with the
+  mutex. Each client subscription is identified by a randomly generated number
+  that is the key in the mapping. When a client subscription is closed, the
+  corresponding outbound event stream channel is closed, and the client
+  subscription identified by the randomly generated number is removed from the
+  mapping. This design contributes to the resilience of concurrent handling of
+  coming and going client subscriptions, while maintaining reliable delivery of
+  published domain events to active client subscriptions, without impacting
+  other concurrent processes on the node
 - Add client subscription :: To add a new client subscription to the node event
   stream the mapping of outbound event stream channels is locked for writing, a
-  new outbound event stream channel is created and stored in the mapping under
+  new outbound event stream channel is created and added to the mapping under
   the randomly generated number that identifies the client subscription. The add
   client subscription process
   - Lock the mapping of outbound event stream channels for writing
   - Create a new outbound event stream channel
-  - Add the new outbound event stream channel to the mapping
-  #+BEGIN_SRC go
-func (s *EventStream) AddSubscriber(sub string) chan chain.Event {
-  s.mtx.Lock()
-  defer s.mtx.Unlock()
-  chStream := make(chan chain.Event)
-  s.chStreams[sub] = chStream
-  fmt.Printf("<~> Stream: %v\n", sub)
-  return chStream
-}
-  #+END_SRC
-
+  - Add the new outbound event stream channel to the mapping under the randomly
+    generated number that identifies the client subscription
+    #+BEGIN_SRC go
+  func (s *EventStream) AddSubscriber(sub string) chan chain.Event {
+    s.mtx.Lock()
+    defer s.mtx.Unlock()
+    chStream := make(chan chain.Event)
+    s.chStreams[sub] = chStream
+    fmt.Printf("<~> Stream: %v\n", sub)
+    return chStream
+  }
+    #+END_SRC
 - Remove client subscription :: To remove a closed client subscription from the
   node event stream the mapping of outbound event stream channels is locked for
   writing, the corresponding outbound event stream channel is located under the
@@ -177,42 +176,44 @@ func (s *EventStream) AddSubscriber(sub string) chan chain.Event {
   client subscriptions. The remove client subscription process
   - Lock the mapping of outbound event stream channels for writing
   - Locate the outbound event stream channel in the mapping of active client
-    subscriptions
+    subscriptions using the subscription identifier as a key
   - Close the outbound event stream channel
   - Remove the client subscription from the mapping of active client
     subscriptions
-  #+BEGIN_SRC go
-func (s *EventStream) RemoveSubscriber(sub string) {
-  s.mtx.Lock()
-  defer s.mtx.Unlock()
-  chStream, exist := s.chStreams[sub]
-  if exist {
-    close(chStream)
-    delete(s.chStreams, sub)
-    fmt.Printf("<~> Unsubscribe: %v\n", sub)
+    #+BEGIN_SRC go
+  func (s *EventStream) RemoveSubscriber(sub string) {
+    s.mtx.Lock()
+    defer s.mtx.Unlock()
+    chStream, exist := s.chStreams[sub]
+    if exist {
+      close(chStream)
+      delete(s.chStreams, sub)
+      fmt.Printf("<~> Unsubscribe: %v\n", sub)
+    }
   }
-}
-  #+END_SRC
+    #+END_SRC
 
 *** Streaming events to subscribed clients
 
-- Multiplexing events to outbound channels :: Every domain event published by
-  any node component is received on the single inbound event channel. Every
-  domain event is forwarded to all active client subscriptions by multiplexing
-  the single inbound event channel to all outbound event stream channels
+- Multiplexing events to outbound channels :: Each domain event published by any
+  node component is received on the single inbound event channel. Every domain
+  event is forwarded to all active client subscriptions by multiplexing the
+  single inbound event channel to all outbound event stream channels
   representing active client subscriptions. The multiplexing of the node event
-  stream is fully integrated with the node graceful shutdown. When the node
-  shared context is canceled, all active client subscriptions are closed and
-  removed from the mapping of active client subscriptions. when a new domain
-  event is published ot the node event channel, the domain event is forwarded to
-  all outbound event stream channels of all active client subscriptions. The
+  stream is fully integrated with the node graceful shutdown mechanism. When the
+  node shared context is canceled, all active client subscriptions are closed
+  and removed from the mapping of active client subscriptions. When a new domain
+  event is published to the inbound event channel, the domain event is forwarded
+  to all outbound event stream channels of all active client subscriptions. The
   process of multiplexing events to outbound channels
-  - Combine the node shared context cancellation channel with the node single
+  - Combine the node shared context cancellation channel with the node inbound
     event channel
-    - When the node shared context is canceled, close all active client
-      subscriptions and terminate forwarding domain events to subscribed clients
-    - When a new domain event is published by any node component, forward the
-      domain event to all active client subscriptions
+    - When the node shared context hierarchy is canceled, close all active
+      client subscriptions and stop forwarding domain events to subscribed
+      clients
+    - When a new domain event is published by any node component through the
+      event publisher interface, forward the domain event to all active client
+      subscriptions
   #+BEGIN_SRC go
 func (s *EventStream) StreamEvents() {
   defer s.wg.Done()
@@ -236,7 +237,9 @@ func (s *EventStream) StreamEvents() {
 
 The gRPC =Node= service provides the =StreamSubscribe= method to let clients to
 subscribe to the node provided stream of domain events optionally specifying a
-subset of event types of interest. The interface of the service
+subset of event types of interest. The domain events published by the node
+components are delivered to subscribed clients through the gRPC server
+streaming. The interface of the service
 #+BEGIN_SRC protobuf
 message StreamSubscribeReq {
   repeated uint64 EventTypes = 1;
@@ -252,17 +255,17 @@ service Node {
 #+END_SRC
 
 The implementation of the =StreamSubscribe= method
-- Generate a random identifier for the new client subscription
+- Generate a random identifier for each new client subscription
 - Add the new client subscription to the mapping of active client subscriptions
 - Create the outbound event stream channel for the client subscription
 - Defer removal of the client subscription from the mapping of active client
-  subscriptions
-- Combine the node shared context cancellation channel with the outbound event
-  stream channel
-  - When the node shared context is canceled, stop forwarding domain events to
-    the client
-  - When a new domain event is published, check if the event is of interest for
-    the client, and, if interested, encode and send the domain event to the
+  subscriptions when the subscription is closed by the client
+- Combine the cancellation channel of the node shared context hierarchy with the
+  outbound event stream channel
+  - When the node shared context hierarchy is canceled, stop forwarding domain
+    events to the client
+  - When a new domain event is published, check if the event type is requested
+    by the client, and, if requested, encode and send the domain event to the
     subscribed client through the gRPC server stream
 #+BEGIN_SRC go
 func (s *NodeSrv) StreamSubscribe(
@@ -337,9 +340,10 @@ The =TestEventStream= testing process
   - Create the gRPC node client
   - Call the =StreamSubscribe= method to subscribe to the node event stream and
     establish the gRPC server stream of domain events
-  - Define the expected events to receive after a successful block proposal
-  - Start consuming events from the gRPC server stream of domain events. For
-    each received event
+  - Define the expected events to receive after the successful block proposal
+    and the successful block confirmation
+  - Start consuming domain events from the gRPC server stream of domain events.
+    For each received event
     - Decode the received domain event
     - Verify that the type and the action of the domain event are correct
 #+BEGIN_SRC fish
@@ -348,30 +352,30 @@ go test -v -cover -coverprofile=coverage.cov ./... -run EventStream
 
 *** Using the =node subscribe= CLI command
 
-The gRPC =StreamSubscribe= method is exposed through the CLI. Subscribe a client
-to the node event stream and consume domain events
+The gRPC =StreamSubscribe= method is exposed through the CLI. Subscribe the
+client to the node event stream and consume domain events
 - Start the bootstrap node
   #+BEGIN_SRC fish
 set boot localhost:1122
 set authpass password
 ./bcn node start --node $boot --bootstrap --authpass $authpass
   #+END_SRC
-- Subscribe a client to the node event stream (in a new terminal)
+- Subscribe the client to the node event stream (in a new terminal)
   - =--node= specifies the node address where the client subscribes
   - =--events= specifies the event types of interest. Supported values are
     =all=, =blk=, =tx=
-    #+BEGIN_SRC fish
-  ./bcn node subscribe --node $boot --events blk,tx
-  # <~> blk validated
-  # blk       6: fac1c51 -> 202ac37
-  # tx  9596fbb: 1dc6773 -> 0b283b3        2        6
-  # tx  00b3fca: 0b283b3 -> 1dc6773        1        6
-  #
-  # <~> tx validated
-  # tx  9596fbb: 1dc6773 -> 0b283b3        2        6
-  # <~> tx validated
-  # tx  00b3fca: 0b283b3 -> 1dc6773        1        6
-    #+END_SRC
+  #+BEGIN_SRC fish
+./bcn node subscribe --node $boot --events blk,tx
+# <~> blk validated
+# blk       6: fac1c51 -> 202ac37
+# tx  9596fbb: 1dc6773 -> 0b283b3        2        6
+# tx  00b3fca: 0b283b3 -> 1dc6773        1        6
+#
+# <~> tx validated
+# tx  9596fbb: 1dc6773 -> 0b283b3        2        6
+# <~> tx validated
+# tx  00b3fca: 0b283b3 -> 1dc6773        1        6
+  #+END_SRC
 - Define a shell function to create, sign, and send a transaction
   #+BEGIN_SRC fish
 function txSignAndSend -a node from to value ownerpass
@@ -389,3 +393,7 @@ set ownerpass password
 txSignAndSend $boot $acc1 $acc2 2 $ownerpass
 txSignAndSend $boot $acc2 $acc1 1 $ownerpass
   #+END_SRC
+- Wait for the the transactions to be validated, the new block to be proposed,
+  and the proposed block to be confirmed
+- Confirm the delivery of the domain events of the confirmed block and the
+  confirmed transactions to the subscribed client
