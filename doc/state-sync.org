@@ -14,7 +14,7 @@
   - [[#creating-genesis-on-bootstrap-node][Creating genesis on bootstrap node]]
   - [[#fetching-genesis-from-bootstrap-node][Fetching genesis from bootstrap node]]
   - [[#reading-confirmed-blocks-from-block-store][Reading confirmed blocks from block store]]
-  - [[#fetching-confirmed-blocks-from-all-known-peers][Fetching confirmed blocks from all known peers...]]
+  - [[#fetching-confirmed-blocks-from-all-known-peers][Fetching confirmed blocks from all known peers]]
   - [[#grpc-genesissync-method][gRPC GenesisSync method]]
   - [[#grpc-blocksync-method][gRPC BlockSync method]]
 - [[#testing-and-usage][Testing and usage]]
@@ -320,7 +320,7 @@ func (s *StateSync) readBlocks() error {
 }
   #+END_SRC
 
-*** Fetching confirmed blocks from all known peers...
+*** Fetching confirmed blocks from all known peers
 
 - Sync blocks :: The block sync process propagates the recent confirmed blocks
   through the blockchain network during the initialization of a new node or the
