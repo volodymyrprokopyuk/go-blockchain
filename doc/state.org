@@ -1,4 +1,30 @@
 * State
+:PROPERTIES:
+:TOC: :include descendants
+:END:
+
+:CONTENTS:
+- [[#concepts-and-purpose][Concepts and purpose]]
+  - [[#state-balances-and-nonces][State balances and nonces]]
+  - [[#confirmed-state-and-pending-state][Confirmed state and pending state]]
+  - [[#application-of-transactions-to-the-pending-state][Application of transactions to the pending state]]
+  - [[#transaction-life-cycle][Transaction life cycle]]
+  - [[#creation-of-new-blocks-from-the-pending-state][Creation of new blocks from the pending state]]
+  - [[#application-of-proposed-blocks-to-the-cloned-state][Application of proposed blocks to the cloned state]]
+  - [[#block-life-cycle][Block life cycle]]
+- [[#design-and-implementation][Design and implementation]]
+  - [[#concurrency-safe-blockchain-state-type][Concurrency safe blockchain state type]]
+  - [[#state-cloning-and-application][State cloning and application]]
+  - [[#applying-new-transactions-to-the-pending-state][Applying new transactions to the pending state]]
+  - [[#creating-and-signing-new-blocks-from-the-pending-state][Creating and signing new blocks from the pending state]]
+  - [[#applying-blocks-to-the-cloned-state][Applying blocks to the cloned state]]
+  - [[#grpc-txsend-method][gRPC TxSend method]]
+- [[#testing-and-usage][Testing and usage]]
+  - [[#testing-transaction-application][Testing transaction application]]
+  - [[#testing-block-application][Testing block application]]
+  - [[#testing-grpc-txsend-method][Testing gRPC TxSend method]]
+  - [[#using-tx-send-cli-command][Using tx send CLI command]]
+:END:
 
 ** Concepts and purpose
 
