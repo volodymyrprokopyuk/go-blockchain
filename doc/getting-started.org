@@ -1,4 +1,15 @@
 * Getting started
+:PROPERTIES:
+:TOC: :include descendants
+:END:
+
+:CONTENTS:
+- [[#prerequisites][Prerequisites]]
+- [[#dependencies][Dependencies]]
+- [[#installation][Installation]]
+- [[#testing][Testing]]
+- [[#directory-structure][Directory structure]]
+:END:
 
 ** Prerequisites
 

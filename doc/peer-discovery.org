@@ -1,4 +1,21 @@
 * Peer discovery
+:PROPERTIES:
+:TOC: :include descendants
+:END:
+
+:CONTENTS:
+- [[#concepts-and-purpose][Concepts and purpose]]
+  - [[#peer-discovery][Peer discovery]]
+- [[#design-and-implementation][Design and implementation]]
+  - [[#concurrency-safe-peer-discovery-type][Concurrency safe peer discovery type]]
+  - [[#adding-and-reading-known-peers][Adding and reading known peers]]
+  - [[#node-graceful-shutdown-mechanism][Node graceful shutdown mechanism]]
+  - [[#peer-discovery-algorithm][Peer discovery algorithm]]
+  - [[#grpc-peerdiscover-method][gRPC PeerDiscover method]]
+- [[#testing-and-usage][Testing and usage]]
+  - [[#testing-grpc-peerdiscover-method][Testing gRPC PeerDiscover method]]
+  - [[#testing-peer-discovery][Testing peer discovery]]
+:END:
 
 ** Concepts and purpose
 

@@ -1,4 +1,22 @@
 * Event stream
+:PROPERTIES:
+:TOC: :include descendants
+:END:
+
+:CONTENTS:
+- [[#concepts-and-purpose][Concepts and purpose]]
+  - [[#node-event-stream][Node event stream]]
+- [[#design-and-implementation][Design and implementation]]
+  - [[#event-type-and-event-publisher-interface][Event type and event publisher interface]]
+  - [[#event-stream-type][Event stream type]]
+  - [[#adding-and-removing-subscribers][Adding and removing subscribers]]
+  - [[#streaming-events-to-subscribed-clients][Streaming events to subscribed clients]]
+  - [[#grpc-streamsubscribe-method][gRPC StreamSubscribe method]]
+- [[#testing-and-usage][Testing and usage]]
+  - [[#testing-grpc-streamsubscribe-method][Testing gRPC StreamSubscribe method]]
+  - [[#testing-the-event-stream][Testing the event stream]]
+  - [[#using-the-node-subscribe-cli-command][Using the node subscribe CLI command]]
+:END:
 
 ** Concepts and purpose
 

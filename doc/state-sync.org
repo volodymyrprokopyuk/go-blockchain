@@ -1,4 +1,28 @@
 * State sync
+:PROPERTIES:
+:TOC: :include descendants
+:END:
+
+:CONTENTS:
+- [[#concepts-and-purpose][Concepts and purpose]]
+  - [[#initial-state-synchronization][Initial state synchronization]]
+  - [[#bootstrap-state-initialization][Bootstrap state initialization]]
+  - [[#node-state-synchronization][Node state synchronization]]
+- [[#design-and-implementation][Design and implementation]]
+  - [[#state-synchronization-type][State synchronization type]]
+  - [[#state-synchronization-algorithm][State synchronization algorithm]]
+  - [[#creating-genesis-on-bootstrap-node][Creating genesis on bootstrap node]]
+  - [[#fetching-genesis-from-bootstrap-node][Fetching genesis from bootstrap node]]
+  - [[#reading-confirmed-blocks-from-block-store][Reading confirmed blocks from block store]]
+  - [[#fetching-confirmed-blocks-from-all-known-peers][Fetching confirmed blocks from all known peers...]]
+  - [[#grpc-genesissync-method][gRPC GenesisSync method]]
+  - [[#grpc-blocksync-method][gRPC BlockSync method]]
+- [[#testing-and-usage][Testing and usage]]
+  - [[#testing-grpc-genesissync-method][Testing gRPC GenesisSync method]]
+  - [[#testing-grpc-blocksync-method][Testing gRPC BlockSync method]]
+  - [[#testing-state-synchronization][Testing state synchronization]]
+  - [[#using-the-node-start-cli-command][Using the node start CLI command]]
+:END:
 
 ** Concepts and purpose
 

@@ -1,4 +1,27 @@
 * Transaction
+:PROPERTIES:
+:TOC: :include descendants
+:END:
+
+:CONTENTS:
+- [[#concepts-and-purpose][Concepts and purpose]]
+  - [[#cryptographic-hash-function][Cryptographic hash function]]
+  - [[#blockchain-transactions][Blockchain transactions]]
+  - [[#signing-and-verification-of-transactions][Signing and verification of transactions]]
+  - [[#transaction-search][Transaction search]]
+- [[#design-and-implementation][Design and implementation]]
+  - [[#keccak256-hash-function][Keccak256 hash function]]
+  - [[#transaction-and-signed-transaction-types][Transaction and signed transaction types]]
+  - [[#ecdsa-signing-and-verification-of-transactions][ECDSA signing and verification of transactions]]
+  - [[#grpc-txsign-method][gRPC TxSign method]]
+  - [[#grpc-txsearch-method][gRPC TxSearch method]]
+- [[#testing-and-usage][Testing and usage]]
+  - [[#testing-transaction-signing-and-verification][Testing transaction signing and verification]]
+  - [[#testing-grpc-txsign-method][Testing gRPC TxSign method]]
+  - [[#testing-grpc-txsearch-method][Testing gRPC TxSearch method]]
+  - [[#using-tx-sign-cli-command][Using tx sign CLI command]]
+  - [[#using-tx-search-cli-command][Using tx search CLI command]]
+:END:
 
 ** Concepts and purpose
 

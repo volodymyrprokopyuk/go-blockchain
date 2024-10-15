@@ -1,4 +1,22 @@
 * Transaction relay
+:PROPERTIES:
+:TOC: :include descendants
+:END:
+
+:CONTENTS:
+- [[#concepts-and-purpose][Concepts and purpose]]
+  - [[#transaction-relay][Transaction relay]]
+- [[#design-and-implementation][Design and implementation]]
+  - [[#message-relay-generic-type][Message relay generic type]]
+  - [[#transaction-relayer-and-block-relayer-interfaces][Transaction relayer and block relayer interfaces]]
+  - [[#message-relay-generic-algorithm][Message relay generic algorithm]]
+  - [[#concurrent-monitoring-of-new-peers][Concurrent monitoring of new peers]]
+  - [[#outbound-message-relay-through-grpc-client-streaming][Outbound message relay through gRPC client streaming]]
+  - [[#grpc-txreceive-method][gRPC TxReceive method]]
+- [[#testing-and-usage][Testing and usage]]
+  - [[#testing-grpc-txreceive-method][Testing gRPC TxReceive method]]
+  - [[#testing-transaction-relay][Testing transaction relay]]
+:END:
 
 ** Concepts and purpose
 

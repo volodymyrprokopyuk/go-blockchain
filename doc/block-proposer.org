@@ -1,4 +1,20 @@
 * Block proposer
+:PROPERTIES:
+:TOC: :include descendants
+:END:
+
+:CONTENTS:
+- [[#concepts-and-purpose][Concepts and purpose]]
+  - [[#proof-of-authority-centralized-consensus][Proof of Authority centralized consensus]]
+- [[#design-and-implementation][Design and implementation]]
+  - [[#block-proposer-type][Block proposer type]]
+  - [[#block-proposer-algorithm][Block proposer algorithm]]
+  - [[#block-relay-mechanism][Block relay mechanism]]
+  - [[#grpc-blockreceive-method][gRPC BlockReceive method]]
+- [[#testing-and-usage][Testing and usage]]
+  - [[#testing-grpc-blockreceive-method][Testing gRPC BlockReceive method]]
+  - [[#testing-block-proposer-and-message-relay][Testing block proposer and message relay]]
+:END:
 
 ** Concepts and purpose
 

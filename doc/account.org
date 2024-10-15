@@ -1,4 +1,27 @@
 * Account
+:PROPERTIES:
+:TOC: :include descendants
+:END:
+
+:CONTENTS:
+- [[#concepts-and-purpose][Concepts and purpose]]
+  - [[#blockchain-account][Blockchain account]]
+  - [[#private-key-and-public-key][Private key and public key]]
+- [[#design-and-implementation][Design and implementation]]
+  - [[#secp256k1-key-pair][Secp256k1 key pair]]
+  - [[#account-address-with-keccak256-hash-function][Account address with Keccak256 hash function]]
+  - [[#account-with-secp256k1-key-pair][Account with Secp256k1 key pair]]
+  - [[#aes-gcm-encryption-with-argon2-kdf-of-secp256k1-key-pair][AES-GCM encryption with Argon2 KDF of Secp256k1 key pair]]
+  - [[#grpc-accountcreate-method][gRPC AccountCreate method]]
+  - [[#grpc-accountbalance-method][gRPC AccountBalance method]]
+- [[#testing-and-usage][Testing and usage]]
+  - [[#testing-account-persistence-and-re-creation][Testing account persistence and re-creation]]
+  - [[#testing-grpc-accountcreate-method][Testing gRPC AccountCreate method]]
+  - [[#testing-grpc-accountbalance-method][Testing gRPC AccountBalance method]]
+  - [[#initializing-and-starting-the-bootstrap-node][Initializing and starting the bootstrap node]]
+  - [[#using-account-create-cli-command][Using account create CLI command]]
+  - [[#using-account-balance-cli-command][Using account balance CLI command]]
+:END:
 
 ** Concepts and purpose
 

@@ -1,4 +1,24 @@
 * Blockchain node
+:PROPERTIES:
+:TOC: :include descendants
+:END:
+
+:CONTENTS:
+- [[#concepts-and-purpose][Concepts and purpose]]
+  - [[#peer-discovery-and-transaction-relay][Peer discovery and transaction relay]]
+  - [[#block-proposer-block-relay-block-confirmation][Block proposer, block relay, block confirmation]]
+  - [[#confirmed-state-and-pending-state][Confirmed state and pending state]]
+  - [[#streaming-domain-events-to-clients][Streaming domain events to clients]]
+  - [[#the-node-graceful-shutdown-mechanism][The node graceful shutdown mechanism]]
+- [[#design-and-implementation][Design and implementation]]
+  - [[#node-type][Node type]]
+  - [[#starting-the-blockchain-node][Starting the blockchain node]]
+  - [[#the-node-grpc-server][The node gRPC server]]
+  - [[#the-node-cli][The node CLI]]
+- [[#testing-and-usage][Testing and usage]]
+  - [[#testing-the-node-life-cycle][Testing the node life cycle]]
+  - [[#using-the-blockchain-network-with-two-nodes][Using the blockchain network with two nodes]]
+:END:
 
 ** Concepts and purpose
 

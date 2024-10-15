@@ -1,4 +1,27 @@
 * Block
+:PROPERTIES:
+:TOC: :include descendants
+:END:
+
+:CONTENTS:
+- [[#concepts-and-purpose][Concepts and purpose]]
+  - [[#genesis-and-blocks][Genesis and blocks]]
+  - [[#immutable-chain-of-blocks][Immutable chain of blocks]]
+  - [[#block-search][Block search]]
+- [[#design-and-implementation][Design and implementation]]
+  - [[#genesis-and-signed-genesis-types][Genesis and signed genesis types]]
+  - [[#ecdsa-signing-and-verification-of-genesis][ECDSA signing and verification of genesis]]
+  - [[#persistence-and-re-creation-of-genesis][Persistence and re-creation of genesis]]
+  - [[#block-and-signed-block-types][Block and signed block types]]
+  - [[#ecdsa-signing-and-verification-of-blocks][ECDSA signing and verification of blocks]]
+  - [[#persistence-and-re-creation-of-blocks][Persistence and re-creation of blocks]]
+  - [[#grpc-blocksearch-method][gRPC BlockSearch method]]
+- [[#testing-and-usage][Testing and usage]]
+  - [[#testing-genesis-signing-and-verification][Testing genesis signing and verification]]
+  - [[#testing-block-signing-and-verification][Testing block signing and verification]]
+  - [[#testing-grpc-blocksearch-method][Testing gRPC BlockSearch method]]
+  - [[#using-block-search-cli-command][Using block search CLI command]]
+:END:
 
 ** Concepts and purpose
 
