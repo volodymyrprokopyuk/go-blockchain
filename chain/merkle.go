@@ -30,7 +30,7 @@ func MerkleHash(txs []string) ([]string, error) {
   for i, j := 0, chd; i < len(txs); i, j = i + 1, j + 1 {
     merkleTree[j] = txs[i]
   }
-  l, par := chd + len(txs), halfFloor(chd)
+  l, par := chd * 2, halfFloor(chd)
   for chd > 0 {
     for i, j := chd, par; i < l; i, j = i + 2, j + 1 {
       merkleTree[j] = hashPair(merkleTree[i], merkleTree[i + 1])
@@ -38,24 +38,23 @@ func MerkleHash(txs []string) ([]string, error) {
     chd = halfFloor(chd)
     l, par = chd * 2, halfFloor(chd)
   }
-  fmt.Println(merkleTree)
   return merkleTree, nil
 }
 
 func MerkleProve(tx string, merkleTree []string) ([]string, error) {
-  i := slices.Index(merkleTree, tx)
+  start := int(math.Floor(float64(len(merkleTree) / 2)))
+  i := slices.Index(merkleTree[start:], tx)
   if i == -1 {
     return nil, fmt.Errorf("merkle prove: transaction %v not found", tx)
   }
+  i = start + i
   merkleProof := make([]string, 0)
   if len(merkleTree) == 1 {
     merkleProof = append(merkleProof, merkleTree[0])
-    fmt.Println(tx, merkleProof)
     return merkleProof, nil
   }
   if len(merkleTree) == 3 {
     merkleProof = append(merkleProof, merkleTree[1], merkleTree[2])
-    fmt.Println(tx, merkleProof)
     return merkleProof, nil
   }
   if i % 2 == 0 {
@@ -64,7 +63,10 @@ func MerkleProve(tx string, merkleTree []string) ([]string, error) {
     merkleProof = append(merkleProof, merkleTree[i + 1])
   } else {
     merkleProof = append(merkleProof, merkleTree[i])
-    merkleProof = append(merkleProof, merkleTree[i + 1])
+    hash := merkleTree[i + 1]
+    if hash != "_" {
+      merkleProof = append(merkleProof, hash)
+    }
     i++
   }
   for {
@@ -79,14 +81,13 @@ func MerkleProve(tx string, merkleTree []string) ([]string, error) {
       i++
     }
     hash := merkleTree[i]
-    // if hash != 0 {
+    if hash != "_" {
       merkleProof = append(merkleProof, hash)
-    // }
+    }
     if i == 2 || i == 1 {
       break
     }
   }
-  fmt.Println(tx, merkleProof)
   return merkleProof, nil
 }
 
