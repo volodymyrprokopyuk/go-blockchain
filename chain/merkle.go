@@ -4,18 +4,17 @@ import (
 	"fmt"
 	"math"
 	"slices"
-	"strconv"
 )
 
-func pairHash(l, r int) int {
-  if r != 0 {
-    hash, _ := strconv.Atoi(fmt.Sprintf("%d%d", l, r))
-    return hash
+func hashPair(l, r string) string {
+  if r != "_" {
+    return l + r
+  } else {
+    return l
   }
-  return l
 }
 
-func MerkleHash(txs []int) ([]int, error) {
+func MerkleHash(txs []string) ([]string, error) {
   if len(txs) == 0 {
     return nil, fmt.Errorf("merkle hash: empty transaction list")
   }
@@ -23,7 +22,10 @@ func MerkleHash(txs []int) ([]int, error) {
     return int(math.Floor(float64(i / 2)))
   }
   l := int(math.Pow(2, math.Ceil(math.Log2(float64(len(txs)))) + 1) - 1)
-  merkleTree := make([]int, l)
+  merkleTree := make([]string, 0, l)
+  for range l {
+    merkleTree = append(merkleTree, "_")
+  }
   chd := halfFloor(l)
   for i, j := 0, chd; i < len(txs); i, j = i + 1, j + 1 {
     merkleTree[j] = txs[i]
@@ -31,7 +33,7 @@ func MerkleHash(txs []int) ([]int, error) {
   l, par := chd + len(txs), halfFloor(chd)
   for chd > 0 {
     for i, j := chd, par; i < l; i, j = i + 2, j + 1 {
-      merkleTree[j] = pairHash(merkleTree[i], merkleTree[i + 1])
+      merkleTree[j] = hashPair(merkleTree[i], merkleTree[i + 1])
     }
     chd = halfFloor(chd)
     l, par = chd * 2, halfFloor(chd)
@@ -40,42 +42,54 @@ func MerkleHash(txs []int) ([]int, error) {
   return merkleTree, nil
 }
 
-func MerkleProve(tx int, merkeTree []int) ([]int, error) {
-  i := slices.Index(merkeTree, tx)
+func MerkleProve(tx string, merkleTree []string) ([]string, error) {
+  i := slices.Index(merkleTree, tx)
   if i == -1 {
     return nil, fmt.Errorf("merkle prove: transaction %v not found", tx)
   }
-  parentRight := func(i int) int {
-    return (i - 1) / 2 + 1
+  merkleProof := make([]string, 0)
+  if len(merkleTree) == 1 {
+    merkleProof = append(merkleProof, merkleTree[0])
+    fmt.Println(tx, merkleProof)
+    return merkleProof, nil
   }
-  parentLeft := func(i int) int {
-    return (i - 2) / 2 - 1
+  if len(merkleTree) == 3 {
+    merkleProof = append(merkleProof, merkleTree[1], merkleTree[2])
+    fmt.Println(tx, merkleProof)
+    return merkleProof, nil
   }
-  merkleProof := make([]int, 0)
   if i % 2 == 0 {
     i--
-    merkleProof = append(merkleProof, merkeTree[i])
-    merkleProof = append(merkleProof, merkeTree[i + 1])
+    merkleProof = append(merkleProof, merkleTree[i])
+    merkleProof = append(merkleProof, merkleTree[i + 1])
   } else {
-    merkleProof = append(merkleProof, merkeTree[i])
-    merkleProof = append(merkleProof, merkeTree[i + 1])
+    merkleProof = append(merkleProof, merkleTree[i])
+    merkleProof = append(merkleProof, merkleTree[i + 1])
     i++
   }
   for {
     if i % 2 == 0 {
-      i = parentLeft(i)
+      i = (i - 2) / 2
     } else {
-      i = parentRight(i)
+      i = (i - 1) / 2
     }
-    merkleProof = append(merkleProof, merkeTree[i])
+    if i % 2 == 0 {
+      i--
+    } else {
+      i++
+    }
+    hash := merkleTree[i]
+    // if hash != 0 {
+      merkleProof = append(merkleProof, hash)
+    // }
     if i == 2 || i == 1 {
       break
     }
   }
-  fmt.Println(merkleProof)
+  fmt.Println(tx, merkleProof)
   return merkleProof, nil
 }
 
-func MerkleVerify(tx int, merkleProof []int, merkleRoot int) bool {
+func MerkleVerify(tx string, merkleProof []string, merkleRoot string) bool {
   return true
 }
