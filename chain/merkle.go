@@ -6,6 +6,65 @@ import (
 	"slices"
 )
 
+type Hstr string
+
+func (s Hstr) Hash() string {
+  return string(s)
+}
+
+// func (s Hstr) String() string {
+//   if s == "" {
+//     return "_"
+//   }
+//   return string(s)
+// }
+
+func StrTypeHash(s string) string {
+  return s
+}
+
+func StrPairHash(l, r string) string {
+  if r != "" {
+    return l + r
+  } else {
+    return l
+  }
+}
+
+type Hasher[H comparable] interface {
+  Hash() H
+}
+
+func MerkleHash[T any, H comparable](
+  txs []T, typeHash func(T) H, pairHash func(H, H) H,
+) ([]H, error) {
+  if len(txs) == 0 {
+    return nil, fmt.Errorf("merkle hash: empty transaction list")
+  }
+  htxs := make([]H, len(txs))
+  for i, tx := range txs {
+    htxs[i] = typeHash(tx)
+  }
+  halfFloor := func(i int) int {
+    return int(math.Floor(float64(i / 2)))
+  }
+  l := int(math.Pow(2, math.Ceil(math.Log2(float64(len(htxs)))) + 1) - 1)
+  merkleTree := make([]H, l)
+  chd := halfFloor(l)
+  for i, j := 0, chd; i < len(htxs); i, j = i + 1, j + 1 {
+    merkleTree[j] = htxs[i]
+  }
+  l, par := chd * 2, halfFloor(chd)
+  for chd > 0 {
+    for i, j := chd, par; i < l; i, j = i + 2, j + 1 {
+      merkleTree[j] = pairHash(merkleTree[i], merkleTree[i + 1])
+    }
+    chd = halfFloor(chd)
+    l, par = chd * 2, halfFloor(chd)
+  }
+  return merkleTree, nil
+}
+
 func hashPair(l, r string) string {
   if r != "_" {
     return l + r
@@ -14,7 +73,7 @@ func hashPair(l, r string) string {
   }
 }
 
-func MerkleHash(txs []string) ([]string, error) {
+func MerkleHashStr(txs []string) ([]string, error) {
   if len(txs) == 0 {
     return nil, fmt.Errorf("merkle hash: empty transaction list")
   }
@@ -41,7 +100,10 @@ func MerkleHash(txs []string) ([]string, error) {
   return merkleTree, nil
 }
 
-func MerkleProve(tx string, merkleTree []string) ([]string, error) {
+func MerkleProveStr(tx string, merkleTree []string) ([]string, error) {
+  if len(merkleTree) == 0 {
+    return nil, fmt.Errorf("merkle prove: empty merkle tree")
+  }
   start := int(math.Floor(float64(len(merkleTree) / 2)))
   i := slices.Index(merkleTree[start:], tx)
   if i == -1 {
@@ -97,7 +159,7 @@ func MerkleProve(tx string, merkleTree []string) ([]string, error) {
   return merkleProof, nil
 }
 
-func MerkleVerify(tx string, merkleProof []string, merkleRoot string) bool {
+func MerkleVerifyStr(tx string, merkleProof []string, merkleRoot string) bool {
   i := slices.Index(merkleProof, tx)
   if i == -1 {
     return false
