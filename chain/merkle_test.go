@@ -22,16 +22,18 @@ func TestMerkleHashProveVerify(t *testing.T) {
     if err != nil {
       t.Fatal(err)
     }
-    fmt.Println(merkleTree)
+    fmt.Println("Tree", merkleTree)
     merkleRoot := merkleTree[0]
     for _, tx := range txs {
       merkleProof, err := chain.MerkleProve(tx, merkleTree)
       if err != nil {
         t.Fatal(err)
       }
-      fmt.Println(tx, merkleProof)
+      fmt.Println("Proof", tx, merkleProof)
       valid := chain.MerkleVerify(tx, merkleProof, merkleRoot)
-      _ = valid
+      if !valid {
+        t.Errorf("invalid Merkle proof: %v %v", tx, merkleProof)
+      }
     }
   }
 }

@@ -47,25 +47,23 @@ func MerkleProve(tx string, merkleTree []string) ([]string, error) {
   if i == -1 {
     return nil, fmt.Errorf("merkle prove: transaction %v not found", tx)
   }
-  i = start + i
-  merkleProof := make([]string, 0)
+  i += start
   if len(merkleTree) == 1 {
-    merkleProof = append(merkleProof, merkleTree[0])
-    return merkleProof, nil
+    return []string{merkleTree[0]}, nil
   }
   if len(merkleTree) == 3 {
-    merkleProof = append(merkleProof, merkleTree[1], merkleTree[2])
-    return merkleProof, nil
+    return []string{merkleTree[1], merkleTree[2]}, nil
   }
+  stk, que := make([]string, 0), make([]string, 0)
   if i % 2 == 0 {
+    stk = append(stk, merkleTree[i - 1])
+    que = append(que, merkleTree[i])
     i--
-    merkleProof = append(merkleProof, merkleTree[i])
-    merkleProof = append(merkleProof, merkleTree[i + 1])
   } else {
-    merkleProof = append(merkleProof, merkleTree[i])
+    stk = append(stk, merkleTree[i])
     hash := merkleTree[i + 1]
     if hash != "_" {
-      merkleProof = append(merkleProof, hash)
+      que = append(que, hash)
     }
     i++
   }
@@ -82,15 +80,31 @@ func MerkleProve(tx string, merkleTree []string) ([]string, error) {
     }
     hash := merkleTree[i]
     if hash != "_" {
-      merkleProof = append(merkleProof, hash)
+      if i % 2 == 0 {
+        que = append(que, hash)
+      } else {
+        stk = append(stk, hash)
+      }
     }
     if i == 2 || i == 1 {
       break
     }
   }
+  merkleProof := make([]string, 0, len(stk) + len(que))
+  slices.Reverse(stk)
+  merkleProof = append(merkleProof, stk...)
+  merkleProof = append(merkleProof, que...)
   return merkleProof, nil
 }
 
 func MerkleVerify(tx string, merkleProof []string, merkleRoot string) bool {
-  return true
+  i := slices.Index(merkleProof, tx)
+  if i == -1 {
+    return false
+  }
+  hash := merkleProof[0]
+  for i := 1; i < len(merkleProof); i++ {
+    hash = hashPair(hash, merkleProof[i])
+  }
+  return hash == merkleRoot
 }
