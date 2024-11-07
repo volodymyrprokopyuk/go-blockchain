@@ -170,13 +170,12 @@ func (s *TxSrv) TxProve(
     return nil, status.Errorf(codes.NotFound, err.Error())
   }
   defer closeBlocks()
-  prefix := strings.HasPrefix
   for err, blk := range blocks {
     if err != nil {
       return nil, status.Errorf(codes.Internal, err.Error())
     }
     for _, tx := range blk.Txs {
-      if len(req.Hash) > 0 && prefix(tx.Hash().String(), req.Hash) {
+      if tx.Hash().String() == req.Hash {
         merkleTree, err := chain.MerkleHash(
           blk.Txs, chain.TxHash, chain.TxPairHash,
         )

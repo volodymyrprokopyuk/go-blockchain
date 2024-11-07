@@ -18,7 +18,10 @@ func txCmd(ctx context.Context) *cobra.Command {
     Use: "tx",
     Short: "Manages transactions on the blockchain",
   }
-  cmd.AddCommand(txSignCmd(ctx), txSendCmd(ctx), txSearchCmd(ctx))
+  cmd.AddCommand(
+    txSignCmd(ctx), txSendCmd(ctx), txSearchCmd(ctx),
+    txProveCmd(ctx), txVerifyCmd(ctx),
+  )
   return cmd
 }
 
@@ -170,6 +173,7 @@ func txSearchCmd(ctx context.Context) *cobra.Command {
           return err
         }
         found = true
+        fmt.Printf("tx  %s\n", tx.Hash())
         fmt.Printf("%v\n", tx)
       }
       if !found {
@@ -183,5 +187,95 @@ func txSearchCmd(ctx context.Context) *cobra.Command {
   cmd.Flags().String("to", "", "recipient address")
   cmd.Flags().String("account", "", "involved account address")
   cmd.MarkFlagsOneRequired("hash", "from", "to", "account")
+  return cmd
+}
+
+func grpcTxProve(
+  ctx context.Context, addr, hash string,
+) ([]byte, string, error) {
+  conn, err := grpc.NewClient(
+    addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
+  )
+  if err != nil {
+    return nil, "", err
+  }
+  defer conn.Close()
+  cln := rpc.NewTxClient(conn)
+  req := &rpc.TxProveReq{Hash: hash}
+  res, err := cln.TxProve(ctx, req)
+  if err != nil {
+    return nil, "", err
+  }
+  return res.MerkleProof, res.MerkleRoot, nil
+}
+
+func txProveCmd(ctx context.Context) *cobra.Command {
+  cmd := &cobra.Command{
+    Use: "prove",
+    Short:
+    "Receives Merkle proof and Merkle root for transactions hash",
+    RunE: func(cmd *cobra.Command, _ []string) error {
+      addr, _ := cmd.Flags().GetString("node")
+      hash, _ := cmd.Flags().GetString("hash")
+      merkleProof, merkleRoot, err := grpcTxProve(ctx, addr, hash)
+      if err != nil {
+        return err
+      }
+      fmt.Printf("%s\n%s", merkleProof, merkleRoot)
+      return nil
+    },
+  }
+  cmd.Flags().String("hash", "", "transaction hash")
+  cmd.MarkFlagsOneRequired("hash")
+  return cmd
+}
+
+func grpcTxVerify(
+  ctx context.Context, addr, hash, merkleProof, merkleRoot string,
+) (bool, error) {
+  conn, err := grpc.NewClient(
+    addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
+  )
+  if err != nil {
+    return false, err
+  }
+  defer conn.Close()
+  cln := rpc.NewTxClient(conn)
+  req := &rpc.TxVerifyReq{
+    Hash: hash, MerkleProof: []byte(merkleProof), MerkleRoot: merkleRoot,
+  }
+  res, err := cln.TxVerify(ctx, req)
+  if err != nil {
+    return false, err
+  }
+  return res.Valid, nil
+}
+
+func txVerifyCmd(ctx context.Context) *cobra.Command {
+  cmd := &cobra.Command{
+    Use: "verify",
+    Short:
+    "Verifies Merkle proof for transactions hash against Merkle root",
+    RunE: func(cmd *cobra.Command, _ []string) error {
+      addr, _ := cmd.Flags().GetString("node")
+      hash, _ := cmd.Flags().GetString("hash")
+      merkleProof, _ := cmd.Flags().GetString("mrkproof")
+      merkleRoot, _ := cmd.Flags().GetString("mrkroot")
+      valid, err := grpcTxVerify(ctx, addr, hash, merkleProof, merkleRoot)
+      if err != nil {
+        return err
+      }
+      strValid := "valid"
+      if !valid {
+        strValid = "INVALID"
+      }
+      fmt.Printf("tx %s %v\n", hash, strValid)
+      return nil
+    },
+  }
+  cmd.Flags().String("hash", "", "transaction hash")
+  cmd.Flags().String("mrkproof", "", "Merkle proof")
+  cmd.Flags().String("mrkroot", "", "Merkle root")
+  cmd.MarkFlagsOneRequired("hash", "mrkproof", "mrkroot")
   return cmd
 }

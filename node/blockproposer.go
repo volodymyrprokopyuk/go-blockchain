@@ -56,7 +56,6 @@ func (p *BlockProposer) ProposeBlocks(maxPeriod time.Duration) {
       clone := p.state.Clone()
       blk, err := clone.CreateBlock(p.authority)
       if err != nil {
-        fmt.Println(err)
         continue
       }
       if len(blk.Txs) == 0 {

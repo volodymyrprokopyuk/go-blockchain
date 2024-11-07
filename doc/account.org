@@ -471,6 +471,7 @@ other nodes on the blockchain including the authority node itself
 set boot localhost:1122
 set authpass password
 set ownerpass password
+rm -rf .keystore* .blockstore* # cleanup if necessary
 ./bcn node start --node $boot --bootstrap --authpass $authpass \
   --ownerpass $ownerpass --balance 1000
 #+END_SRC
