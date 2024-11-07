@@ -23,6 +23,8 @@ const (
 	Tx_TxSend_FullMethodName    = "/Tx/TxSend"
 	Tx_TxReceive_FullMethodName = "/Tx/TxReceive"
 	Tx_TxSearch_FullMethodName  = "/Tx/TxSearch"
+	Tx_TxProve_FullMethodName   = "/Tx/TxProve"
+	Tx_TxVerify_FullMethodName  = "/Tx/TxVerify"
 )
 
 // TxClient is the client API for Tx service.
@@ -33,6 +35,8 @@ type TxClient interface {
 	TxSend(ctx context.Context, in *TxSendReq, opts ...grpc.CallOption) (*TxSendRes, error)
 	TxReceive(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[TxReceiveReq, TxReceiveRes], error)
 	TxSearch(ctx context.Context, in *TxSearchReq, opts ...grpc.CallOption) (grpc.ServerStreamingClient[TxSearchRes], error)
+	TxProve(ctx context.Context, in *TxProveReq, opts ...grpc.CallOption) (*TxProveRes, error)
+	TxVerify(ctx context.Context, in *TxVerifyReq, opts ...grpc.CallOption) (*TxVerifyRes, error)
 }
 
 type txClient struct {
@@ -95,6 +99,26 @@ func (c *txClient) TxSearch(ctx context.Context, in *TxSearchReq, opts ...grpc.C
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Tx_TxSearchClient = grpc.ServerStreamingClient[TxSearchRes]
 
+func (c *txClient) TxProve(ctx context.Context, in *TxProveReq, opts ...grpc.CallOption) (*TxProveRes, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TxProveRes)
+	err := c.cc.Invoke(ctx, Tx_TxProve_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *txClient) TxVerify(ctx context.Context, in *TxVerifyReq, opts ...grpc.CallOption) (*TxVerifyRes, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TxVerifyRes)
+	err := c.cc.Invoke(ctx, Tx_TxVerify_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TxServer is the server API for Tx service.
 // All implementations must embed UnimplementedTxServer
 // for forward compatibility.
@@ -103,6 +127,8 @@ type TxServer interface {
 	TxSend(context.Context, *TxSendReq) (*TxSendRes, error)
 	TxReceive(grpc.ClientStreamingServer[TxReceiveReq, TxReceiveRes]) error
 	TxSearch(*TxSearchReq, grpc.ServerStreamingServer[TxSearchRes]) error
+	TxProve(context.Context, *TxProveReq) (*TxProveRes, error)
+	TxVerify(context.Context, *TxVerifyReq) (*TxVerifyRes, error)
 	mustEmbedUnimplementedTxServer()
 }
 
@@ -124,6 +150,12 @@ func (UnimplementedTxServer) TxReceive(grpc.ClientStreamingServer[TxReceiveReq, 
 }
 func (UnimplementedTxServer) TxSearch(*TxSearchReq, grpc.ServerStreamingServer[TxSearchRes]) error {
 	return status.Errorf(codes.Unimplemented, "method TxSearch not implemented")
+}
+func (UnimplementedTxServer) TxProve(context.Context, *TxProveReq) (*TxProveRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TxProve not implemented")
+}
+func (UnimplementedTxServer) TxVerify(context.Context, *TxVerifyReq) (*TxVerifyRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TxVerify not implemented")
 }
 func (UnimplementedTxServer) mustEmbedUnimplementedTxServer() {}
 func (UnimplementedTxServer) testEmbeddedByValue()            {}
@@ -200,6 +232,42 @@ func _Tx_TxSearch_Handler(srv interface{}, stream grpc.ServerStream) error {
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Tx_TxSearchServer = grpc.ServerStreamingServer[TxSearchRes]
 
+func _Tx_TxProve_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TxProveReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TxServer).TxProve(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Tx_TxProve_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TxServer).TxProve(ctx, req.(*TxProveReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Tx_TxVerify_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TxVerifyReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TxServer).TxVerify(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Tx_TxVerify_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TxServer).TxVerify(ctx, req.(*TxVerifyReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Tx_ServiceDesc is the grpc.ServiceDesc for Tx service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -214,6 +282,14 @@ var Tx_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "TxSend",
 			Handler:    _Tx_TxSend_Handler,
+		},
+		{
+			MethodName: "TxProve",
+			Handler:    _Tx_TxProve_Handler,
+		},
+		{
+			MethodName: "TxVerify",
+			Handler:    _Tx_TxVerify_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

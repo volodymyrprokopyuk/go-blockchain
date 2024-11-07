@@ -38,9 +38,30 @@ message TxSearchRes {
   bytes Tx = 1;
 }
 
+message TxProveReq {
+  string Hash = 1;
+}
+
+message TxProveRes {
+  bytes MerkleProof = 1;
+  string MerkleRoot = 2;
+}
+
+message TxVerifyReq {
+  string Hash = 1;
+  bytes MerkleProof = 2;
+  string MerkleRoot = 3;
+}
+
+message TxVerifyRes {
+  bool Valid = 1;
+}
+
 service Tx {
   rpc TxSign(TxSignReq) returns (TxSignRes);
   rpc TxSend(TxSendReq) returns (TxSendRes);
   rpc TxReceive(stream TxReceiveReq) returns (TxReceiveRes);
   rpc TxSearch(TxSearchReq) returns (stream TxSearchRes);
+  rpc TxProve(TxProveReq) returns (TxProveRes);
+  rpc TxVerify(TxVerifyReq) returns (TxVerifyRes);
 }

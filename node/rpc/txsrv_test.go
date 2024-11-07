@@ -53,6 +53,30 @@ func searchTxs(
   return txs
 }
 
+func verifyTx(
+  t *testing.T, ctx context.Context, cln rpc.TxClient, tx chain.SigTx,
+  merkleRoot string,
+) bool {
+  txh := tx.Hash().String()
+  preq := &rpc.TxProveReq{Hash: txh}
+  pres, err := cln.TxProve(ctx, preq)
+  if err != nil {
+    t.Fatal(err)
+  }
+  // trigger invalid Merkle root if not empty
+  if merkleRoot == "" {
+    merkleRoot = pres.MerkleRoot
+  }
+  vreq := &rpc.TxVerifyReq{
+    Hash: txh, MerkleProof: pres.MerkleProof, MerkleRoot: merkleRoot,
+  }
+  vres, err := cln.TxVerify(ctx, vreq)
+  if err != nil {
+    t.Fatal(err)
+  }
+  return vres.Valid
+}
+
 func TestTxSign(t *testing.T) {
   defer os.RemoveAll(keyStoreDir)
   defer os.RemoveAll(blockStoreDir)
@@ -322,3 +346,58 @@ func TestTxSearch(t *testing.T) {
   })
 }
 
+func TestTxProveVerify(t *testing.T) {
+  defer os.RemoveAll(keyStoreDir)
+  defer os.RemoveAll(blockStoreDir)
+  ctx, cancel := context.WithCancel(context.Background())
+  defer cancel()
+  // Create and persist the genesis
+  gen, err := createGenesis()
+  if err != nil {
+    t.Fatal(err)
+  }
+  // Create the state from the genesis
+  state := chain.NewState(gen)
+  // Create several confirmed blocks on the state and on the local block store
+  err = createBlocks(gen, state)
+  if err != nil {
+    t.Fatal(err)
+  }
+  // Set up the gRPC server and client
+  conn := grpcClientConn(t, func(grpcSrv *grpc.Server) {
+    tx := rpc.NewTxSrv(keyStoreDir, blockStoreDir, state.Pending, nil)
+    rpc.RegisterTxServer(grpcSrv, tx)
+  })
+  // Create the gRPC transaction client
+  cln := rpc.NewTxClient(conn)
+  // Get the initial owner account from the genesis
+  acc, _ := genesisAccount(gen)
+  // Search transactions by the sender account address that equals to the
+  // initial owner account address
+  req := &rpc.TxSearchReq{From: string(acc)}
+  txs := searchTxs(t, ctx, conn, req)
+  // Verify that all transactions are found
+  got, exp := len(txs), 2
+  if got != exp {
+    t.Errorf("not all transactions are found: expected %v, got %v", exp, got)
+  }
+  t.Run("correct Merkle proofs", func(t *testing.T){
+    // Verify that Merkle proofs for all found transactions are correct
+    for _, tx := range txs {
+      valid := verifyTx(t, ctx, cln, tx.SigTx, "")
+      if !valid {
+        t.Errorf("invalid Merkle proof for transaction %v", tx.SigTx)
+      }
+    }
+  })
+  t.Run("incorrect Merkle proofs", func(t *testing.T){
+    // Verify that Merkle proofs for invalid Merkle root are incorrect
+    for _, tx := range txs {
+      invalidMerkleRoot := chain.NewHash("invalid Merkle root").String()
+      valid := verifyTx(t, ctx, cln, tx.SigTx, invalidMerkleRoot)
+      if valid {
+        t.Errorf("valid Merkle proof for invalid Merkle root %v", tx.SigTx)
+      }
+    }
+  })
+}

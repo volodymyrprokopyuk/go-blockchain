@@ -14,8 +14,8 @@ const (
 )
 
 type Proof[H comparable] struct {
-  Hash H
-  Pos position
+  Hash H `json:"hash"`
+  Pos position `json:"pos"`
 }
 
 func newProof[H comparable](hash H, pos position) Proof[H] {

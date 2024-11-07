@@ -28,6 +28,12 @@ func (h Hash) Bytes() []byte {
   return hash[:]
 }
 
+func DecodeHash(str string) (Hash, error) {
+  var hash Hash
+  _, err := hex.Decode(hash[:], []byte(str))
+  return hash, err
+}
+
 func (h Hash) MarshalText() ([]byte, error) {
   return []byte(hex.EncodeToString(h[:])), nil
 }
