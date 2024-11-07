@@ -9,11 +9,77 @@ import (
 )
 
 func strRange(end int) []string {
-  slc := make([]string, 0, end)
+  slc := make([]string, end)
   for i := range end {
-    slc = append(slc, fmt.Sprintf("%v", i + 1))
+    slc[i] = fmt.Sprintf("%v", i + 1)
   }
   return slc
+}
+
+func typeHash(s string) chain.Hash {
+  return chain.NewHash(s)
+}
+
+func pairHash(l, r chain.Hash) chain.Hash {
+  var nilHash chain.Hash
+  if r == nilHash {
+    return l
+  }
+  return chain.NewHash(l.String() + r.String())
+}
+
+func formatMerkleTree(merkleTree []chain.Hash) string {
+  mt := make([]string, len(merkleTree))
+  for i := range merkleTree {
+    mt[i] = fmt.Sprintf("%.4s", merkleTree[i])
+  }
+  return fmt.Sprintf("%v", mt)
+}
+
+func formatMerkleProof(merkleProof []chain.Proof[chain.Hash]) string {
+  mp := make([]string, len(merkleProof))
+  for i, proof := range merkleProof {
+    var pos string
+    if proof.Pos == chain.Left {
+      pos = "L"
+    } else {
+      pos = "R"
+    }
+    mp[i] = fmt.Sprintf("%.4s-%v", proof.Hash, pos)
+  }
+  return fmt.Sprintf("%v", mp)
+}
+
+func TestMerkleHashProveVerify(t *testing.T) {
+  for i := range 9 {
+    txs := strRange(i + 1)
+    merkleTree, err := chain.MerkleHash(txs, typeHash, pairHash)
+    if err != nil {
+      t.Fatal(err)
+    }
+    fmt.Printf("Tree (%v) %v\n", len(txs), formatMerkleTree(merkleTree))
+    merkleRoot := merkleTree[0]
+    for _, tx := range txs {
+      txh := typeHash(tx)
+      merkleProof, err := chain.MerkleProve(txh, merkleTree)
+      if err != nil {
+        t.Fatal(err)
+      }
+      fmt.Printf("Proof %v %.4s %v ", tx, txh, formatMerkleProof(merkleProof))
+      valid := chain.MerkleVerify(txh, merkleProof, merkleRoot, pairHash)
+      if valid {
+        fmt.Println("valid")
+      } else {
+        fmt.Println("INVALID")
+      }
+      if !valid {
+        t.Errorf(
+          "invalid Merkle proof: %v %.4s %v",
+          tx, txh,formatMerkleProof(merkleProof),
+        )
+      }
+    }
+  }
 }
 
 func strTypeHash(s string) string {
@@ -27,20 +93,7 @@ func strPairHash(l, r string) string {
   return l + r
 }
 
-func typeHash(s string) chain.Hash {
-  return chain.NewHash(s)
-}
-
-func pairHash(l, r chain.Hash) chain.Hash {
-  var nilHash chain.Hash
-  if r == nilHash {
-    return l
-  }
-  return chain.NewHash(l.String() + r.String())
-  // return chain.NewHash([]chain.Hash{l, r})
-}
-
-func formatStrMerkleTree(merkleTree []string) string {
+func formatMerkleTreeStr(merkleTree []string) string {
   mt := slices.Clone(merkleTree)
   for i := range mt {
     if mt[i] == "" {
@@ -50,65 +103,46 @@ func formatStrMerkleTree(merkleTree []string) string {
   return fmt.Sprintf("%v", mt)
 }
 
-func formatHashMerkleTree(merkleTree []chain.Hash) string {
-  mt := make([]string, len(merkleTree))
-  for i := range merkleTree {
-    mt[i] = fmt.Sprintf("%.4s", merkleTree[i])
+func formatMerkleProofStr(merkleProof []chain.Proof[string]) string {
+  mp := make([]string, len(merkleProof))
+  for i, proof := range merkleProof {
+    var pos string
+    if proof.Pos == chain.Left {
+      pos = "L"
+    } else {
+      pos = "R"
+    }
+    mp[i] = fmt.Sprintf("%v-%v", proof.Hash, pos)
   }
-  return fmt.Sprintf("%v", mt)
+  return fmt.Sprintf("%v", mp)
 }
 
-func TestMerkleHashProveVerify(t *testing.T) {
-  for i := range 9 {
-    txs := strRange(i + 1)
-    merkleTree, err := chain.MerkleHash(txs, typeHash, pairHash)
-    if err != nil {
-      t.Fatal(err)
-    }
-    fmt.Printf("Tree (%v) %v\n", len(txs), formatHashMerkleTree(merkleTree))
-    merkleRoot := merkleTree[0]
-    for _, tx := range txs {
-      merkleProof, err := chain.MerkleProve(typeHash(tx), merkleTree)
-      if err != nil {
-        t.Fatal(err)
-      }
-      fmt.Printf("Proof %v %.4s ", tx, typeHash(tx))
-      valid := chain.MerkleVerify(typeHash(tx), merkleProof, merkleRoot, pairHash)
-      if valid {
-        fmt.Println("valid")
-      } else {
-        fmt.Println("INVALID")
-      }
-      if !valid {
-        t.Errorf("invalid Merkle proof: %v %.4s", tx, typeHash(tx))
-      }
-    }
-  }
-}
-
-func TestStrMerkleHashProveVerify(t *testing.T) {
+func TestMerkleHashProveVerifyStr(t *testing.T) {
   for i := range 9 {
     txs := strRange(i + 1)
     merkleTree, err := chain.MerkleHash(txs, strTypeHash, strPairHash)
     if err != nil {
       t.Fatal(err)
     }
-    fmt.Println("Tree", formatStrMerkleTree(merkleTree))
+    fmt.Printf("Tree (%v) %v\n", len(txs), formatMerkleTreeStr(merkleTree))
     merkleRoot := merkleTree[0]
     for _, tx := range txs {
-      merkleProof, err := chain.MerkleProve(tx, merkleTree)
+      txh := strTypeHash(tx)
+      merkleProof, err := chain.MerkleProve(txh, merkleTree)
       if err != nil {
         t.Fatal(err)
       }
-      fmt.Printf("Proof %v %v ", tx, merkleProof)
-      valid := chain.MerkleVerify(tx, merkleProof, merkleRoot, strPairHash)
+      fmt.Printf("Proof %v %v ", txh, formatMerkleProofStr(merkleProof))
+      valid := chain.MerkleVerify(txh, merkleProof, merkleRoot, strPairHash)
       if valid {
         fmt.Println("valid")
       } else {
         fmt.Println("INVALID")
       }
       if !valid {
-        t.Errorf("invalid Merkle proof: %v %v", tx, merkleProof)
+        t.Errorf(
+          "invalid Merkle proof: %v %v", txh, formatMerkleProofStr(merkleProof),
+        )
       }
     }
   }

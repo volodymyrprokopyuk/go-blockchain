@@ -6,16 +6,20 @@ import (
 	"slices"
 )
 
-type place int
+type position int
 
 const (
-  left place = 1
-  right place = 2
+  Left position = 1
+  Right position = 2
 )
 
-type proofStep[H comparable] struct {
-  hash H
-  place place
+type Proof[H comparable] struct {
+  Hash H
+  Pos position
+}
+
+func newProof[H comparable](hash H, pos position) Proof[H] {
+  return Proof[H]{Hash: hash, Pos: pos}
 }
 
 func MerkleHash[T any, H comparable](
@@ -48,38 +52,35 @@ func MerkleHash[T any, H comparable](
   return merkleTree, nil
 }
 
-func MerkleProve[H comparable](tx H, merkleTree []H) ([]proofStep[H], error) {
+func MerkleProve[H comparable](txh H, merkleTree []H) ([]Proof[H], error) {
   if len(merkleTree) == 0 {
     return nil, fmt.Errorf("merkle prove: empty merkle tree")
   }
   start := int(math.Floor(float64(len(merkleTree) / 2)))
-  i := slices.Index(merkleTree[start:], tx)
+  i := slices.Index(merkleTree[start:], txh)
   if i == -1 {
-    return nil, fmt.Errorf("merkle prove: transaction %v not found", tx)
+    return nil, fmt.Errorf("merkle prove: transaction %v not found", txh)
   }
   i += start
   if len(merkleTree) == 1 {
-    return []proofStep[H]{{hash: merkleTree[0], place: left}}, nil
+    return []Proof[H]{newProof(merkleTree[0], Left)}, nil
   }
   if len(merkleTree) == 3 {
-    return []proofStep[H]{
-      {hash: merkleTree[1], place: left}, {hash: merkleTree[2], place: right},
+    return []Proof[H]{
+      newProof(merkleTree[1], Left), newProof(merkleTree[2], Right),
     }, nil
   }
-  merkleProof := make([]proofStep[H], 0)
-  addStep := func(hash H, place place) {
-    merkleProof = append(merkleProof, proofStep[H]{hash: hash, place: place})
-  }
+  merkleProof := make([]Proof[H], 0)
   var nilHash H
   if i % 2 == 0 {
-    addStep(merkleTree[i - 1], left)
-    addStep(merkleTree[i], right)
+    merkleProof = append(merkleProof, newProof(merkleTree[i - 1], Left))
+    merkleProof = append(merkleProof, newProof(merkleTree[i], Right))
     i--
   } else {
-    addStep(merkleTree[i], left)
+    merkleProof = append(merkleProof, newProof(merkleTree[i], Left))
     hash := merkleTree[i + 1]
     if hash != nilHash {
-      addStep(hash, right)
+      merkleProof = append(merkleProof, newProof(hash, Right))
     }
     i++
   }
@@ -97,9 +98,9 @@ func MerkleProve[H comparable](tx H, merkleTree []H) ([]proofStep[H], error) {
     hash := merkleTree[i]
     if hash != nilHash {
       if i % 2 == 0 {
-        addStep(hash, right)
+        merkleProof = append(merkleProof, newProof(hash, Right))
       } else {
-        addStep(hash, left)
+        merkleProof = append(merkleProof, newProof(hash, Left))
       }
     }
     if i == 2 || i == 1 {
@@ -110,98 +111,22 @@ func MerkleProve[H comparable](tx H, merkleTree []H) ([]proofStep[H], error) {
 }
 
 func MerkleVerify[H comparable](
-  tx H, merkleProof []proofStep[H], merkleRoot H, pairHash func(H, H) H,
+  txh H, merkleProof []Proof[H], merkleRoot H, pairHash func(H, H) H,
 ) bool {
-  i := slices.IndexFunc(merkleProof, func(step proofStep[H]) bool {
-    return step.hash == tx
+  i := slices.IndexFunc(merkleProof, func(proof Proof[H]) bool {
+    return proof.Hash == txh
   })
   if i == -1 {
     return false
   }
-  hash := merkleProof[0].hash
+  hash := merkleProof[0].Hash
   for i := 1; i < len(merkleProof); i++ {
-    step := merkleProof[i]
-    if step.place == left {
-      hash = pairHash(step.hash, hash)
+    proof := merkleProof[i]
+    if proof.Pos == Left {
+      hash = pairHash(proof.Hash, hash)
     } else {
-      hash = pairHash(hash, step.hash)
+      hash = pairHash(hash, proof.Hash)
     }
   }
   return hash == merkleRoot
 }
-
-
-
-// func MerkleProve2[H comparable](tx H, merkleTree []H) ([]H, error) {
-//   if len(merkleTree) == 0 {
-//     return nil, fmt.Errorf("merkle prove: empty merkle tree")
-//   }
-//   start := int(math.Floor(float64(len(merkleTree) / 2)))
-//   i := slices.Index(merkleTree[start:], tx)
-//   if i == -1 {
-//     return nil, fmt.Errorf("merkle prove: transaction %v not found", tx)
-//   }
-//   i += start
-//   if len(merkleTree) == 1 {
-//     return []H{merkleTree[0]}, nil
-//   }
-//   if len(merkleTree) == 3 {
-//     return []H{merkleTree[1], merkleTree[2]}, nil
-//   }
-//   stk, que := make([]H, 0), make([]H, 0)
-//   var nilHash H
-//   if i % 2 == 0 {
-//     stk = append(stk, merkleTree[i - 1])
-//     que = append(que, merkleTree[i])
-//     i--
-//   } else {
-//     stk = append(stk, merkleTree[i])
-//     hash := merkleTree[i + 1]
-//     if hash != nilHash {
-//       que = append(que, hash)
-//     }
-//     i++
-//   }
-//   for {
-//     if i % 2 == 0 {
-//       i = (i - 2) / 2
-//     } else {
-//       i = (i - 1) / 2
-//     }
-//     if i % 2 == 0 {
-//       i--
-//     } else {
-//       i++
-//     }
-//     hash := merkleTree[i]
-//     if hash != nilHash {
-//       if i % 2 == 0 {
-//         que = append(que, hash)
-//       } else {
-//         stk = append(stk, hash)
-//       }
-//     }
-//     if i == 2 || i == 1 {
-//       break
-//     }
-//   }
-//   merkleProof := make([]H, 0, len(stk) + len(que))
-//   slices.Reverse(stk)
-//   merkleProof = append(merkleProof, stk...)
-//   merkleProof = append(merkleProof, que...)
-//   return merkleProof, nil
-// }
-
-// func MerkleVerify2[H comparable](
-//   tx H, merkleProof []H, merkleRoot H, pairHash func(H, H) H,
-// ) bool {
-//   i := slices.Index(merkleProof, tx)
-//   if i == -1 {
-//     return false
-//   }
-//   hash := merkleProof[0]
-//   for i := 1; i < len(merkleProof); i++ {
-//     hash = pairHash(hash, merkleProof[i])
-//   }
-//   return hash == merkleRoot
-// }
