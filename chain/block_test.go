@@ -38,7 +38,10 @@ func TestBlockSignBlockWriteReadVerifyBlock(t *testing.T) {
   // Create and sign a block with the authority account
   txs := make([]chain.SigTx, 0, 1)
   txs = append(txs, stx)
-  blk := chain.NewBlock(1, gen.Hash(), txs)
+  blk, err := chain.NewBlock(1, gen.Hash(), txs)
+  if err != nil {
+    t.Fatal(err)
+  }
   sblk, err := auth.SignBlock(blk)
   if err != nil {
     t.Fatal(err)

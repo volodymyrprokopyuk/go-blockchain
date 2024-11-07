@@ -164,11 +164,18 @@ func (s *State) CreateBlock(authority Account) (SigBlock, error) {
     }
     txs = append(txs, tx)
   }
+  if len(txs) == 0 {
+    return SigBlock{}, fmt.Errorf("empty list of valid pending transactions")
+  }
   var blk Block
+  var err error
   if s.lastBlock.Number == 0 {
-    blk = NewBlock(s.lastBlock.Number + 1, s.genesisHash, txs)
+    blk, err = NewBlock(s.lastBlock.Number + 1, s.genesisHash, txs)
   } else {
-    blk = NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
+    blk, err = NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
+  }
+  if err != nil {
+    return SigBlock{}, err
   }
   return authority.SignBlock(blk)
 }

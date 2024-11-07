@@ -83,6 +83,18 @@ func VerifyTx(tx SigTx) (bool, error) {
   return acc == tx.From, nil
 }
 
+func TxHash(tx SigTx) Hash {
+  return NewHash(tx)
+}
+
+func TxPairHash(l, r Hash) Hash {
+  var nilHash Hash
+  if r == nilHash {
+    return l
+  }
+  return NewHash(l.String() + r.String())
+}
+
 type SearchTx struct {
   SigTx
   BlockNumber uint64 `json:"blockNumber"`

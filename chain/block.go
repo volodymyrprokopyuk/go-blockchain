@@ -28,11 +28,22 @@ type Block struct {
   Number uint64 `json:"number"`
   Parent Hash `json:"parent"`
   Txs []SigTx `json:"txs"`
+  merkleTree []Hash
+  MerkleRoot Hash `json:"merkleRoot"`
   Time time.Time `json:"time"`
 }
 
-func NewBlock(number uint64, parent Hash, txs []SigTx) Block {
-  return Block{Number: number, Parent: parent, Txs: txs, Time: time.Now()}
+func NewBlock(number uint64, parent Hash, txs []SigTx) (Block, error) {
+  merkleTree, err := MerkleHash(txs, TxHash, TxPairHash)
+  if err != nil {
+    return Block{}, err
+  }
+  blk := Block{
+    Number: number, Parent: parent, Txs: txs,
+    merkleTree: merkleTree, MerkleRoot: merkleTree[0],
+    Time: time.Now(),
+  }
+  return blk, nil
 }
 
 func (b Block) Hash() Hash {
