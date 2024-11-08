@@ -128,17 +128,21 @@
   the end of the array. The binary tree is stored in the array sequentially
   level by level starting from the root down to the leaves. Missing nodes in the
   binary tree are represented by the default values in the corresponding array
-  slots. The benefit of the array representation of a binary tree is the
-  *compact representation of the binary* tree without the overhead of the node
-  links required in the node-based linked representation of the binary tree.
-  Another benefit of the array representation is the *fast random access to
-  nodes* of the binary tree through the indexing of the array, instead of
-  sequential node-to-node following of links linked representation. The next
-  benefit of the array representation is the *natural applicability of iterative
-  algorithms* that does not consume the call stack, instead of the recursive
-  algorithms that consume the call stack in the case of the linked
-  representation. This implementation of the Merkle tree uses the array
-  representation of the Merkle tree
+  slots. The children of a node in the position =i= are at the ~2i + 1~ odd left
+  and the ~2i + 2~ even right positions. The parent for the odd left child in
+  the position =i= is at the ~(i - 1) / 2~ position. The parent for the even
+  right child in the position =i= is at the ~(i - 2) / 2~ position. The benefit
+  of the array representation of a binary tree is the *compact representation of
+  the binary* tree without the overhead of the node links required in the
+  node-based linked representation of the binary tree. Another benefit of the
+  array representation is the *fast random access to nodes* of the binary tree
+  through the indexing of the array, instead of sequential node-to-node
+  following of links linked representation. The next benefit of the array
+  representation is the *natural applicability of iterative algorithms* that
+  does not consume the call stack, instead of the recursive algorithms that
+  consume the call stack in the case of the linked representation. This
+  implementation of the Merkle tree uses the array representation of the Merkle
+  tree
 - Merkle hash algorithm :: The Merkle hash algorithm constructs the Merkle tree
   from a list of transactions. The Merkle hash algorithm takes the list of
   transaction, the ~typeHash(T) H~ function to hash a transaction and the
@@ -239,14 +243,17 @@ func TxHash(tx SigTx) Hash {
   #+END_SRC
 - Pair hash function :: The pair hash function combines hashes of a pair of
   children from the Merkle tree in order to produce the hash of the parent from
-  the next level of the Merkle tree. This implementation uses two different pair
-  hash functions. One pair hash function is a simple string concatenation of the
-  input hashes. This pair hash function is used for learning purposes, testing,
-  debugging, and visual understanding of the internal workings of the Merkle
-  hash, prove, and verify algorithms. The other hash function is the Keccak256
-  hash function that is used in the implementation of this blockchain. The
+  the next level of nodes of the Merkle tree. This implementation uses two
+  different pair hash functions. One pair hash function is a simple string
+  concatenation of the input hashes. This pair hash function is used for
+  learning purposes, testing, debugging, and visual understanding of the
+  internal workings of the Merkle hash, prove, and verify algorithms. The
   combination of input hashes is performed through the concatenation of the
-  string representation of the input hashes
+  string representation of the input hashes. If the hash of the right child has
+  the default value, the hash of the left child is returned. The other hash
+  function is the Keccak256 hash function that is used in the implementation of
+  this blockchain. If the hash of the right child has the default value, the
+  hash of the left child is returned
   #+BEGIN_SRC go
 // String concatenation hash for learning purposes
 func pairHashStr(l, r string) string {
@@ -277,6 +284,218 @@ function
 | =[1 2 3 4 5 6 7 8]=    | =[12345678 1234 5678 12 34 56 78 1 2 3 4 5 6 7 8]= |
 
 *** Merkle prove and derivation of Merkle proof
+
+- Merkle proof type :: The Merkle proof is a sequence of proof steps starting
+  from the leaf hash of the specific element, following the missing hashes of
+  sibling nodes on the path of the reverse binary search up until, but not
+  including the Merkle root. All Merkle proofs start from the hash of the
+  specific element and lead but do not include the Merkle root. The =Proof= type
+  represents a step in the Merkle proof of inclusion of the specific element
+  into the list of elements. The proof step contains either a hash of the
+  specific element in the leaf position or a hash of the combination of hashes
+  of two node children along with the left or right position of the hash in the
+  Merkle tree. The hash is required to verify the Merkle proof. The position is
+  required to correctly combine hashes of proof steps during the verification of
+  the Merkle proof. The proof type is generic. The type of the hash value is
+  parameterized. This design allows to use the same Merkle prove algorithm for
+  derivation of Merkle proofs from Merkle trees constructed using different hash
+  functions e.g. Keccak256, SHA256
+  #+BEGIN_SRC go
+type position int
+
+const (
+  Left position = 1
+  Right position = 2
+)
+
+type Proof[H comparable] struct {
+  Hash H `json:"hash"`
+  Pos position `json:"pos"`
+}
+
+func newProof[H comparable](hash H, pos position) Proof[H] {
+  return Proof[H]{Hash: hash, Pos: pos}
+}
+  #+END_SRC
+- Merkle prove algorithm :: The Merkle prove algorithm derives a Merkle proof
+  from the hash of a transaction whose inclusion into a list of transaction has
+  to be proven, and the Merkle tree constructed from the list of transactions.
+  The derived Merkle proof allows a verifying party to securely verify that the
+  requested transaction has been included into the list of transaction of a
+  block if the computed Merkle root from the provided Merkle hash equals to the
+  received Merkle root from a trusted source. The Merkle proof guides the
+  re-construction of the Merkle root from the transaction hash by providing the
+  missing hashes of the sibling nodes on the path of the reversed binary search
+  starting from the hash of the transaction in the leaf position and ending, but
+  not including the Merkle root. The Merkle prove algorithm is generic. The type
+  of the hash value is parameterized. This design allows the Merkle prove
+  algorithm to work without modifications with different Merkle trees produced
+  using different hash functions e.g. Keccack256, SHA256. The derived Merkle
+  proof is also parameterized by the type of the hash value. The Merkle prove
+  algorithm first checks if the input Merkle tree is not empty. Then the
+  algorithm checks that the hash of the requested transaction is in the second
+  half of the array representation of the provided Merkle tree. If the hash of
+  the transaction is not in the Merkle tree the Merkle proof cannot be derived.
+  Next the edge cases of the list with one and two transactions (three nodes in
+  the Merkle tree) are handled. Then the first two steps of the Merkle proof are
+  handled separately because they operate on the same level of the Merkle tree,
+  while all other steps always move one level up until reaching the Merkle root.
+  If the hash of the requested transaction is in the even right position in the
+  Merkle tree, then the left sibling hash and then the transaction hash are
+  included into the Merkle proof. If the hash of the requested transaction is in
+  the odd left position, then the transaction hash and the right sibling hash,
+  if present, are included into the Merkle proof. Next the parent position for
+  the current hash is calculated depending whether the current hash position is
+  even right or odd left following the rules of array representation of the
+  binary tree. When the resulting parent position is even right, the sibling
+  parent position will be odd left in the previous array slot. When the
+  resulting parent position is odd left, the sibling parent position will be the
+  even right in the next array slot. Finally the sibling parent hash, if
+  present, is included into the Merkle proof with the correct position label.
+  Specifically, even positions are right, and odd positions are left. The
+  reverse binary search process ends when either the odd left child with index 1
+  or the even right child with index 2 of the Merkle root with index 0 is
+  reached. The Merkle prove algorithm
+  - Check that the provided Merkle tree is not empty
+  - Check that the hash of the requested transaction is in the second half of
+    the array representation of the provided Merkle tree
+  - Handle the edge cases of the list of one or two transactions
+  - Include into the Merkle proof the first two (sometimes one) sibling hashes
+    from the same level of the Merkle tree. One of these hashes will always be
+    the hash of the requested transaction
+  - Calculate the position of the parent hash for the current hash
+  - Move to the hash of the sibling parent
+  - Include the hash of the sibling parent into the Merkle proof with the
+    correct position label
+  - Stop the process when either the two children of the Merkle root is reached
+  #+BEGIN_SRC go
+func MerkleProve[H comparable](txh H, merkleTree []H) ([]Proof[H], error) {
+  if len(merkleTree) == 0 {
+    return nil, fmt.Errorf("merkle prove: empty merkle tree")
+  }
+  start := int(math.Floor(float64(len(merkleTree) / 2)))
+  i := slices.Index(merkleTree[start:], txh)
+  if i == -1 {
+    return nil, fmt.Errorf("merkle prove: transaction %v not found", txh)
+  }
+  i += start
+  if len(merkleTree) == 1 {
+    return []Proof[H]{newProof(merkleTree[0], Left)}, nil
+  }
+  if len(merkleTree) == 3 {
+    return []Proof[H]{
+      newProof(merkleTree[1], Left), newProof(merkleTree[2], Right),
+    }, nil
+  }
+  merkleProof := make([]Proof[H], 0)
+  var nilHash H
+  if i % 2 == 0 {
+    merkleProof = append(merkleProof, newProof(merkleTree[i - 1], Left))
+    merkleProof = append(merkleProof, newProof(merkleTree[i], Right))
+    i--
+  } else {
+    merkleProof = append(merkleProof, newProof(merkleTree[i], Left))
+    hash := merkleTree[i + 1]
+    if hash != nilHash {
+      merkleProof = append(merkleProof, newProof(hash, Right))
+    }
+    i++
+  }
+  for {
+    if i % 2 == 0 {
+      i = (i - 2) / 2
+    } else {
+      i = (i - 1) / 2
+    }
+    if i % 2 == 0 {
+      i--
+    } else {
+      i++
+    }
+    hash := merkleTree[i]
+    if hash != nilHash {
+      if i % 2 == 0 {
+        merkleProof = append(merkleProof, newProof(hash, Right))
+      } else {
+        merkleProof = append(merkleProof, newProof(hash, Left))
+      }
+    }
+    if i == 2 || i == 1 {
+      break
+    }
+  }
+  return merkleProof, nil
+}
+  #+END_SRC
+
+Examples of correct Merkle proofs for each element of different input lists of
+elements using the string hash function and the string concatenation pair hash
+function. Each Merkle proof is a sequence of hashes labeled with the left (L) or
+the right (R) position needed for the verification of the Merkle proof
+#+BEGIN_SRC go
+Tree (1) [1]
+Proof 1 [1-L] valid
+
+Tree (2) [12 1 2]
+Proof 1 [1-L 2-R] valid
+Proof 2 [1-L 2-R] valid
+
+Tree (3) [123 12 3 1 2 3 _]
+Proof 1 [1-L 2-R 3-R] valid
+Proof 2 [1-L 2-R 3-R] valid
+Proof 3 [3-L 12-L] valid
+
+Tree (4) [1234 12 34 1 2 3 4]
+Proof 1 [1-L 2-R 34-R] valid
+Proof 2 [1-L 2-R 34-R] valid
+Proof 3 [3-L 4-R 12-L] valid
+Proof 4 [3-L 4-R 12-L] valid
+
+Tree (5) [12345 1234 5 12 34 5 _ 1 2 3 4 5 _ _ _]
+Proof 1 [1-L 2-R 34-R 5-R] valid
+Proof 2 [1-L 2-R 34-R 5-R] valid
+Proof 3 [3-L 4-R 12-L 5-R] valid
+Proof 4 [3-L 4-R 12-L 5-R] valid
+Proof 5 [5-L 1234-L] valid
+
+Tree (6) [123456 1234 56 12 34 56 _ 1 2 3 4 5 6 _ _]
+Proof 1 [1-L 2-R 34-R 56-R] valid
+Proof 2 [1-L 2-R 34-R 56-R] valid
+Proof 3 [3-L 4-R 12-L 56-R] valid
+Proof 4 [3-L 4-R 12-L 56-R] valid
+Proof 5 [5-L 6-R 1234-L] valid
+Proof 6 [5-L 6-R 1234-L] valid
+
+Tree (7) [1234567 1234 567 12 34 56 7 1 2 3 4 5 6 7 _]
+Proof 1 [1-L 2-R 34-R 567-R] valid
+Proof 2 [1-L 2-R 34-R 567-R] valid
+Proof 3 [3-L 4-R 12-L 567-R] valid
+Proof 4 [3-L 4-R 12-L 567-R] valid
+Proof 5 [5-L 6-R 7-R 1234-L] valid
+Proof 6 [5-L 6-R 7-R 1234-L] valid
+Proof 7 [7-L 56-L 1234-L] valid
+
+Tree (8) [12345678 1234 5678 12 34 56 78 1 2 3 4 5 6 7 8]
+Proof 1 [1-L 2-R 34-R 5678-R] valid
+Proof 2 [1-L 2-R 34-R 5678-R] valid
+Proof 3 [3-L 4-R 12-L 5678-R] valid
+Proof 4 [3-L 4-R 12-L 5678-R] valid
+Proof 5 [5-L 6-R 78-R 1234-L] valid
+Proof 6 [5-L 6-R 78-R 1234-L] valid
+Proof 7 [7-L 8-R 56-L 1234-L] valid
+Proof 8 [7-L 8-R 56-L 1234-L] valid
+
+Tree (9) [123456789 12345678 9 1234 5678 9 _ 12 34 56 78 9 _ _ _ 1 2 3 4 5 6 7 8 9 _ _ _ _ _ _ _]
+Proof 1 [1-L 2-R 34-R 5678-R 9-R] valid
+Proof 2 [1-L 2-R 34-R 5678-R 9-R] valid
+Proof 3 [3-L 4-R 12-L 5678-R 9-R] valid
+Proof 4 [3-L 4-R 12-L 5678-R 9-R] valid
+Proof 5 [5-L 6-R 78-R 1234-L 9-R] valid
+Proof 6 [5-L 6-R 78-R 1234-L 9-R] valid
+Proof 7 [7-L 8-R 56-L 1234-L 9-R] valid
+Proof 8 [7-L 8-R 56-L 1234-L 9-R] valid
+Proof 9 [9-L 12345678-L] valid
+#+END_SRC
 
 *** Merkle verify and inclusion verification
 
