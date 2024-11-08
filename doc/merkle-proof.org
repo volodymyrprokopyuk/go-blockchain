@@ -1,0 +1,46 @@
+* Merkle proof
+:PROPERTIES:
+:TOC: :include descendants
+:END:
+
+:CONTENTS:
+- [[#concepts-and-purpose][Concepts and purpose]]
+  - [[#merkle-tree-and-transaction-hashing][Merkle tree and transaction hashing]]
+  - [[#merkle-proof-and-inclusion-verification][Merkle proof and inclusion verification]]
+- [[#design-and-implementation][Design and implementation]]
+  - [[#merkle-hash-and-construction-of-merkle-tree][Merkle hash and construction of Merkle tree]]
+  - [[#merkle-prove-and-derivation-of-merkle-proof][Merkle prove and derivation of Merkle proof]]
+  - [[#merkle-verify-and-inclusion-verification][Merkle verify and inclusion verification]]
+  - [[#grpc-txprove-method][gRPC TxProve method]]
+  - [[#grpc-txverify-method][gRPC TxVerify method]]
+- [[#testing-and-usage][Testing and usage]]
+  - [[#testing-merkle-hash-prove-and-verify][Testing Merkle hash, prove, and verify]]
+  - [[#testing-grpc-txprove-and-txverify-methods][Testing gRPC TxProve and TxVerify methods]]
+  - [[#using-tx-prove-and-tx-verify-commands][Using tx prove and tx verify commands]]
+:END:
+
+** Concepts and purpose
+
+*** Merkle tree and transaction hashing
+
+*** Merkle proof and inclusion verification
+
+** Design and implementation
+
+*** Merkle hash and construction of Merkle tree
+
+*** Merkle prove and derivation of Merkle proof
+
+*** Merkle verify and inclusion verification
+
+*** gRPC =TxProve= method
+
+*** gRPC =TxVerify= method
+
+** Testing and usage
+
+*** Testing Merkle hash, prove, and verify
+
+*** Testing gRPC =TxProve= and =TxVerify= methods
+
+*** Using =tx prove= and =tx verify= commands

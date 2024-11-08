@@ -8,14 +8,14 @@ set ownerpass password
 function txSignAndSend -a node from to value ownerpass
   set tx (./bcn tx sign --node $node --from $from --to $to --value $value \
     --ownerpass $ownerpass)
-  echo $tx
+  echo SigTx $tx
   ./bcn tx send --node $node --sigtx $tx
 end
 
 function txProveAndVerify -a node hash
   set proof (./bcn tx prove --node $node --hash $hash)
-  echo Merkle proof $proof[1]
-  echo Merkle root $proof[2]
+  echo MerkleProof $proof[1]
+  echo MerkleRoot $proof[2]
   ./bcn tx verify --node $node --hash $hash \
     --mrkproof $proof[1] --mrkroot $proof[2]
 end

@@ -66,29 +66,34 @@ streaming/, /Go iterators/
 /concurrency safe application of transactions and blocks/, /Go mutex
 concurrency/
 
+6. [@6] [[/doc/merkle-proof.org][Merkle proof]]
+/Merkle tree/, /Merkle proof/, /transaction inclusion verification/, /create
+Merkle tree/, /derive Merkle proof/, /verify Merkle proof/, /array
+representation of Merkle tree/, /combination of hashes/, /Go generics/
+
 *** Blockchain node
 
-6. [@6] [[/doc/state-sync.org][State sync]]
+7. [@7] [[/doc/state-sync.org][State sync]]
 /Blockchain initialization/, /state synchronization algorithm/, /initialize
 bootstrap node/, /synchronize out-of-sync node/, /create genesis/, /synchronize
 genesis/, /read blocks/, /synchronize blocks/, /Go iterators/
-7. [@7] [[/doc/peer-discovery.org][Peer discovery]]
+8. [@8] [[/doc/peer-discovery.org][Peer discovery]]
 /Peer discovery/, /bootstrap node/, /seed node/, /concurrency safe peer
 discovery/, /peer discovery algorithm/, /node graceful shutdown mechanism/, /Go
 mutex concurrency/, /Go context/, /Go channel composition/
-8. [@8] [[/doc/transaction-relay.org][Transaction relay]]
+9. [@9] [[/doc/transaction-relay.org][Transaction relay]]
 /Transaction relay/, /concurrency safe peers monitoring/, /concurrent generic
 message relay/, /gRPC client streaming/, /Go channel concurrency/, /Go channel
 composition/, /Go channel multiplexing/, /Go generics/
-9. [@9] [[/doc/block-proposer.org][Block proposer]]
+10. [@10] [[/doc/block-proposer.org][Block proposer]]
 /Proof of Authority consensus/, /block proposer algorithm/, /block relay/, /gRPC
 client streaming/, /Go channel concurrency/, /Go channel composition/, /Go
 channel multiplexing/, /Go generics/
-10. [@10] [[/doc/event-stream.org][Event stream]]
+11. [@11] [[/doc/event-stream.org][Event stream]]
 /Node event stream/, /event publisher/, /concurrency safe event streaming/,
 /domain event multiplexing/, /gRPC server streaming/, /Go mutex concurrency/,
 /Go channel concurrency/, /Go channel composition/, /Go channel multiplexing/
-11. [@11] [[/doc/blockchain-node.org][Blockchain node]]
+12. [@12] [[/doc/blockchain-node.org][Blockchain node]]
 /Blockchain node/, /peer-to-peer network of nodes/, /peer discovery/, /state
 sync/, /confirmed state/, /pending state/, /transaction relay/, /Proof of
 Authority consensus/, /block proposer/, /block relay/, /block application/,
