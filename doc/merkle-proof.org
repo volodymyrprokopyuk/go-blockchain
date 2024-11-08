@@ -119,6 +119,152 @@
 
 *** Merkle hash and construction of Merkle tree
 
+- Array representation of binary tree :: The array representation of a binary
+  tree uses the linear data structure to store node values for a binary tree.
+  The root of the binary tree is stored in the first slot of the array. The two
+  children of the root are stored in the second and the third slots of the
+  array. Next the children of the first root child are stored in the consecutive
+  array slots and so on. Finally, the leaves of the binary tree are stored at
+  the end of the array. The binary tree is stored in the array sequentially
+  level by level starting from the root down to the leaves. Missing nodes in the
+  binary tree are represented by the default values in the corresponding array
+  slots. The benefit of the array representation of a binary tree is the
+  *compact representation of the binary* tree without the overhead of the node
+  links required in the node-based linked representation of the binary tree.
+  Another benefit of the array representation is the *fast random access to
+  nodes* of the binary tree through the indexing of the array, instead of
+  sequential node-to-node following of links linked representation. The next
+  benefit of the array representation is the *natural applicability of iterative
+  algorithms* that does not consume the call stack, instead of the recursive
+  algorithms that consume the call stack in the case of the linked
+  representation. This implementation of the Merkle tree uses the array
+  representation of the Merkle tree
+- Merkle hash algorithm :: The Merkle hash algorithm constructs the Merkle tree
+  from a list of transactions. The Merkle hash algorithm takes the list of
+  transaction, the ~typeHash(T) H~ function to hash a transaction and the
+  ~pairHash(H, H) H~ function to combine two hashes of node children in order to
+  produce a parent hash. The Merkle hash algorithm returns the array
+  representation of the constructed Merkle tree as a slice of hashes conforming
+  to the rules of the array representation. The Merkle root in the first element
+  of the array representation of the Merkle tree. The Merkle hash algorithm is
+  generic. The generic parameters are the *type of transactions* or set elements
+  and the *type of hash values* e.g. Keccak256, SHA256 that must be comparable.
+  This design allow to apply the Merkle hash algorithm to different types of
+  transactions and different types of hash functions. Specifically this
+  implementation uses two different hash functions. One hash function is the
+  easy to visualize and debug simple string concatenation for learning purposes
+  and testing. The other hash function is the Keccak256 hash function that is
+  used everywhere in the proposed blockchain, but is much challenging to debug.
+  The Merkle hash algorithm first checks that the provided list of transactions
+  is not empty. Then the list of transaction hashes is created by applying the
+  type hash function to each transaction in the input list. Next the length of
+  the array representation of the Merkle tree is calculated, and the Merkle tree
+  array is created. Then the list of transaction hashes if copied into the end
+  of the Merkle tree array. Next the hashes of transactions are combined in
+  pairs to produce the next level of nodes of the Merkle tree. These nodes are
+  stored just before the list of transaction hashes in the Merkle tree array.
+  The same process iteratively computes hashes of every successive level of
+  parent nodes and stores them just before the nodes of the previous level of
+  the Merkle tree up until producing the Merkle root in the first slot of the
+  Merkle tree array. Hashes of the previous level are needed to construct the
+  next level of nodes in the Merkle tree using the pair hash function. The
+  Merkle hash algorithm
+  - Check that the input list of transaction is not empty
+  - Produce the list of transaction hashes by applying the type hash function to
+    the input list of transactions
+  - Compute the length of the array representation of the Merkle tree
+  - Create the array to represent the Merkle tree and initialize the array with
+    default values
+  - Copy the list of transaction hashes into the end of the Merkle tree array
+  - Iteratively compute each successive level of nodes by combining pair of
+    hashes from the previous level applying the pair hash function
+  - Each next level of nodes is stored in the Merkle tree array just before the
+    previous level of nodes
+  - The process of combining pair of hashes continues up until producing the
+    Merkle root in the first slot of the Merkle tree array
+  #+BEGIN_SRC go
+func MerkleHash[T any, H comparable](
+  txs []T, typeHash func(T) H, pairHash func(H, H) H,
+) ([]H, error) {
+  if len(txs) == 0 {
+    return nil, fmt.Errorf("merkle hash: empty transaction list")
+  }
+  htxs := make([]H, len(txs))
+  for i, tx := range txs {
+    htxs[i] = typeHash(tx)
+  }
+  halfFloor := func(i int) int {
+    return int(math.Floor(float64(i / 2)))
+  }
+  l := int(math.Pow(2, math.Ceil(math.Log2(float64(len(htxs)))) + 1) - 1)
+  merkleTree := make([]H, l)
+  chd := halfFloor(l)
+  for i, j := 0, chd; i < len(htxs); i, j = i + 1, j + 1 {
+    merkleTree[j] = htxs[i]
+  }
+  l, par := chd * 2, halfFloor(chd)
+  for chd > 0 {
+    for i, j := chd, par; i < l; i, j = i + 2, j + 1 {
+      merkleTree[j] = pairHash(merkleTree[i], merkleTree[i + 1])
+    }
+    chd = halfFloor(chd)
+    l, par = chd * 2, halfFloor(chd)
+  }
+  return merkleTree, nil
+}
+  #+END_SRC
+- Transaction hash function :: The transaction hash function takes a transaction
+  and returns a hash of the transaction. This implementation uses two different
+  transaction hash functions. One transaction hash function returns the simple
+  string representation of the input type. This transaction hash function is
+  used for learning purposes, testing, debugging, and visual understanding of
+  the internal workings of the Merkle hash, prove, and verify algorithms. The
+  other transaction hash function is the Keccak256 hash function that is used in
+  the implementation of this blockchain
+  #+BEGIN_SRC go
+// String hash for learning purposes
+func typeHashStr(s string) string {
+  return s
+}
+// Keccak256 hash for the blockchain
+func NewHash(val any) Hash {
+  jval, _ := json.Marshal(val)
+  hash := make([]byte, 64)
+  sha3.ShakeSum256(hash, jval)
+  return Hash(hash[:32])
+}
+func TxHash(tx SigTx) Hash {
+  return NewHash(tx)
+}
+  #+END_SRC
+- Pair hash function :: The pair hash function combines hashes of a pair of
+  children from the Merkle tree in order to produce the hash of the parent from
+  the next level of the Merkle tree. This implementation uses two different pair
+  hash functions. One pair hash function is a simple string concatenation of the
+  input hashes. This pair hash function is used for learning purposes, testing,
+  debugging, and visual understanding of the internal workings of the Merkle
+  hash, prove, and verify algorithms. The other hash function is the Keccak256
+  hash function that is used in the implementation of this blockchain. The
+  combination of input hashes is performed through the concatenation of the
+  string representation of the input hashes
+  #+BEGIN_SRC go
+// String concatenation hash for learning purposes
+func pairHashStr(l, r string) string {
+  if r == "" {
+    return l
+  }
+  return l + r
+}
+// Keccak256 hash for the blockchain
+func TxPairHash(l, r Hash) Hash {
+  var nilHash Hash
+  if r == nilHash {
+    return l
+  }
+  return NewHash(l.String() + r.String())
+}
+  #+END_SRC
+
 *** Merkle prove and derivation of Merkle proof
 
 *** Merkle verify and inclusion verification
