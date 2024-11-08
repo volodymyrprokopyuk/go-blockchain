@@ -23,7 +23,97 @@
 
 *** Merkle tree and transaction hashing
 
+- Merkle tree :: The Merkle tree is a binary tree where each leaf is a hash of
+  an element from a set of elements e.g. transaction in a block, and every
+  parent node up to the root is a hash of its children. The merkle tree
+  summarizes a set of elements into a single hash of the root in a similar way
+  that a single hash over the whole set of elements, but with considerable
+  benefits in terms of computational efficiency and minimized network transfers.
+  Both the Merkle root and the single hash convert the whole set of elements
+  into a single hash, but the Merkle tree allows for *efficient verification of
+  inclusion of elements* into a set of elements with minimal computation and
+  network transfers, while the single hash requires hashing the whole set of
+  elements for every inclusion verification. The efficient verification of
+  inclusion of elements in a set of elements is used in blockchains to securely
+  prove the inclusion of a transaction in a block specifically for light
+  clients. For this purpose the Merkle root of all block transactions is
+  included in the block header. The Merkle tree is used to securely *verify the
+  integrity of elements* in a set of elements. If the computed Merkle root over
+  the received set of elements does not matches the securely provided Merkle
+  root of the original set of elements, that some received elements are
+  corrupted. This characteristic of the Merkle tree is used in blockchains to
+  ensure integrity of transactions in a block that is propagated through the
+  peer to peer network. The Merkle tree allows for *efficient identification of
+  differences between two sets of elements*. This provides an efficient way to
+  compute minimal differences that have to be transmitted over the network in
+  order to synchronize the two sets of elements. This feature is used in
+  distributed source code version control systems e.g. Git and distributed
+  peer-to-peer networks for file sharing e.g. Torrent
+
 *** Merkle proof and inclusion verification
+
+- Merkle proof :: The Merkle proof is a set of hashes with the left or right
+  position indication following the Merkle path of the binary search over the
+  Merkle tree starting for the specific element hash in the leaf up to the
+  Merkle root. The Merkle proof is used for efficient verification of inclusion
+  of elements into a set of elements. The Merkle proof provides to the verifying
+  party the minimal set of required hashes to compute the Merkle root from the
+  hash of the element whose inclusion in a set of elements has to be verified.
+  The Merkle root starts from the hash of the element in the leaf position,
+  following missing hashes of sibling nodes on the path of the reverse binary
+  search in order to compute hashes of parent nodes on the path of the reverse
+  binary search up to the Merkle root. Each hash has attached position label
+  that indicates the left or the right child of the Merkle tree. This
+  information is used to correctly verify the provided Merkle proof
+- Merkle proof verification :: In order to verify the inclusion of an element
+  into a set of elements the verifying party only needs to securely receive from
+  a trusted source the hash of the element whose inclusion has to be verified,
+  and the Merkle root of the whole set of elements. The verifying party requests
+  to the proving party the Merkle proof for the hash of the element. The proving
+  party derives the Merkle proof from the Merkle tree and the requested hash of
+  the element. The proving party returns to the Merkle proof to the verifying
+  party. The verifying party computes the Merkle root recursively combining
+  hashes from the provided Merkle proof in the indicated by hash positions
+  order. If the computed Merkle root equals to the previously received from a
+  trusted source Merkle root of the set of elements, the element is included in
+  the set of elements with the high level of security. If the computed Merkle
+  proof is not equal to the securely received Merkle proof either the element is
+  not included in the set of elements or the Merkle proof is incorrectly derived
+  or corrupted. Only the hash of the element and the Merkle root of the whole
+  set of elements has to be received from a trusted source. While the Merkle
+  proof can be received from a less trusted source as it is nearly impossible to
+  counterfeit a correct Merkle proof for a set of elements where the requested
+  element is not included
+- Merkle proof security :: The security of the Merkle proof relies on
+  cryptographic characteristics of the underlying hash function. Specifically,
+  the second pre-image resistance and the collision resistance of the hash
+  function. The *second pre-image resistance* states that given an input and the
+  hash of the input, it is almost impossible to find another input that has the
+  same hash. The second pre-image resistance makes it very difficult to
+  counterfeit a correct Merkle proof for an element that is not included in the
+  set of elements. The *collision resistance* states that it is almost
+  impossible to find two different inputs that have the same hash. Collisions
+  are inevitable because the output length is fixed, while the input is
+  arbitrary large. The collision resistance makes it very difficult to find the
+  second different set that satisfies the Merkle proof derived from the Merkle
+  tree of the original set of elements. The *deterministic nature of the hash
+  function* makes Merkle proofs reproducible and verifiable. The Merkle tree
+  allows securely substitute the whole set of elements with a much smaller tree
+  of hashes that uniquely represents the the original set with the added benefit
+  for for efficient verification of inclusion of elements into the set of
+  elements, the verification of integrity of the set of elements, and the
+  efficiency way to synchronize out-of-sync sets of elements by transferring
+  minimal differences between sets of elements
+- Merkle proof efficiency :: The efficiency of Merkle proof relies on the
+  structure of the underlying binary tree with *logarithmic characteristics of
+  the binary search*. To verify the inclusion of an element into a set of
+  elements only a log(N) hashes from the Merkle proof have to be transferred
+  over the network, and only log(N) combinations of hashes has to be computed to
+  reach the Merkle root. When not using the Merkle proof, the whole set of
+  elements has to be transferred over the network, the integrity of the set has
+  to be verified, and only that the inclusion of the element can be checked.
+  This results in a much larger network transfers and computation overhead
+  needed to verify the integrity of the whole set of elements
 
 ** Design and implementation
 
