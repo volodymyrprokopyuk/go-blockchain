@@ -167,13 +167,13 @@ func (s *State) CreateBlock(authority Account) (SigBlock, error) {
   if len(txs) == 0 {
     return SigBlock{}, fmt.Errorf("empty list of valid pending transactions")
   }
-  var blk Block
-  var err error
+  var parent Hash
   if s.lastBlock.Number == 0 {
-    blk, err = NewBlock(s.lastBlock.Number + 1, s.genesisHash, txs)
+    parent = s.genesisHash
   } else {
-    blk, err = NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
+    parent = s.lastBlock.Hash()
   }
+  blk, err := NewBlock(s.lastBlock.Number + 1, parent, txs)
   if err != nil {
     return SigBlock{}, err
   }
@@ -193,14 +193,22 @@ func (s *State) ApplyBlock(blk SigBlock) error {
   if blk.Number != s.lastBlock.Number + 1 {
     return fmt.Errorf("blk error: invalid block number\n%v", blk)
   }
-  var hash Hash
+  var parent Hash
   if blk.Number == 1 {
-    hash = s.genesisHash
+    parent = s.genesisHash
   } else {
-    hash = s.lastBlock.Hash()
+    parent = s.lastBlock.Hash()
   }
-  if blk.Parent != hash {
+  if blk.Parent != parent {
     return fmt.Errorf("blk error: invalid parent hash\n%v", blk)
+  }
+  merkleTree, err := MerkleHash(blk.Txs, TxHash, TxPairHash)
+  if err != nil {
+    return err
+  }
+  merkleRoot := merkleTree[0]
+  if merkleRoot != blk.MerkleRoot {
+    return fmt.Errorf("blk error: invalid Merkle root\n%v", blk)
   }
   for _, tx := range blk.Txs {
     err := s.ApplyTx(tx)

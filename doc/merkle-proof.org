@@ -265,6 +265,17 @@ func TxPairHash(l, r Hash) Hash {
 }
   #+END_SRC
 
+Examples of array representation of Merkle trees for different input lists of
+elements using the string hash function and the string concatenation pair hash
+function
+| Input list of elements | Array representation of Merkle tree                |
+| =[1 2 3]=              | =[123 12 3 1 2 3 _]=                               |
+| =[1 2 3 4]=            | =[1234 12 34 1 2 3 4]=                             |
+| =[1 2 3 4 5]=          | =[12345 1234 5 12 34 5 _ 1 2 3 4 5 _ _ _]=         |
+| =[1 2 3 4 5 6]=        | =[123456 1234 56 12 34 56 _ 1 2 3 4 5 6 _ _]=      |
+| =[1 2 3 4 5 6 7]=      | =[1234567 1234 567 12 34 56 7 1 2 3 4 5 6 7 _]=    |
+| =[1 2 3 4 5 6 7 8]=    | =[12345678 1234 5678 12 34 56 78 1 2 3 4 5 6 7 8]= |
+
 *** Merkle prove and derivation of Merkle proof
 
 *** Merkle verify and inclusion verification
