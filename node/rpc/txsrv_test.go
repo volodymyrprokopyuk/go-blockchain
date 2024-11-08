@@ -63,10 +63,6 @@ func verifyTx(
   if err != nil {
     t.Fatal(err)
   }
-  // trigger invalid Merkle root if not empty
-  if merkleRoot == "" {
-    merkleRoot = pres.MerkleRoot
-  }
   vreq := &rpc.TxVerifyReq{
     Hash: txh, MerkleProof: pres.MerkleProof, MerkleRoot: merkleRoot,
   }
@@ -384,7 +380,7 @@ func TestTxProveVerify(t *testing.T) {
   t.Run("correct Merkle proofs", func(t *testing.T){
     // Verify that Merkle proofs for all found transactions are correct
     for _, tx := range txs {
-      valid := verifyTx(t, ctx, cln, tx.SigTx, "")
+      valid := verifyTx(t, ctx, cln, tx.SigTx, tx.MerkleRoot.String())
       if !valid {
         t.Errorf("invalid Merkle proof for transaction %v", tx.SigTx)
       }
@@ -393,8 +389,8 @@ func TestTxProveVerify(t *testing.T) {
   t.Run("incorrect Merkle proofs", func(t *testing.T){
     // Verify that Merkle proofs for invalid Merkle root are incorrect
     for _, tx := range txs {
-      invalidMerkleRoot := chain.NewHash("invalid Merkle root").String()
-      valid := verifyTx(t, ctx, cln, tx.SigTx, invalidMerkleRoot)
+      merkleRoot := chain.NewHash("invalid Merkle root")
+      valid := verifyTx(t, ctx, cln, tx.SigTx, merkleRoot.String())
       if valid {
         t.Errorf("valid Merkle proof for invalid Merkle root %v", tx.SigTx)
       }

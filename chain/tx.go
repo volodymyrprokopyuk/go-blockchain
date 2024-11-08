@@ -105,14 +105,21 @@ type SearchTx struct {
   SigTx
   BlockNumber uint64 `json:"blockNumber"`
   BlockHash Hash `json:"blockHash"`
+  MerkleRoot Hash `json:"merkleRoot"`
 }
 
-func NewSearchTx(tx SigTx, blkNumber uint64, blkHash Hash) SearchTx {
-  return SearchTx{SigTx: tx, BlockNumber: blkNumber, BlockHash: blkHash}
+func NewSearchTx(
+  tx SigTx, blkNumber uint64, blkHash Hash, merkleRoot Hash,
+) SearchTx {
+  return SearchTx{
+    SigTx: tx, BlockNumber: blkNumber, BlockHash: blkHash,
+    MerkleRoot: merkleRoot,
+  }
 }
 
 func (t SearchTx) String() string {
   return fmt.Sprintf(
-    "%v    blk: %8d    %.7s", t.SigTx, t.BlockNumber, t.BlockHash,
+    "%v    blk %4d   %.7s   mrk %.7s",
+    t.SigTx, t.BlockNumber, t.BlockHash, t.MerkleRoot,
   )
 }

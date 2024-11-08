@@ -66,7 +66,10 @@ func (b SigBlock) Hash() Hash {
 func (b SigBlock) String() string {
   var bld strings.Builder
   bld.WriteString(
-    fmt.Sprintf("blk %7d: %.7s -> %.7s\n", b.Number, b.Hash(), b.Parent),
+    fmt.Sprintf(
+      "blk %7d: %.7s -> %.7s   mrk %.7s\n",
+      b.Number, b.Hash(), b.Parent, b.MerkleRoot,
+    ),
   )
   for _, tx := range b.Txs {
     bld.WriteString(fmt.Sprintf("%v\n", tx))

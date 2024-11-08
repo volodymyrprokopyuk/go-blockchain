@@ -84,6 +84,7 @@ func blockSearchCmd(ctx context.Context) *cobra.Command {
         }
         found = true
         fmt.Printf("blk %s\n", blk.Hash())
+        fmt.Printf("mrk %s\n", blk.MerkleRoot)
         fmt.Printf("%v", blk)
       }
       if !found {

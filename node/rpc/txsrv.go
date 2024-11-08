@@ -114,7 +114,7 @@ func sendTxSearchRes(
   blk chain.SigBlock, tx chain.SigTx,
   stream grpc.ServerStreamingServer[TxSearchRes],
 ) error {
-  stx := chain.NewSearchTx(tx, blk.Number, blk.Hash())
+  stx := chain.NewSearchTx(tx, blk.Number, blk.Hash(), blk.MerkleRoot)
   jtx, err := json.Marshal(stx)
   if err != nil {
     return err
@@ -190,8 +190,7 @@ func (s *TxSrv) TxProve(
         if err != nil {
           return nil, status.Errorf(codes.Internal, err.Error())
         }
-        merkleRoot := merkleTree[0]
-        res := &TxProveRes{MerkleProof: jmp, MerkleRoot: merkleRoot.String()}
+        res := &TxProveRes{MerkleProof: jmp}
         return res, nil
       }
     }

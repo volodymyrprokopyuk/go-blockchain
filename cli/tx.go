@@ -173,6 +173,8 @@ func txSearchCmd(ctx context.Context) *cobra.Command {
           return err
         }
         found = true
+        fmt.Printf("blk %s\n", tx.BlockHash)
+        fmt.Printf("mrk %s\n", tx.MerkleRoot)
         fmt.Printf("tx  %s\n", tx.Hash())
         fmt.Printf("%v\n", tx)
       }
@@ -190,23 +192,21 @@ func txSearchCmd(ctx context.Context) *cobra.Command {
   return cmd
 }
 
-func grpcTxProve(
-  ctx context.Context, addr, hash string,
-) ([]byte, string, error) {
+func grpcTxProve(ctx context.Context, addr, hash string) ([]byte, error) {
   conn, err := grpc.NewClient(
     addr, grpc.WithTransportCredentials(insecure.NewCredentials()),
   )
   if err != nil {
-    return nil, "", err
+    return nil, err
   }
   defer conn.Close()
   cln := rpc.NewTxClient(conn)
   req := &rpc.TxProveReq{Hash: hash}
   res, err := cln.TxProve(ctx, req)
   if err != nil {
-    return nil, "", err
+    return nil, err
   }
-  return res.MerkleProof, res.MerkleRoot, nil
+  return res.MerkleProof, nil
 }
 
 func txProveCmd(ctx context.Context) *cobra.Command {
@@ -217,11 +217,11 @@ func txProveCmd(ctx context.Context) *cobra.Command {
     RunE: func(cmd *cobra.Command, _ []string) error {
       addr, _ := cmd.Flags().GetString("node")
       hash, _ := cmd.Flags().GetString("hash")
-      merkleProof, merkleRoot, err := grpcTxProve(ctx, addr, hash)
+      merkleProof, err := grpcTxProve(ctx, addr, hash)
       if err != nil {
         return err
       }
-      fmt.Printf("%s\n%s", merkleProof, merkleRoot)
+      fmt.Printf("%s\n", merkleProof)
       return nil
     },
   }

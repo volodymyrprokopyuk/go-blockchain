@@ -44,7 +44,6 @@ message TxProveReq {
 
 message TxProveRes {
   bytes MerkleProof = 1;
-  string MerkleRoot = 2;
 }
 
 message TxVerifyReq {
