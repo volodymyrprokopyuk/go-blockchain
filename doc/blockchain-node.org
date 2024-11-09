@@ -472,7 +472,11 @@ owner account on the bootstrap node will transfer funds to the new account
 created on the other node. Next a transaction from the new account on the other
 node will transfer funds to the initial owner account on the bootstrap node. Two
 clients will subscribe to the bootstrap node and the other node event stream to
-get notified when both transactions are confirmed
+get notified when both transactions are confirmed. Finally the Merkle proofs for
+the confirmed transactions will be requested from the other node. The received
+Merkle proofs will be verified at the bootstrap node. This verifies the
+inclusion of the confirmed transactions into the list of transactions of the
+corresponding blocks
 - Initialize the blockchain by starting the bootstrap node with parameters for
   the blockchain initial configuration
   #+BEGIN_SRC fish
@@ -494,30 +498,30 @@ set node localhost:1123
   #+BEGIN_SRC fish
 ./bcn node subscribe --node $boot --events tx
 # <~> tx validated
-# tx  22b4d0e: 4f3748d -> bba08a5        2        1
+# tx  6040ff5: 231c83f -> cb68e5d        2        1
 # <~> tx validated
-# tx  8e89528: bba08a5 -> 4f3748d        1        1
+# tx  b87703f: cb68e5d -> 231c83f        1        1
   #+END_SRC
 - Subscribe another client to the event stream of the other node (in a new
   terminal)
   #+BEGIN_SRC fish
 ./bcn node subscribe --node $node --events tx
 # <~> tx validated
-# tx  22b4d0e: 4f3748d -> bba08a5        2        1
+# tx  6040ff5: 231c83f -> cb68e5d        2        1
 # <~> tx validated
-# tx  8e89528: bba08a5 -> 4f3748d        1        1
+# tx  b87703f: cb68e5d -> 231c83f        1        1
   #+END_SRC
 - Create a new account on the other node
   #+BEGIN_SRC fish
 ./bcn account create --node $node --ownerpass $ownerpass
-# acc bba08a59c80977b2bbf5df4f9d09471ddf1592aa7b0133377c5df865e73a8b12
+# acc cb68e5de26f72110e13e47b2519fcd48ca941a0f4f572bd9751654d01499b910
   #+END_SRC
 - Define a shell function to create, sign, and send a transaction
   #+BEGIN_SRC fish
 function txSignAndSend -a node from to value ownerpass
   set tx (./bcn tx sign --node $node --from $from --to $to --value $value \
     --ownerpass $ownerpass)
-  echo $tx
+  echo SigTx $tx
   ./bcn tx send --node $node --sigtx $tx
 end
   #+END_SRC
@@ -528,14 +532,16 @@ end
 set acc1 4f3748d4d46b695a85f1773b6cb86aa0837818d5df33550180c5b8da7c966a6f
 set acc2 bba08a59c80977b2bbf5df4f9d09471ddf1592aa7b0133377c5df865e73a8b12
 txSignAndSend $boot $acc1 $acc2 2 $ownerpass
-# tx 22b4d0e7f9354b82404b70075cea8f4703cfe531ce7df5fb850f26de3656e321
+# SigTx {"from":"231c83f0a857cfb1e88f8adb92371e01aa1bdc80ef88ea443a2fccf02f444720","to":"cb68e5de26f72110e13e47b2519fcd48ca941a0f4f572bd9751654d01499b910","value":2,"nonce":1,"time":"2024-11-09T22:22:35.448578139+01:00","sig":"qYocOAxdbVzuVfAMNAc7/ljAXVaeDLOFfJkqUdxYoEkm0BNX5kxDsLPpLLJ3W5fzrSb9yAkbeVFED/MiEs0+AwA="}
+# tx 6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1
   #+END_SRC
 - Create, sign, and send a transaction transferring funds from the new account
   on the other node to the initial owner account from the genesis on the
   bootstrap node
   #+BEGIN_SRC fish
 txSignAndSend $node $acc2 $acc1 1 $ownerpass
-# tx 8e895288bd3fa8c4046e844a598f4c64767a6631ae8fd4448c38b66d09b9f47b
+# SigTx {"from":"cb68e5de26f72110e13e47b2519fcd48ca941a0f4f572bd9751654d01499b910","to":"231c83f0a857cfb1e88f8adb92371e01aa1bdc80ef88ea443a2fccf02f444720","value":1,"nonce":1,"time":"2024-11-09T22:23:50.396696709+01:00","sig":"3Olxnj5Zva4Nz8Ito6lrTRwP5OhOIwEmI5pQsdihWFlMxtLGiUf+9sIcX+QBi7CdG/uGtuHADV+wa4VgYj0//AE="}
+# tx b87703f6bf0035613f638657293da795bc771ff414c000da894b05d22f5a70b8
   #+END_SRC
 - Verify that confirmations of both validated transactions are received by both
   subscribed clients to the bootstrap node and the other node (see commented
@@ -543,26 +549,78 @@ txSignAndSend $node $acc2 $acc1 1 $ownerpass
 - Check the balance of the initial owner account on the other node
   #+BEGIN_SRC fish
 ./bcn account balance --node $node --account $acc1
-# acc 4f3748d4d46b695a85f1773b6cb86aa0837818d5df33550180c5b8da7c966a6f: 999
+# acc 231c83f0a857cfb1e88f8adb92371e01aa1bdc80ef88ea443a2fccf02f444720: 999
   #+END_SRC
 - Check the balance of the new account on the bootstrap node
   #+BEGIN_SRC fish
 ./bcn account balance --node $boot --account $acc2
-# acc bba08a59c80977b2bbf5df4f9d09471ddf1592aa7b0133377c5df865e73a8b12: 1
+# acc cb68e5de26f72110e13e47b2519fcd48ca941a0f4f572bd9751654d01499b910: 1
   #+END_SRC
 - Search the first transaction by hash on the other node
   #+BEGIN_SRC fish
-./bcn tx search --node $node --hash 22b4d0e
-# tx  22b4d0e: 4f3748d -> bba08a5        2        1    blk:        1    88b7a8e
+set tx1 6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1
+./bcn tx search --node $node --hash $tx1
+# blk eb67728ed258d9e494f1d65dbdac3975d51921be3295116b6c5182f7fc8653db
+# mrk 6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1
+# tx  6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1
+# tx  6040ff5: 231c83f -> cb68e5d        2        1    blk    1   eb67728   mrk 6040ff5
   #+END_SRC
 - Search the second transaction by hash on the bootstrap node
   #+BEGIN_SRC fish
-./bcn tx search --node $boot --hash 8e89528
-# tx  8e89528: bba08a5 -> 4f3748d        1        1    blk:        2    78adb39
+set tx2 b87703f6bf0035613f638657293da795bc771ff414c000da894b05d22f5a70b8
+./bcn tx search --node $boot --hash $tx2
+# blk f48ffaf8f80fd0ade95bdb88d473b34e763d5cf233659e9ae8507b62c25f67a0
+# mrk b87703f6bf0035613f638657293da795bc771ff414c000da894b05d22f5a70b8
+# tx  b87703f6bf0035613f638657293da795bc771ff414c000da894b05d22f5a70b8
+# tx  b87703f: cb68e5d -> 231c83f        1        1    blk    2   f48ffaf   mrk b87703f
   #+END_SRC
 - Search all transactions involving the initial owner account on the other node
   #+BEGIN_SRC fish
 ./bcn tx search --node $node --account $acc1
-# tx  22b4d0e: 4f3748d -> bba08a5        2        1    blk:        1    88b7a8e
-# tx  8e89528: bba08a5 -> 4f3748d        1        1    blk:        2    78adb39
+# blk eb67728ed258d9e494f1d65dbdac3975d51921be3295116b6c5182f7fc8653db
+# mrk 6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1
+# tx  6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1
+# tx  6040ff5: 231c83f -> cb68e5d        2        1    blk    1   eb67728   mrk 6040ff5
+# blk f48ffaf8f80fd0ade95bdb88d473b34e763d5cf233659e9ae8507b62c25f67a0
+# mrk b87703f6bf0035613f638657293da795bc771ff414c000da894b05d22f5a70b8
+# tx  b87703f6bf0035613f638657293da795bc771ff414c000da894b05d22f5a70b8
+# tx  b87703f: cb68e5d -> 231c83f        1        1    blk    2   f48ffaf   mrk b87703f
+  #+END_SRC
+- Define a shell function to request the Merkle proof for the specific
+  transaction hash and verify the Merkle proof which, in turn, confirms the
+  inclusion of the transaction into the list of transactions of a block
+  #+BEGIN_SRC fish
+function txProveAndVerify -a prover verifier hash mrkroot
+  set mrkproof (./bcn tx prove --node $prover --hash $hash)
+  echo MerkleProof $mrkproof
+  echo MerkleRoot $mrkroot
+  ./bcn tx verify --node $verifier --hash $hash \
+    --mrkproof $mrkproof --mrkroot $mrkroot
+end
+  #+END_SRC
+- Request Merkle proofs for the confirmed transactions from the other node.
+  Verify the received Merkle proofs for the confirmed transactions at the
+  bootstrap node. Confirm the inclusion of the confirmed transactions into the
+  list of transactions of the corresponding blocks
+  #+BEGIN_SRC fish
+set tx1 6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1
+set mrk1 6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1
+set tx2 b87703f6bf0035613f638657293da795bc771ff414c000da894b05d22f5a70b8
+set mrk2 b87703f6bf0035613f638657293da795bc771ff414c000da894b05d22f5a70b8
+txProveAndVerify $node $boot $tx1 $mrk1
+# MerkleProof [{"hash":"6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1","pos":1}]
+# MerkleRoot 6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1
+# tx 6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1 valid
+txProveAndVerify $node $boot $tx2 $mrk2
+# MerkleProof [{"hash":"b87703f6bf0035613f638657293da795bc771ff414c000da894b05d22f5a70b8","pos":1}]
+# MerkleRoot b87703f6bf0035613f638657293da795bc771ff414c000da894b05d22f5a70b8
+# tx b87703f6bf0035613f638657293da795bc771ff414c000da894b05d22f5a70b8 valid
+  #+END_SRC
+- Confirm that the Merkle proof for the first transaction for an invalid Merkle
+  root of the second block is incorrect
+  #+BEGIN_SRC fish
+txProveAndVerify $node $boot $tx1 $mrk2
+# MerkleProof [{"hash":"6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1","pos":1}]
+# MerkleRoot b87703f6bf0035613f638657293da795bc771ff414c000da894b05d22f5a70b8
+# tx 6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1 INVALID
   #+END_SRC
