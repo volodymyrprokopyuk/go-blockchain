@@ -782,6 +782,18 @@ txSignAndSend $boot $acc2 $acc1 1 $ownerpass
 # tx  bd849704122be82ee588c2abfacb8e12fb5bac0916356babcdb2b1683bbc684e
 # tx  bd84970: 0a6c57d -> 66d6141        1        1    blk    1   50de747   mrk c39f778
   #+END_SRC
+- Define a shell function to request the Merkle proof for the specific
+  transaction hash and verify the Merkle proof which, in turn, confirms the
+  inclusion of the transaction into the list of transactions of a block
+  #+BEGIN_SRC fish
+function txProveAndVerify -a node hash mrkroot
+  set mrkproof (./bcn tx prove --node $node --hash $hash)
+  echo MerkleProof $mrkproof
+  echo MerkleRoot $mrkroot
+  ./bcn tx verify --node $node --hash $hash \
+    --mrkproof $mrkproof --mrkroot $mrkroot
+end
+  #+END_SRC
 - Request the Merkle proof and verify the Merkle proof for found transactions.
   Confirm the inclusion of found transactions in the list of transactions of the
   corresponding blocks

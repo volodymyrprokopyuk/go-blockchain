@@ -112,9 +112,14 @@
   other validator nodes including the authority node. All pending transactions
   are sorted by the transaction creation time to be applied in order per the
   sender account, validated against the cloned state, and packed into a new
-  block. The block number is incremented by one regarding the number of the last
-  confirmed block. The parent hash is set to the hash of the last confirmed
-  block from the confirmed state.
+  block. The Merkle tree of the list of transaction is constructed and the
+  Merkle root is stored in the block. The Merkle tree is used to derive the
+  Merkle proofs for specific transactions to verify the inclusion of the
+  specific transactions into the list of transactions of a block. The Merkle
+  root is used to verify the inclusion of the specific transactions into the
+  list of transactions of a block. The block number is incremented by one
+  regarding the number of the last confirmed block. The parent hash is set to
+  the hash of the last confirmed block from the confirmed state.
 
 *** Application of proposed blocks to the cloned state
 
@@ -130,6 +135,9 @@
     block from the confirmed state
   - Check the correct /parent hash/ against the hash of the last block from the
     confirmed state
+  - Verify the /integrity of all transactions of the block/ by re-constructing
+    the Merkle tree with the computed Merkle root and comparing the computed
+    Merkle root with the Merkle root stored in the block
   Only validated blocks are applied to the confirmed state and are immediately
   appended to the local block store. Validated blocks and transactions are
   published to the node event stream. Any subscribed client can read events from
@@ -410,16 +418,23 @@ func (s *State) CreateBlock(authority Account) (SigBlock, error) {
   for _, tx := range pndTxs {
     err := s.ApplyTx(tx)
     if err != nil {
-      fmt.Printf("tx: rejected: %v\n", err)
+      fmt.Printf("tx error: rejected: %v\n", err)
       continue
     }
     txs = append(txs, tx)
   }
-  var blk Block
+  if len(txs) == 0 {
+    return SigBlock{}, fmt.Errorf("empty list of valid pending transactions")
+  }
+  var parent Hash
   if s.lastBlock.Number == 0 {
-    blk = NewBlock(s.lastBlock.Number + 1, s.genesisHash, txs)
+    parent = s.genesisHash
   } else {
-    blk = NewBlock(s.lastBlock.Number + 1, s.lastBlock.Hash(), txs)
+    parent = s.lastBlock.Hash()
+  }
+  blk, err := NewBlock(s.lastBlock.Number + 1, parent, txs)
+  if err != nil {
+    return SigBlock{}, err
   }
   return authority.SignBlock(blk)
 }
@@ -448,30 +463,41 @@ func (s *State) CreateBlock(authority Account) (SigBlock, error) {
   - Check that the block number is correct regarding the number of the last
     block
   - Check that the parent hash is correct regarding the hash of the last block
+  - Check the integrity of all transactions in the block by verifying that the
+    computed Merkle root from the list of transactions of the block is equal to
+    the Merkle root stored in the block
   - Validate all block transactions by applying them to the cloned state
   - Assign the validated block to the last block of the cloned state
   #+BEGIN_SRC go
 func (s *State) ApplyBlock(blk SigBlock) error {
-  s.mtx.Lock()
-  defer s.mtx.Unlock()
+  // The is no need to lock/unlock as the CreateBlock is always executed on the
+  // cloned state
   valid, err := VerifyBlock(blk, s.authority)
   if err != nil {
     return err
   }
   if !valid {
-    return fmt.Errorf("blk: invalid block signature\n%v", blk)
+    return fmt.Errorf("blk error: invalid block signature\n%v", blk)
   }
   if blk.Number != s.lastBlock.Number + 1 {
-    return fmt.Errorf("blk: invalid block number\n%v", blk)
+    return fmt.Errorf("blk error: invalid block number\n%v", blk)
   }
-  var hash Hash
+  var parent Hash
   if blk.Number == 1 {
-    hash = s.genesisHash
+    parent = s.genesisHash
   } else {
-    hash = s.lastBlock.Hash()
+    parent = s.lastBlock.Hash()
   }
-  if blk.Parent != hash {
-    return fmt.Errorf("blk: invalid parent hash\n%v", blk)
+  if blk.Parent != parent {
+    return fmt.Errorf("blk error: invalid parent hash\n%v", blk)
+  }
+  merkleTree, err := MerkleHash(blk.Txs, TxHash, TxPairHash)
+  if err != nil {
+    return err
+  }
+  merkleRoot := merkleTree[0]
+  if merkleRoot != blk.MerkleRoot {
+    return fmt.Errorf("blk error: invalid Merkle root\n%v", blk)
   }
   for _, tx := range blk.Txs {
     err := s.ApplyTx(tx)
@@ -607,44 +633,60 @@ go test -v -cover -coverprofile=coverage.cov ./... -run TxSend
 
 The gRPC =TxSend= method is exposed through the CLI. Create, sign, and send a
 new transaction to the bootstrap node
-- Start the bootstrap node
+- Initialize the blockchain by starting the bootstrap node with parameters for
+  the blockchain initial configuration
   #+BEGIN_SRC fish
 set boot localhost:1122
 set authpass password
-./bcn node start --node $boot --bootstrap --authpass $authpass
+set ownerpass password
+rm -rf .keystore* .blockstore* # cleanup if necessary
+./bcn node start --node $boot --bootstrap --authpass $authpass \
+  --ownerpass $ownerpass --balance 1000
+  #+END_SRC
+- Create and persist a new account to the local key store of the bootstrap node
+  (in a new terminal)
+  #+BEGIN_SRC fish
+./bcn account create --node $boot --ownerpass $ownerpass
+# acc 0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba
   #+END_SRC
 - Define a shell function to create, sign, and send a transaction
   #+BEGIN_SRC fish
 function txSignAndSend -a node from to value ownerpass
   set tx (./bcn tx sign --node $node --from $from --to $to --value $value \
     --ownerpass $ownerpass)
-  echo $tx
+  echo SigTx $tx
   ./bcn tx send --node $node --sigtx $tx
 end
   #+END_SRC
-- Create, sign, and send a valid transaction (in a new terminal)
+- Create, sign, and send a transaction transferring funds between the initial
+  owner account from the genesis and the new account
   #+BEGIN_SRC fish
-set sender 42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3
-set ownerpass password
-txSignAndSend $boot $sender to 12 $ownerpass
-# tx 51bd61eeec69d7cbf9dbf3a4a6e0577c6f30c57021376fc49227e4add02bbbb7
+set acc1 66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105
+set acc2 0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba
+txSignAndSend $boot $acc1 $acc2 2 $ownerpass
+# SigTx {"from":"66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105","to":"0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba","value":2,"nonce":1,"time":"2024-11-09T10:27:12.871221439+01:00","sig":"V7WHwt0hOvpI+d6RJErDiO45zj3rzmrb3Yaf1YTVc+d1LUwQhdTtz3OKmvD02jtVkG+DQeUYH9SaxcFd/wsl0gA="}
+# tx 4312eb8f506a00c4f4f111ea8b318a871615115e5b1a49f14784c5f90a04baeb
+txSignAndSend $boot $acc2 $acc1 1 $ownerpass
+# SigTx {"from":"0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba","to":"66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105","value":1,"nonce":1,"time":"2024-11-09T10:27:12.921031364+01:00","sig":"/V/bwvTnYWnU4GrYvDOp44P1rx6sQZl7b9NXiNefcopqqWOsMyZuUAo00hURL2BWs1xUw24U/7gAvHX+FLg2IwA="}
+# tx bd849704122be82ee588c2abfacb8e12fb5bac0916356babcdb2b1683bbc684e
   #+END_SRC
   The structure of the signed encoded transaction before sending to the
   bootstrap node
   #+BEGIN_SRC json
 {
-  "from": "42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3",
-  "to": "to",
-  "value": 12,
-  "nonce": 2,
-  "time": "2024-10-02T15:23:17.800661339+02:00",
-  "sig": "+kq1kKqN3CRc49J1KonKIFBeWCuwUVo1fnowTfJVQKBy+Zdu8D1xdzqzXtUIwfxiPzB2G97ARWYhS+aWe2EpHQA="
+  "from": "66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105",
+  "to": "0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba",
+  "value": 2,
+  "nonce": 1,
+  "time": "2024-11-09T10:27:12.871221439+01:00",
+  "sig": "V7WHwt0hOvpI+d6RJErDiO45zj3rzmrb3Yaf1YTVc+d1LUwQhdTtz3OKmvD02jtVkG+DQeUYH9SaxcFd/wsl0gA="
 }
   #+END_SRC
 - Create, sign, and send a transaction with the value that exceeds the sender
   balance
   #+BEGIN_SRC fish
-txSignAndSend $boot $sender to 1000 $ownerpass
-# rpc error: code = FailedPrecondition desc = tx: insufficient account funds
-# tx  54e6c92: 42e61ae -> to     1000        3
+txSignAndSend $boot $acc1 $acc2 1000 $ownerpass
+# SigTx {"from":"66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105","to":"0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba","value":1000,"nonce":2,"time":"2024-11-09T18:57:30.971595667+01:00","sig":"yiJLHn/buvgPB/sRIc0sQzNoa7U4/0t/vwgzOP+ndBcSSJ/uxBeEb2C6K2Ut7Sn9f5jl1WRVYcgwwvMALgvcTgA="}
+# rpc error: code = FailedPrecondition desc = tx error: insufficient account funds
+# tx  fa30950: 66d6141 -> 0a6c57d     1000        2
   #+END_SRC

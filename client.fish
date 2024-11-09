@@ -31,5 +31,5 @@ set mrk1 c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394
 set tx2 bd849704122be82ee588c2abfacb8e12fb5bac0916356babcdb2b1683bbc684e
 set mrk2 c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394
 
-txProveAndVerify $boot $tx1 $mrk1
-txProveAndVerify $boot $tx2 $mrk2
+# txProveAndVerify $boot $tx1 $mrk1
+# txProveAndVerify $boot $tx2 $mrk2
