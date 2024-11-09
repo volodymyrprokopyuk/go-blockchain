@@ -724,7 +724,7 @@ The =TestTxProveVerify= testing process
   - Verify that Merkle proofs for invalid Merkle root are incorrect
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run TxProveVerify
-#+ENDSRC
+#+END_SRC
 
 *** Using =tx prove= and =tx verify= commands
 
