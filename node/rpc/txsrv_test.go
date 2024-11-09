@@ -341,7 +341,6 @@ func TestTxSearch(t *testing.T) {
       if tx.Hash() != hash {
         t.Errorf("invalid transaction hash")
       }
-      break
     }
   })
 }

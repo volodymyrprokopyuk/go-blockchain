@@ -32,22 +32,19 @@ func MerkleHash[T any, H comparable](
   for i, tx := range txs {
     htxs[i] = typeHash(tx)
   }
-  halfFloor := func(i int) int {
-    return int(math.Floor(float64(i / 2)))
-  }
   l := int(math.Pow(2, math.Ceil(math.Log2(float64(len(htxs)))) + 1) - 1)
   merkleTree := make([]H, l)
-  chd := halfFloor(l)
+  chd := l / 2
   for i, j := 0, chd; i < len(htxs); i, j = i + 1, j + 1 {
     merkleTree[j] = htxs[i]
   }
-  l, par := chd * 2, halfFloor(chd)
+  l, par := chd * 2, chd / 2
   for chd > 0 {
     for i, j := chd, par; i < l; i, j = i + 2, j + 1 {
       merkleTree[j] = pairHash(merkleTree[i], merkleTree[i + 1])
     }
-    chd = halfFloor(chd)
-    l, par = chd * 2, halfFloor(chd)
+    chd /= 2
+    l, par = chd * 2, chd / 2
   }
   return merkleTree, nil
 }
@@ -56,7 +53,7 @@ func MerkleProve[H comparable](txh H, merkleTree []H) ([]Proof[H], error) {
   if len(merkleTree) == 0 {
     return nil, fmt.Errorf("merkle prove: empty merkle tree")
   }
-  start := int(math.Floor(float64(len(merkleTree) / 2)))
+  start := len(merkleTree) / 2
   i := slices.Index(merkleTree[start:], txh)
   if i == -1 {
     return nil, fmt.Errorf("merkle prove: transaction %v not found", txh)

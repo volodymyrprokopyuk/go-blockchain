@@ -367,7 +367,6 @@ func TestBlockSearch(t *testing.T) {
           "invalid block number: expected %v, got %v", blkNumber, blk.Number,
         )
       }
-      break
     }
   })
   t.Run("search by block hash", func(t *testing.T) {
@@ -383,7 +382,6 @@ func TestBlockSearch(t *testing.T) {
       if blk.Hash() != hash {
         t.Errorf("invalid block hash")
       }
-      break
     }
   })
   t.Run("search by parent hash", func(t *testing.T) {
@@ -399,7 +397,6 @@ func TestBlockSearch(t *testing.T) {
       if blk.Parent != parent {
         t.Errorf("invalid parent hash")
       }
-      break
     }
   })
 }

@@ -369,6 +369,8 @@ func (n *Node) servegRPC() {
   | =Tx=         | =TxSend=          | gRPC request-response    |
   | =Tx=         | =TxReceive=       | gRPC client streaming    |
   | =Tx=         | =TxSearch=        | gRPC server streaming    |
+  | =Tx=         | =TxProve=         | gRPC request-response    |
+  | =Tx=         | =TxVerify=        | gRPC request-response    |
   | =Block=      | =GenesisSync=     | gRPC request-response    |
   | =Block=      | =BlockSync=       | gRPC server streaming    |
   | =Block=      | =BlockReceive=    | gRPC client streaming    |
@@ -402,6 +404,12 @@ func (n *Node) servegRPC() {
   |                         | =--from= sender address prefix                 |
   |                         | =--to= recipient address prefix                |
   |                         | =--account= involved account address prefix    |
+  | ~./bcn tx prove~        | =--node= target node address                   |
+  |                         | =--hash= transaction hash                      |
+  | ~./bcn tx verify~       | =--node= target node address                   |
+  |                         | =--hash= transaction hash                      |
+  |                         | =--mrkproof= Merkle proof                      |
+  |                         | =--mrkroot= Merkle root                        |
   | ~./bcn block search~    | =--node= target node address                   |
   |                         | =--number= block number                        |
   |                         | =--hash= block hash prefix                     |

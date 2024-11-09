@@ -21,8 +21,8 @@
 
 | ProtoBuf compiler          | =protobuf=                   | v28.2   |
 | ProtoBuf Go plugin         | =google.golang.org/protobuf= | v1.35.1 |
-| ProtoBuf gRPC Go plugin    | =google.golang.org/grpc=     | v1.67.1 |
-| Keccak256 hash, Argon2 KDF | =golang.org/x/crypto=        | v0.28.0 |
+| ProtoBuf gRPC Go plugin    | =google.golang.org/grpc=     | v1.68.0 |
+| Keccak256 hash, Argon2 KDF | =golang.org/x/crypto=        | v0.29.0 |
 | Secp256k1 elliptic curve   | =github.com/dustinxie/ecc=   | latest  |
 | CLI library                | =github.com/spf13/cobra=     | v1.8.1  |
 
@@ -72,6 +72,8 @@ go tool cover -html=coverage.cov
   - =block.go= defines the block and the signed block types
   - =event.go= defines the event type
   - =genesis.go= defines the genesis and the signed genesis types
+  - =merkle.go= defines the Merkle hash, the Merkle prove, and the Merkle verify
+    algorithms
   - =state.go= defines the state type
   - =tx.go= defines the hash, the transaction, and the signed transaction types
 - =cli/= defines the CLI of the blockchain for clients
