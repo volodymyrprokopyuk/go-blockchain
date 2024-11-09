@@ -65,7 +65,6 @@ streaming/, /Go iterators/
 /transaction life cycle/, /create block/, /apply block/, /block life cycle/,
 /concurrency safe application of transactions and blocks/, /Go mutex
 concurrency/
-
 6. [@6] [[/doc/merkle-proof.org][Merkle proof]]
 /Merkle tree/, /Merkle proof/, /transaction inclusion verification/, /create
 Merkle tree/, /derive Merkle proof/, /verify Merkle proof/, /array

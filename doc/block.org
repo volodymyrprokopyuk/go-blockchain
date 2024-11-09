@@ -35,14 +35,16 @@
   address of the authority account that signs the genesis and all blocks on the
   blockchain
 - Blockchain block :: The blockchain block contains a list of validated
-  transactions, acts as a node of a linked list of all blocks on the blockchain,
-  and is a unit of integrity checking on the blockchain. The block represents a
-  unit of consensus agreement between nodes on the blockchain. Blocks of
-  transactions are created, signed and proposed by the authority node and
-  validated and confirmed by the validator nodes. All proposed and confirmed
-  blocks on the blockchain are digitally signed by the authority node. A block
-  must be either validated and added to the blockchain with all contained
-  transactions or rejected completely even if some transactions are valid
+  transactions along with the Merkle root for the checking transaction integrity
+  and verifying the inclusion of transactions into a block, acts as a node of a
+  linked list of all blocks on the blockchain, and is a unit of integrity
+  checking on the blockchain. The block represents a unit of consensus agreement
+  between nodes on the blockchain. Blocks of transactions are created, signed
+  and proposed by the authority node and validated and confirmed by the
+  validator nodes. All proposed and confirmed blocks on the blockchain are
+  digitally signed by the authority node. A block must be either validated and
+  added to the blockchain with all contained transactions or rejected completely
+  even if some transactions are valid
 
 *** Immutable chain of blocks
 
@@ -236,22 +238,40 @@ account. Most of the blockchain components work exclusively with the =SigBlock=
 type
 
 - Block type :: The =Block= type contains the block number, the hash of the
-  parent block, the list of validated transactions, the creation time of the
-  block
-  | ~Number uint64~  | Block number         |
-  | ~Parent Hash~    | Parent hash          |
-  | ~Txs []SigTx~    | List of transactions |
-  | ~Time time.Time~ | Creation time        |
+  parent block, the list of validated transactions, the Merkle tree constructed
+  from the list of transactions, the Merkle root of the list of transactions,
+  the creation time of the block. The Merkle tree is constructed from the list
+  of transactions when a new block is created. The first element of the array
+  representation of the Merkle tree is the Merkle root used to verify the
+  inclusion of transactions into the list of transactions of a block by applying
+  the Merkle verify algorithm
+  | ~Number uint64~     | Block number             |
+  | ~Parent Hash~       | Parent hash              |
+  | ~Txs []SigTx~       | List of transactions     |
+  | ~merkleTree []Hash~ | Transactions Merkle tree |
+  | ~MerkleRoot Hash~   | Transactions Merkle root |
+  | ~Time time.Time~    | Creation time            |
   #+BEGIN_SRC go
 type Block struct {
   Number uint64 `json:"number"`
   Parent Hash `json:"parent"`
   Txs []SigTx `json:"txs"`
+  merkleTree []Hash
+  MerkleRoot Hash `json:"merkleRoot"`
   Time time.Time `json:"time"`
 }
 
-func NewBlock(number uint64, parent Hash, txs []SigTx) Block {
-  return Block{Number: number, Parent: parent, Txs: txs, Time: time.Now()}
+func NewBlock(number uint64, parent Hash, txs []SigTx) (Block, error) {
+  merkleTree, err := MerkleHash(txs, TxHash, TxPairHash)
+  if err != nil {
+    return Block{}, err
+  }
+  blk := Block{
+    Number: number, Parent: parent, Txs: txs,
+    merkleTree: merkleTree, MerkleRoot: merkleTree[0],
+    Time: time.Now(),
+  }
+  return blk, nil
 }
 
 func (b Block) Hash() Hash {
@@ -281,7 +301,10 @@ func (b SigBlock) Hash() Hash {
 func (b SigBlock) String() string {
   var bld strings.Builder
   bld.WriteString(
-    fmt.Sprintf("blk %7d: %.7s -> %.7s\n", b.Number, b.Hash(), b.Parent),
+    fmt.Sprintf(
+      "blk %7d: %.7s -> %.7s   mrk %.7s\n",
+      b.Number, b.Hash(), b.Parent, b.MerkleRoot,
+    ),
   )
   for _, tx := range b.Txs {
     bld.WriteString(fmt.Sprintf("%v\n", tx))
@@ -358,27 +381,28 @@ The structure of the persisted, encoded, and signed block in the block store
 #+BEGIN_SRC json
 {
   "number": 1,
-  "parent": "0bc618352639b3136f2595c28c464d1e944b13d2fe6c15b8458b98c173acee4c",
+  "parent": "59b2d5d2ac4ed6addf6264195c72f63d0b292d6031d8cfdcd25235d182e9a33b",
   "txs": [
     {
-      "from": "42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3",
-      "to": "f607fd36d6ed871db2a6021382452f54225d0cff8354698a0584f287019afec9",
+      "from": "66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105",
+      "to": "0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba",
       "value": 2,
       "nonce": 1,
-      "time": "2024-09-30T12:18:38.943889593+02:00",
-      "sig": "EIJeOdHacPEtDhD7BCuwW0ywEJtORM8zJQvzXs7hK55HRrBk9l7J0+V4PRUG4iItXzBo7ph/4y8PRtXEYQQOQQA="
+      "time": "2024-11-09T10:27:12.871221439+01:00",
+      "sig": "V7WHwt0hOvpI+d6RJErDiO45zj3rzmrb3Yaf1YTVc+d1LUwQhdTtz3OKmvD02jtVkG+DQeUYH9SaxcFd/wsl0gA="
     },
     {
-      "from": "f607fd36d6ed871db2a6021382452f54225d0cff8354698a0584f287019afec9",
-      "to": "42e61ae200e77b00533f0faa54b536711298fd656aa8ae9b2cd491a8eac437c3",
+      "from": "0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba",
+      "to": "66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105",
       "value": 1,
       "nonce": 1,
-      "time": "2024-09-30T12:18:39.000359314+02:00",
-      "sig": "o9TkiTwiDtF3LtiQqWXwCFGN3Z6Q10WVSUT4LV0ke0pQUUA+HMhEmGqx/vkJM8wolDQ+x5xpO+hQWGbVI4BPtwE="
+      "time": "2024-11-09T10:27:12.921031364+01:00",
+      "sig": "/V/bwvTnYWnU4GrYvDOp44P1rx6sQZl7b9NXiNefcopqqWOsMyZuUAo00hURL2BWs1xUw24U/7gAvHX+FLg2IwA="
     }
   ],
-  "time": "2024-09-30T12:18:39.788595965+02:00",
-  "sig": "+iuk5nIKVAbVIMUe8Kh7Yx6suHtD87rkGUPuZkiWgk1jQPDgHEgrB35aoMs1NwyFMM6QwxGE5QRebXPUG/kUiQE="
+  "merkleRoot": "c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394",
+  "time": "2024-11-09T10:27:15.961045888+01:00",
+  "sig": "NZ6RScmkRis2xhAECN6DaV8eL8FMZcxIJZXO8hFiQKBovkPB6g1wZsBmfbjhZRBUN61s5Pm0MTM+qDAdTl9YlQA="
 }
 #+END_SRC
 
@@ -557,53 +581,64 @@ blocks contain the signed and sent transactions
 set boot localhost:1122
 set authpass password
 set ownerpass password
+rm -rf .keystore* .blockstore* # cleanup if necessary
 ./bcn node start --node $boot --bootstrap --authpass $authpass \
   --ownerpass $ownerpass --balance 1000
   #+END_SRC
-- Create a new account on the bootstrap node
+- Create and persist a new account to the local key store of the bootstrap node
+  (in a new terminal)
   #+BEGIN_SRC fish
 ./bcn account create --node $boot --ownerpass $ownerpass
-# acc 715aa9e36740bce382a543b10fd70cad0bc1796b04fd7e49677a2fdcd1eac95c
+# acc 0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba
   #+END_SRC
 - Define a shell function to create, sign, and send a transaction
   #+BEGIN_SRC fish
 function txSignAndSend -a node from to value ownerpass
   set tx (./bcn tx sign --node $node --from $from --to $to --value $value \
     --ownerpass $ownerpass)
-  echo $tx
+  echo SigTx $tx
   ./bcn tx send --node $node --sigtx $tx
 end
   #+END_SRC
-- Create, sign, and send a transaction transferring funds from the initial owner
-  account from the genesis on the bootstrap node to the new account. Crate,
-  sign, and send a transaction transferring funds from the new account to the
-  initial owner account from the genesis on the bootstrap node
+- Create, sign, and send a transaction transferring funds between the initial
+  owner account from the genesis and the new account
   #+BEGIN_SRC fish
-set acc1 8824f522bb131453c83225b276a3a3f8f145c99fb3518e3a7219b3f2f3bc0a0c
-set acc2 715aa9e36740bce382a543b10fd70cad0bc1796b04fd7e49677a2fdcd1eac95c
+set acc1 66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105
+set acc2 0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba
 txSignAndSend $boot $acc1 $acc2 2 $ownerpass
-# tx 4c0f71713e414a9b1731b2c46447b42a4310717bee368854ed2d803ed1cb12b8
+# SigTx {"from":"66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105","to":"0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba","value":2,"nonce":1,"time":"2024-11-09T10:27:12.871221439+01:00","sig":"V7WHwt0hOvpI+d6RJErDiO45zj3rzmrb3Yaf1YTVc+d1LUwQhdTtz3OKmvD02jtVkG+DQeUYH9SaxcFd/wsl0gA="}
+# tx 4312eb8f506a00c4f4f111ea8b318a871615115e5b1a49f14784c5f90a04baeb
 txSignAndSend $boot $acc2 $acc1 1 $ownerpass
-# tx 9c45326c313fa1a369c0de55bf5cf3f05285aad9e78d1ca0f9ae90a0b7ec8146
+# SigTx {"from":"0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba","to":"66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105","value":1,"nonce":1,"time":"2024-11-09T10:27:12.921031364+01:00","sig":"/V/bwvTnYWnU4GrYvDOp44P1rx6sQZl7b9NXiNefcopqqWOsMyZuUAo00hURL2BWs1xUw24U/7gAvHX+FLg2IwA="}
+# tx bd849704122be82ee588c2abfacb8e12fb5bac0916356babcdb2b1683bbc684e
   #+END_SRC
-- Search the block by the block number
+
+- Search blocks by the block number
   #+BEGIN_SRC fish
 ./bcn blocks search --node $boot --number 1
-# blk       1: 7eaef7a -> c721f59
-# tx  4c0f717: 8824f52 -> 715aa9e        2        1
-# tx  9c45326: 715aa9e -> 8824f52        1        1
+# blk 50de747a5fd220d8c847c2e7fe1e10d4c6915a555f04b9f843c1773a90b9b253
+# mrk c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394
+# blk       1: 50de747 -> 59b2d5d   mrk c39f778
+# tx  4312eb8: 66d6141 -> 0a6c57d        2        1
+# tx  bd84970: 0a6c57d -> 66d6141        1        1
   #+END_SRC
-- Search the block by the block hash
+- Search blocks by the block hash
   #+BEGIN_SRC fish
-./bcn blocks search --node $boot --hash 7eaef7a
-# blk       1: 7eaef7a -> c721f59
-# tx  4c0f717: 8824f52 -> 715aa9e        2        1
-# tx  9c45326: 715aa9e -> 8824f52        1        1
+set blk 50de747a5fd220d8c847c2e7fe1e10d4c6915a555f04b9f843c1773a90b9b253
+./bcn blocks search --node $boot --hash $blk
+# blk 50de747a5fd220d8c847c2e7fe1e10d4c6915a555f04b9f843c1773a90b9b253
+# mrk c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394
+# blk       1: 50de747 -> 59b2d5d   mrk c39f778
+# tx  4312eb8: 66d6141 -> 0a6c57d        2        1
+# tx  bd84970: 0a6c57d -> 66d6141        1        1
   #+END_SRC
-- Search the block by the parent hash
+- Search blocks by the parent hash
   #+BEGIN_SRC fish
-./bcn blocks search --node $boot --parent c721f59
-# blk       1: 7eaef7a -> c721f59
-# tx  4c0f717: 8824f52 -> 715aa9e        2        1
-# tx  9c45326: 715aa9e -> 8824f52        1        1
+set parent 59b2d5d
+./bcn blocks search --node $boot --parent $parent
+# blk 50de747a5fd220d8c847c2e7fe1e10d4c6915a555f04b9f843c1773a90b9b253
+# mrk c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394
+# blk       1: 50de747 -> 59b2d5d   mrk c39f778
+# tx  4312eb8: 66d6141 -> 0a6c57d        2        1
+# tx  bd84970: 0a6c57d -> 66d6141        1        1
   #+END_SRC
