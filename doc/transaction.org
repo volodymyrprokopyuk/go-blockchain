@@ -119,7 +119,9 @@ transactions, blocks, and the genesis
   type. To hash a value of a specific type, this implementation requires the
   type to have defined the JSON serialization that is used to encode the value
   before hashing. The hash type defines string and byte slice representations of
-  the hash, as well as the JSON text marshal and unmarshal serialization methods
+  the hash, as well as the JSON text marshal and unmarshal serialization
+  methods. The =DecodeHash= function decodes a string representation of a hash
+  into a hash value
   #+BEGIN_SRC go
 type Hash [32]byte
 
@@ -146,6 +148,12 @@ func (h Hash) MarshalText() ([]byte, error) {
 func (h *Hash) UnmarshalText(hash []byte) error {
   _, err := hex.Decode(h[:], hash)
   return err
+}
+
+func DecodeHash(str string) (Hash, error) {
+  var hash Hash
+  _, err := hex.Decode(hash[:], []byte(str))
+  return hash, err
 }
   #+END_SRC
 
@@ -212,6 +220,34 @@ func (t SigTx) String() string {
   )
 }
   #+END_SRC
+
+The =TxHash= function function produces the Keccak256 hash of a signed
+transaction. The transaction hash function is used to parameterize generic
+algorithms that need to hash values using different hash functions.
+Specifically, the Merkle hash algorithm uses the transaction hash function to
+convert the list of transaction of a block into the list of hashes to start the
+construction of the Merkle tree
+
+The =TxPairHash= function combines two hashes into a single hash. The
+transaction pair hash function is used to parameterize generic algorithms that
+need to combine hash values into a single hash. Specifically, the Merkle prove
+and the Merkle verify algorithms use the transaction pair hash function to
+derive the Merkle proof from the Merkle tree and to verify the Merkle proof
+respectively. If the right hash is not set and has the default value, only the
+left hash is returned as part of the hash combination process
+#+BEGIN_SRC go
+func TxHash(tx SigTx) Hash {
+  return NewHash(tx)
+}
+
+func TxPairHash(l, r Hash) Hash {
+  var nilHash Hash
+  if r == nilHash {
+    return l
+  }
+  return NewHash(l.String() + r.String())
+}
+#+END_SRC
 
 *** ECDSA signing and verification of transactions
 
@@ -487,31 +523,52 @@ rm -rf .keystore* .blockstore* # cleanup if necessary
 ./bcn node start --node $boot --bootstrap --authpass $authpass \
   --ownerpass $ownerpass --balance 1000
   #+END_SRC
+- Create and persist a new account to the local key store of the bootstrap node
+  (in a new terminal)
+  #+BEGIN_SRC fish
+./bcn account create --node $boot --ownerpass $ownerpass
+# acc 0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba
+  #+END_SRC
 - Define a shell function to create, sign, and send a transaction
   #+BEGIN_SRC fish
 function txSignAndSend -a node from to value ownerpass
   set tx (./bcn tx sign --node $node --from $from --to $to --value $value \
     --ownerpass $ownerpass)
-  echo $tx
+  echo SigTx $tx
   ./bcn tx send --node $node --sigtx $tx
 end
   #+END_SRC
-- Create, sign, and send a transaction transferring funds from the initial owner
-  account from the genesis on the bootstrap node to the new account
+- Create, sign, and send a transaction transferring funds between the initial
+  owner account from the genesis and the new account
   #+BEGIN_SRC fish
-set acc1 4f3748d4d46b695a85f1773b6cb86aa0837818d5df33550180c5b8da7c966a6f
-set acc2 bba08a59c80977b2bbf5df4f9d09471ddf1592aa7b0133377c5df865e73a8b12
+set acc1 66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105
+set acc2 0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba
 txSignAndSend $boot $acc1 $acc2 2 $ownerpass
-# tx 22b4d0e7f9354b82404b70075cea8f4703cfe531ce7df5fb850f26de3656e321
+# SigTx {"from":"66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105","to":"0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba","value":2,"nonce":1,"time":"2024-11-09T10:27:12.871221439+01:00","sig":"V7WHwt0hOvpI+d6RJErDiO45zj3rzmrb3Yaf1YTVc+d1LUwQhdTtz3OKmvD02jtVkG+DQeUYH9SaxcFd/wsl0gA="}
+# tx 4312eb8f506a00c4f4f111ea8b318a871615115e5b1a49f14784c5f90a04baeb
+txSignAndSend $boot $acc2 $acc1 1 $ownerpass
+# SigTx {"from":"0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba","to":"66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105","value":1,"nonce":1,"time":"2024-11-09T10:27:12.921031364+01:00","sig":"/V/bwvTnYWnU4GrYvDOp44P1rx6sQZl7b9NXiNefcopqqWOsMyZuUAo00hURL2BWs1xUw24U/7gAvHX+FLg2IwA="}
+# tx bd849704122be82ee588c2abfacb8e12fb5bac0916356babcdb2b1683bbc684e
   #+END_SRC
-- Search the transaction by hash on the bootstrap node
+- Search the confirmed transactions involving the initial owner account from the
+  genesis
   #+BEGIN_SRC fish
-./bcn tx search --node $boot --hash 22b4d0e
-# tx  22b4d0e: 4f3748d -> bba08a5        2        1    blk:        1    88b7a8e
+./bcn tx search --node localhost:1122 --account $acc1
+# blk 50de747a5fd220d8c847c2e7fe1e10d4c6915a555f04b9f843c1773a90b9b253
+# mrk c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394
+# tx  4312eb8f506a00c4f4f111ea8b318a871615115e5b1a49f14784c5f90a04baeb
+# tx  4312eb8: 66d6141 -> 0a6c57d        2        1    blk    1   50de747   mrk c39f778
+# blk 50de747a5fd220d8c847c2e7fe1e10d4c6915a555f04b9f843c1773a90b9b253
+# mrk c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394
+# tx  bd849704122be82ee588c2abfacb8e12fb5bac0916356babcdb2b1683bbc684e
+# tx  bd84970: 0a6c57d -> 66d6141        1        1    blk    1   50de747   mrk c39f778
   #+END_SRC
-- Search all transactions involving the initial owner account on the bootstrap
-  node
+- Search the confirmed transactions by hash on the bootstrap node
   #+BEGIN_SRC fish
-./bcn tx search --node $boot --account $acc1
-# tx  22b4d0e: 4f3748d -> bba08a5        2        1    blk:        1    88b7a8e
+set tx1 4312eb8f506a00c4f4f111ea8b318a871615115e5b1a49f14784c5f90a04baeb
+./bcn tx search --node $boot --hash $tx1
+# blk 50de747a5fd220d8c847c2e7fe1e10d4c6915a555f04b9f843c1773a90b9b253
+# mrk c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394
+# tx  4312eb8f506a00c4f4f111ea8b318a871615115e5b1a49f14784c5f90a04baeb
+# tx  4312eb8: 66d6141 -> 0a6c57d        2        1    blk    1   50de747   mrk c39f778
   #+END_SRC
