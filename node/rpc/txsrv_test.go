@@ -57,12 +57,16 @@ func verifyTx(
   t *testing.T, ctx context.Context, cln rpc.TxClient, tx chain.SigTx,
   merkleRoot string,
 ) bool {
+  // Call the TxProve method to derive the Merkle proof for the requested
+  // transaction
   txh := tx.Hash().String()
   preq := &rpc.TxProveReq{Hash: txh}
   pres, err := cln.TxProve(ctx, preq)
   if err != nil {
     t.Fatal(err)
   }
+  // Call the TxVerify method to verify the derived Merkle proof for the
+  // requested transaction hash and the provided Merkle root
   vreq := &rpc.TxVerifyReq{
     Hash: txh, MerkleProof: pres.MerkleProof, MerkleRoot: merkleRoot,
   }

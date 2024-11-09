@@ -330,7 +330,7 @@ func newProof[H comparable](hash H, pos position) Proof[H] {
   not including the Merkle root. The Merkle prove algorithm is generic. The type
   of the hash value is parameterized. This design allows the Merkle prove
   algorithm to work without modifications with different Merkle trees produced
-  using different hash functions e.g. Keccack256, SHA256. The derived Merkle
+  using different hash functions e.g. Keccak256, SHA256. The derived Merkle
   proof is also parameterized by the type of the hash value. The Merkle prove
   algorithm first checks if the input Merkle tree is not empty. Then the
   algorithm checks that the hash of the requested transaction is in the second
@@ -499,14 +499,211 @@ Proof 9 [9-L 12345678-L] valid
 
 *** Merkle verify and inclusion verification
 
+- Merkle verify algorithm :: The Merkle verify algorithm checks the Merkle proof
+  for the inclusion of the specific transaction into the list of transactions of
+  a block. The Merkle verify algorithm takes the hash of the transaction, the
+  Merkle proof, the Merkle root received from a trusted source, and the pair
+  hash function. If the Merkle proof is correct, then the specific transaction
+  is included into the list of transactions of a block. The Merkle proof
+  algorithm is generic. The type of the hash value is parameterized. This design
+  allows to verify Merkle proofs derived from Merkle trees constructed using
+  different hash functions e.g. Keccak256, SHA256. The Merkle verify algorithms
+  first checks that the hash of the requested transaction is in the provided
+  Merkle proof. If the hash is not found in the Merkle proof, than the
+  verification fails. Next the first proof step, which will always be in the
+  left position is taken as the initial hash. Then each successive proof step
+  starting from the second is iteratively applied to the last computed hash in
+  the correct order indicated by the left or right position of the proof step
+  until consuming all proof steps. The resulting final hash is the computed
+  Merkle root. The computed Merkle root is compared with the Merkle root
+  received from a trusted source. If the computed Merkle root equals to the
+  received Merkle root from a trusted source, that the verification of the
+  Merkle proof is successful the the requested transaction is included into the
+  list of transactions of a block. The Merkle verify algorithm
+  - Check that the hash of the requested transaction is in the Merkle proof
+  - Start computing the Merkle root from the first hash of the Merkle proof
+  - Iteratively apply each successive hash in the correct order indicated by the
+    position of the proof step to the last computed hash until consuming all
+    proof steps and finally producing the computed Merkle hash
+  - If the computed Merkle hash is equal to the Merkle hash received from a
+    trusted source, then the verification is successful, and the transaction is
+    included in the list of transactions of a block
+  #+BEGIN_SRC go
+func MerkleVerify[H comparable](
+  txh H, merkleProof []Proof[H], merkleRoot H, pairHash func(H, H) H,
+) bool {
+  i := slices.IndexFunc(merkleProof, func(proof Proof[H]) bool {
+    return proof.Hash == txh
+  })
+  if i == -1 {
+    return false
+  }
+  hash := merkleProof[0].Hash
+  for i := 1; i < len(merkleProof); i++ {
+    proof := merkleProof[i]
+    if proof.Pos == Left {
+      hash = pairHash(proof.Hash, hash)
+    } else {
+      hash = pairHash(hash, proof.Hash)
+    }
+  }
+  return hash == merkleRoot
+}
+  #+END_SRC
+
 *** gRPC =TxProve= method
 
+The gRPC =Tx= service provides the =TxProve= method to derive the Merkle proof
+for the hash of the requested transaction. The interface of the service
+#+BEGIN_SRC protobuf
+message TxProveReq {
+  string Hash = 1;
+}
+
+message TxProveRes {
+  bytes MerkleProof = 1;
+}
+
+service Tx {
+  rpc TxProve(TxProveReq) returns (TxProveRes);
+}
+#+END_SRC
+
+The implementation of the =TxProve= method
+- Create the iterator over the blocks in the local block store
+- Defer closing the iterator
+- Iterate over each block in the local block store in order. For each block
+  - Iterate over each transaction of the confirmed block. For each transaction
+    - If the list of transactions of the current block contains a transaction
+      with the requested transaction hash, derive the Merkle proof for the
+      requested transaction hash
+      - Create the Merkle tree for the list of transactions of the current block
+        by applying the Merkle hash algorithm
+      - Derive the Merkle proof for the requested transaction hash from the
+        constructed Merkle tree by applying the Merkle prove algorithm
+      - Encode and return the derived Merkle proof to the caller
+    - If the requested transaction hash is not found in any block in the local
+      block store, return the transaction not found error
+#+BEGIN_SRC go
+func (s *TxSrv) TxProve(
+  _ context.Context, req *TxProveReq,
+) (*TxProveRes, error) {
+  blocks, closeBlocks, err := chain.ReadBlocks(s.blockStoreDir)
+  if err != nil {
+    return nil, status.Errorf(codes.NotFound, err.Error())
+  }
+  defer closeBlocks()
+  for err, blk := range blocks {
+    if err != nil {
+      return nil, status.Errorf(codes.Internal, err.Error())
+    }
+    for _, tx := range blk.Txs {
+      if tx.Hash().String() == req.Hash {
+        merkleTree, err := chain.MerkleHash(
+          blk.Txs, chain.TxHash, chain.TxPairHash,
+        )
+        if err != nil {
+          return nil, status.Errorf(codes.Internal, err.Error())
+        }
+        merkleProof, err := chain.MerkleProve(tx.Hash(), merkleTree)
+        if err != nil {
+          return nil, status.Errorf(codes.Internal, err.Error())
+        }
+        jmp, err := json.Marshal(merkleProof)
+        if err != nil {
+          return nil, status.Errorf(codes.Internal, err.Error())
+        }
+        res := &TxProveRes{MerkleProof: jmp}
+        return res, nil
+      }
+    }
+  }
+  return nil, status.Errorf(
+    codes.NotFound, fmt.Sprintf("transaction %v not found", req.Hash),
+  )
+}
+#+END_SRC
+
 *** gRPC =TxVerify= method
+
+The gRPC =Tx= service provides the =TxVerify= method to verify the provided
+Merkle proof against the Merkle root received from a trusted source, and check
+whether the requested transaction is included into the list of transactions of a
+block. The interface of the service
+#+BEGIN_SRC protobuf
+message TxVerifyReq {
+  string Hash = 1;
+  bytes MerkleProof = 2;
+  string MerkleRoot = 3;
+}
+
+message TxVerifyRes {
+  bool Valid = 1;
+}
+
+service Tx {
+  rpc TxVerify(TxVerifyReq) returns (TxVerifyRes);
+}
+#+END_SRC
+
+The implementation of the =TxProve= method
+- Decode the provided hash of the requested transaction, the Merkle proof, and
+  the Merkle root
+- Verify that the provided Merkle proof for the requested transaction hash is
+  correct, and confirm that the requested transaction is included in the list of
+  transactions of a block
+#+BEGIN_SRC go
+func (s *TxSrv) TxVerify(
+  _ context.Context, req *TxVerifyReq,
+) (*TxVerifyRes, error) {
+  txh, err := chain.DecodeHash(req.Hash)
+  if err != nil {
+    return nil, status.Errorf(codes.InvalidArgument, err.Error())
+  }
+  var merkleProof []chain.Proof[chain.Hash]
+  err = json.Unmarshal(req.MerkleProof, &merkleProof)
+  if err != nil {
+    return nil, status.Errorf(codes.InvalidArgument, err.Error())
+  }
+  merkleRoot, err := chain.DecodeHash(req.MerkleRoot)
+  if err != nil {
+    return nil, status.Errorf(codes.InvalidArgument, err.Error())
+  }
+  valid := chain.MerkleVerify(txh, merkleProof, merkleRoot, chain.TxPairHash)
+  res := &TxVerifyRes{Valid: valid}
+  return res, nil
+}
+#+END_SRC
 
 ** Testing and usage
 
 *** Testing Merkle hash, prove, and verify
 
+
+The =TestMerkleHashProveVerify= testing process
+- Generate lists of transactions starting from ["1"] to ["1".."9"] inclusive.
+  For each list of transactions
+  - Construct the Merkle tree for the generated list of transactions using the
+    provided transaction hash function and the pair hash function
+  - Print the array representation of the constructed Merkle tree
+  - Start iterating over the transactions from the generated transaction list.
+    For each transaction
+    - Derive the Merkle proof for the transaction hash from the constructed
+      Merkle tree
+    - Print the derived Merkle proof
+    - Verify the derived Merkle proof for the transaction hash and the
+      constructed Merkle root
+    - Verify that the derived Merkle proof is correct
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run MerkleHashProveVerify
+#+END_SRC
+
 *** Testing gRPC =TxProve= and =TxVerify= methods
+
+The =TestTxProveVerify= testing process
+-
+#+BEGIN_SRC fish
+go test -v -cover -coverprofile=coverage.cov ./... -run TxProveVerify
+#+ENDSRC
 
 *** Using =tx prove= and =tx verify= commands

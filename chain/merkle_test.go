@@ -44,21 +44,33 @@ func formatMerkleProof(merkleProof []chain.Proof[chain.Hash]) string {
 
 func TestMerkleHashProveVerify(t *testing.T) {
   for i := range 9 {
+    // Generate lists of transactions starting from ["1"] to ["1".."9"]
+    // inclusive
     txs := strRange(i + 1)
+    // Construct the Merkle tree for the generated list of transactions
+    // using the provided transaction hash function and the pair hash function
     merkleTree, err := chain.MerkleHash(txs, typeHash, chain.TxPairHash)
     if err != nil {
       t.Fatal(err)
     }
+    // Print the array representation of the constructed Merkle tree
     fmt.Printf("Tree (%v) %v\n", len(txs), formatMerkleTree(merkleTree))
     merkleRoot := merkleTree[0]
+    // Start iterating over the transactions from the generated transaction list
     for _, tx := range txs {
       txh := typeHash(tx)
+      // Derive the Merkle proof for the transaction hash from the constructed
+      // Merkle tree
       merkleProof, err := chain.MerkleProve(txh, merkleTree)
       if err != nil {
         t.Fatal(err)
       }
+      // Print the derived Merkle proof
       fmt.Printf("Proof %v %.4s %v ", tx, txh, formatMerkleProof(merkleProof))
+      // Verify the derived Merkle proof for the transaction hash and the
+      // constructed Merkle root
       valid := chain.MerkleVerify(txh, merkleProof, merkleRoot, chain.TxPairHash)
+      // Verify that the derived Merkle proof is correct
       if valid {
         fmt.Println("valid")
       } else {
