@@ -20,16 +20,16 @@ function txProveAndVerify -a node hash mrkroot
     --mrkproof $mrkproof --mrkroot $mrkroot
 end
 
-set acc1 1034335fe3f62d16fdfb7a30d872234ef8e9e1899a68c07bbb9c94f594508fa9
-set acc2 39e8aee509a53d1720c12ba4fb17de1f0778beaa5e7a8f06a5a831d6256efbce
+set acc1 66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105
+set acc2 0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba
 
 # txSignAndSend $boot $acc1 $acc2 2 $ownerpass
 # txSignAndSend $boot $acc2 $acc1 1 $ownerpass
 
-set tx1 fe7d63dfd4c7cdb479f611d340e07e4bb7c4f89f4dd8c2afc3c224c0f0408bc8
-set mrk1 284cf9218326726288124ec83189f51a8d118a2d6893dbb07c315e4caf4dfc11
-set tx2 b7eea8c6220cc901caf0916ddd2faf03d6148d1aa8e31c7d6a01010c11c45f99
-set mrk2 284cf9218326726288124ec83189f51a8d118a2d6893dbb07c315e4caf4dfc11
+set tx1 4312eb8f506a00c4f4f111ea8b318a871615115e5b1a49f14784c5f90a04baeb
+set mrk1 c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394
+set tx2 bd849704122be82ee588c2abfacb8e12fb5bac0916356babcdb2b1683bbc684e
+set mrk2 c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394
 
 txProveAndVerify $boot $tx1 $mrk1
 txProveAndVerify $boot $tx2 $mrk2
