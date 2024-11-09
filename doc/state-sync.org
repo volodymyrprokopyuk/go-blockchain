@@ -563,35 +563,41 @@ set ownerpass password
   --ownerpass $ownerpass --balance 1000
 # === Sync state
 # * Balances and nonces
-# acc 1dc6773:                        1000        0
+# acc ce68e8c:                        1000        0
 # * Last block
-# blk       0: d951443 -> 0000000
+# blk       0: 79b4f47 -> 0000000   mrk 0000000
 # * Pending balances and nonces
-# acc 1dc6773:                        1000        0
+# acc ce68e8c:                        1000        0
 # <=> gRPC localhost:1122
+# <=> Blk relay: localhost:1122
 #+END_SRC
 - Start the already initialized bootstrap node and the authority node
 #+BEGIN_SRC fish
 ./bcn node start --node $boot --bootstrap --authpass $authpass
 # === Sync state
 # * Balances and nonces
-# acc 1dc6773:                        1000        0
+# acc ce68e8c:                        1000        0
 # * Last block
-# blk       0: d951443 -> 0000000
+# blk       0: 79b4f47 -> 0000000   mrk 0000000
 # * Pending balances and nonces
-# acc 1dc6773:                        1000        0
+# acc ce68e8c:                        1000        0
 # <=> gRPC localhost:1122
+# <=> Blk relay: localhost:1122
 #+END_SRC
 - Start a regular node with the seed bootstrap address
 #+BEGIN_SRC fish
 set node localhost:1123
 ./bcn node start --node $node --seed $node
+# <=> Peer localhost:1122
 # === Sync state
 # * Balances and nonces
-# acc 1dc6773:                        1000        0
+# acc ce68e8c:                        1000        0
 # * Last block
-# blk       0: d951443 -> 0000000
+# blk       0: 79b4f47 -> 0000000   mrk 0000000
 # * Pending balances and nonces
-# acc 1dc6773:                        1000        0
+# acc ce68e8c:                        1000        0
 # <=> gRPC localhost:1123
+# <=> Blk relay: localhost:1122
+# <=> Blk relay: localhost:1123
+# <=> Tx relay: localhost:1122
 #+END_SRC

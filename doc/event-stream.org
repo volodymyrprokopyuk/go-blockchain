@@ -372,44 +372,58 @@ go test -v -cover -coverprofile=coverage.cov ./... -run EventStream
 
 The gRPC =StreamSubscribe= method is exposed through the CLI. Subscribe the
 client to the node event stream and consume domain events
-- Start the bootstrap node
+- Initialize the blockchain by starting the bootstrap node with parameters for
+  the blockchain initial configuration
   #+BEGIN_SRC fish
 set boot localhost:1122
 set authpass password
-./bcn node start --node $boot --bootstrap --authpass $authpass
+set ownerpass password
+rm -rf .keystore* .blockstore* # cleanup if necessary
+./bcn node start --node $boot --bootstrap --authpass $authpass \
+  --ownerpass $ownerpass --balance 1000
+  #+END_SRC
+- Create and persist a new account to the local key store of the bootstrap node
+  (in a new terminal)
+  #+BEGIN_SRC fish
+./bcn account create --node $boot --ownerpass $ownerpass
+# acc 0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba
   #+END_SRC
 - Subscribe the client to the node event stream (in a new terminal)
   - =--node= specifies the node address where the client subscribes
   - =--events= specifies the event types of interest. Supported values are
     =all=, =blk=, =tx=
-  #+BEGIN_SRC fish
-./bcn node subscribe --node $boot --events blk,tx
-# <~> blk validated
-# blk       6: fac1c51 -> 202ac37
-# tx  9596fbb: 1dc6773 -> 0b283b3        2        6
-# tx  00b3fca: 0b283b3 -> 1dc6773        1        6
-#
-# <~> tx validated
-# tx  9596fbb: 1dc6773 -> 0b283b3        2        6
-# <~> tx validated
-# tx  00b3fca: 0b283b3 -> 1dc6773        1        6
-  #+END_SRC
+    #+BEGIN_SRC fish
+  ./bcn node subscribe --node $boot --events blk,tx
+  # <~> blk validated
+  # blk       2: 12b381b -> 50de747   mrk 78d77fd
+  # tx  e67188b: 66d6141 -> 0a6c57d        2        2
+  # tx  c23ecff: 0a6c57d -> 66d6141        1        2
+
+  # <~> tx validated
+  # tx  e67188b: 66d6141 -> 0a6c57d        2        2
+  # <~> tx validated
+  # tx  c23ecff: 0a6c57d -> 66d6141        1        2
+    #+END_SRC
 - Define a shell function to create, sign, and send a transaction
   #+BEGIN_SRC fish
 function txSignAndSend -a node from to value ownerpass
   set tx (./bcn tx sign --node $node --from $from --to $to --value $value \
     --ownerpass $ownerpass)
-  echo $tx
+  echo SigTx $tx
   ./bcn tx send --node $node --sigtx $tx
 end
   #+END_SRC
-- Create, sign, and send two valid transaction (in a new terminal)
+- Create, sign, and send a transaction transferring funds between the initial
+  owner account from the genesis and the new account (in a new terminal)
   #+BEGIN_SRC fish
-set acc1 1dc67739c409b169d8f981525366355694c7de9e24188d1814a7e2159857a878
-set acc2 0b283b314c12c66ce7ad65da7d5ab3008d28e25a988308721f010e5a04f23247
-set ownerpass password
+set acc1 66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105
+set acc2 0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba
 txSignAndSend $boot $acc1 $acc2 2 $ownerpass
+# SigTx {"from":"66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105","to":"0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba","value":2,"nonce":2,"time":"2024-11-09T21:57:02.679527351+01:00","sig":"F09AtLMjFMBrz0D3IXZNx60tyHRD9+Ko8tqC4PMGYFwNMqNJ3oBlpNh4UFRBitwpjIoyV7OYPoGwW4lSaaHD6QA="}
+# tx e67188b8056a0455e9088b739fd2c5649a4c8f50633b04241bab36cc75a769e2
 txSignAndSend $boot $acc2 $acc1 1 $ownerpass
+# SigTx {"from":"0a6c57d451f561d6baefe35bba47f8dd682b31da27f0dfdedc646648ea5d12ba","to":"66d614174909403746df7c3222cd74ca386995e4de11cfc99ca1efe548d33105","value":1,"nonce":2,"time":"2024-11-09T21:57:02.722528306+01:00","sig":"ckaWSJcOr4Qm0R+mE7zDWejAMmOKucpQY38hzzewb7Q7/zFzxIslG+WaHlUdnmFPkvmtzBFQ4fOfQvlMfMxf0gE="}
+# tx c23ecff0405ddb91aa8dc03c1f8f60c82d319b0266f97afb473ebd5f3c5db70b
   #+END_SRC
 - Wait for the the transactions to be validated, the new block to be proposed,
   and the proposed block to be confirmed
