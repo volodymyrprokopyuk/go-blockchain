@@ -24,66 +24,66 @@
 *** Merkle tree and transaction hashing
 
 - Merkle tree :: The Merkle tree is a binary tree where each leaf is a hash of
-  an element from a set of elements e.g. transaction in a block, and every
+  an element from a list of elements e.g. transactions in a block, and every
   parent node up to the root is a hash of its children. The merkle tree
-  summarizes a set of elements into a single hash of the root in a similar way
-  that a single hash over the whole set of elements, but with considerable
+  summarizes the list of elements into the single hash of the root in a similar
+  way that a single hash over the whole list of elements, but with considerable
   benefits in terms of computational efficiency and minimized network transfers.
-  Both the Merkle root and the single hash convert the whole set of elements
+  Both the Merkle root and the single hash convert the whole list of elements
   into a single hash, but the Merkle tree allows for *efficient verification of
-  inclusion of elements* into a set of elements with minimal computation and
-  network transfers, while the single hash requires hashing the whole set of
-  elements for every inclusion verification. The efficient verification of
-  inclusion of elements in a set of elements is used in blockchains to securely
-  prove the inclusion of a transaction in a block specifically for light
-  clients. For this purpose the Merkle root of all block transactions is
-  included in the block header. The Merkle tree is used to securely *verify the
-  integrity of elements* in a set of elements. If the computed Merkle root over
-  the received set of elements does not matches the securely provided Merkle
-  root of the original set of elements, that some received elements are
-  corrupted. This characteristic of the Merkle tree is used in blockchains to
-  ensure integrity of transactions in a block that is propagated through the
-  peer to peer network. The Merkle tree allows for *efficient identification of
-  differences between two sets of elements*. This provides an efficient way to
-  compute minimal differences that have to be transmitted over the network in
-  order to synchronize the two sets of elements. This feature is used in
-  distributed source code version control systems e.g. Git and distributed
-  peer-to-peer networks for file sharing e.g. Torrent
+  inclusion of elements* into the list of elements with minimal computation and
+  network transfers, while the single hash requires hashing the whole list of
+  elements for every element inclusion verification. The efficient verification
+  of inclusion of elements in the list of elements is used in blockchains to
+  securely prove and verify the inclusion of a transaction into the list of
+  transactions of a block, specifically for light clients and wallets. For this
+  purpose the Merkle root of all block transactions is included in the block
+  header. The Merkle tree is used to securely *verify the integrity of elements*
+  in the list of elements. If the computed Merkle root over the received list of
+  elements does not matches the securely provided Merkle root of the original
+  list of elements, then some received elements are corrupted. This
+  characteristic of the Merkle tree is used in blockchains to ensure integrity
+  of transactions in a block that is propagated through the peer-to-peer
+  network. The Merkle tree allows for *efficient identification of differences
+  between two lists of elements*. This provides an efficient way to compute
+  minimal differences that have to be transmitted over the network in order to
+  synchronize the two lists of elements. This feature is used in distributed
+  source code version control systems e.g. Git and distributed peer-to-peer
+  networks for file sharing e.g. Torrent
 
 *** Merkle proof and inclusion verification
 
-- Merkle proof :: The Merkle proof is a set of hashes with the left or right
-  position indication following the Merkle path of the binary search over the
-  Merkle tree starting for the specific element hash in the leaf up to the
-  Merkle root. The Merkle proof is used for efficient verification of inclusion
-  of elements into a set of elements. The Merkle proof provides to the verifying
-  party the minimal set of required hashes to compute the Merkle root from the
-  hash of the element whose inclusion in a set of elements has to be verified.
-  The Merkle root starts from the hash of the element in the leaf position,
-  following missing hashes of sibling nodes on the path of the reverse binary
-  search in order to compute hashes of parent nodes on the path of the reverse
-  binary search up to the Merkle root. Each hash has attached position label
-  that indicates the left or the right child of the Merkle tree. This
-  information is used to correctly verify the provided Merkle proof
+- Merkle proof :: The Merkle proof is a list of hashes with the left or right
+  position indication following the Merkle path of the reversed binary search
+  over the Merkle tree starting for the specific element hash in the leaf
+  position up to the Merkle root. The Merkle proof is used for efficient
+  verification of inclusion of elements into the list of elements. The Merkle
+  proof provides to the verifying party the minimal list of required hashes to
+  compute the Merkle root from the hash of the element whose inclusion in a list
+  of elements has to be verified. The Merkle proof starts from the hash of the
+  element in the leaf position, following missing hashes of sibling nodes on the
+  path of the reverse binary search up to the Merkle root. Each hash has
+  attached a position label that indicates the left or the right child of the
+  Merkle tree. This information is used to verify the provided Merkle proof
 - Merkle proof verification :: In order to verify the inclusion of an element
-  into a set of elements the verifying party only needs to securely receive from
-  a trusted source the hash of the element whose inclusion has to be verified,
-  and the Merkle root of the whole set of elements. The verifying party requests
-  to the proving party the Merkle proof for the hash of the element. The proving
-  party derives the Merkle proof from the Merkle tree and the requested hash of
-  the element. The proving party returns to the Merkle proof to the verifying
-  party. The verifying party computes the Merkle root recursively combining
-  hashes from the provided Merkle proof in the indicated by hash positions
-  order. If the computed Merkle root equals to the previously received from a
-  trusted source Merkle root of the set of elements, the element is included in
-  the set of elements with the high level of security. If the computed Merkle
-  proof is not equal to the securely received Merkle proof either the element is
-  not included in the set of elements or the Merkle proof is incorrectly derived
-  or corrupted. Only the hash of the element and the Merkle root of the whole
-  set of elements has to be received from a trusted source. While the Merkle
-  proof can be received from a less trusted source as it is nearly impossible to
-  counterfeit a correct Merkle proof for a set of elements where the requested
-  element is not included
+  into the list of elements the verifying party only needs to securely receive
+  from a trusted source the hash of the element whose inclusion has to be
+  verified, and the Merkle root of the whole list of elements. The verifying
+  party requests the Merkle proof for the hash of the element from the proving
+  party. The proving party derives the Merkle proof from the Merkle tree and the
+  hash of the requested element. The proving party returns the Merkle proof to
+  the verifying party. The verifying party computes the Merkle root iteratively
+  combining hashes from the provided Merkle proof in the indicated by the
+  position labels order. If the computed Merkle root equals to the Merkle root
+  previously received from a trusted source, then the element is included in the
+  list of elements with the high level of security. If the computed Merkle root
+  is not equal to the Merkle root securely received from a trusted source,
+  either the element is not included in the list of elements or the Merkle proof
+  is incorrectly derived or corrupted. Only the hash of the element and the
+  Merkle root of the whole list of elements has to be received from a trusted
+  source. While the Merkle proof can be received from a less trusted source as
+  it is nearly impossible to counterfeit a correct Merkle proof for a list of
+  elements where the requested element is not included
 - Merkle proof security :: The security of the Merkle proof relies on
   cryptographic characteristics of the underlying hash function. Specifically,
   the second pre-image resistance and the collision resistance of the hash
@@ -91,101 +91,104 @@
   hash of the input, it is almost impossible to find another input that has the
   same hash. The second pre-image resistance makes it very difficult to
   counterfeit a correct Merkle proof for an element that is not included in the
-  set of elements. The *collision resistance* states that it is almost
+  list of elements. The *collision resistance* states that it is almost
   impossible to find two different inputs that have the same hash. Collisions
   are inevitable because the output length is fixed, while the input is
   arbitrary large. The collision resistance makes it very difficult to find the
-  second different set that satisfies the Merkle proof derived from the Merkle
-  tree of the original set of elements. The *deterministic nature of the hash
-  function* makes Merkle proofs reproducible and verifiable. The Merkle tree
-  allows securely substitute the whole set of elements with a much smaller tree
-  of hashes that uniquely represents the the original set with the added benefit
-  for for efficient verification of inclusion of elements into the set of
-  elements, the verification of integrity of the set of elements, and the
-  efficiency way to synchronize out-of-sync sets of elements by transferring
-  minimal differences between sets of elements
+  second different list of elements that satisfies the Merkle proof derived from
+  the Merkle tree of the original list of elements. The *deterministic nature of
+  the hash function* makes Merkle proofs reproducible and verifiable. The Merkle
+  tree allows securely substitute the whole list of elements with a much smaller
+  tree of hashes that uniquely represents the the original list with the added
+  benefit for the efficient verification of inclusion of elements into the list
+  of elements, the verification of integrity of the list of elements, and the
+  efficient way to synchronize out-of-sync lists of elements by transferring
+  minimal differences between the lists of elements
 - Merkle proof efficiency :: The efficiency of Merkle proof relies on the
-  structure of the underlying binary tree with *logarithmic characteristics of
-  the binary search*. To verify the inclusion of an element into a set of
-  elements only a log(N) hashes from the Merkle proof have to be transferred
-  over the network, and only log(N) combinations of hashes has to be computed to
-  reach the Merkle root. When not using the Merkle proof, the whole set of
-  elements has to be transferred over the network, the integrity of the set has
-  to be verified, and only that the inclusion of the element can be checked.
-  This results in a much larger network transfers and computation overhead
-  needed to verify the integrity of the whole set of elements
+  structure of the underlying binary tree with the *logarithmic characteristic
+  of the binary search*. To verify the inclusion of an element into the list of
+  elements only a ~log(N)~ hashes of the Merkle proof have to be transferred
+  over the network, and only ~log(N)~ combinations of hashes have to be
+  performed to compute the Merkle root. When not using the Merkle proof, the
+  whole list of elements has to be transferred over the network, the integrity
+  of the list has to be verified, and only then the inclusion of the element can
+  be checked. This results in much larger network transfers and computation
+  overheads needed to verify the integrity of the whole list of elements
 
 ** Design and implementation
 
 *** Merkle hash and construction of Merkle tree
 
 - Array representation of binary tree :: The array representation of a binary
-  tree uses the linear data structure to store node values for a binary tree.
-  The root of the binary tree is stored in the first slot of the array. The two
-  children of the root are stored in the second and the third slots of the
-  array. Next the children of the first root child are stored in the consecutive
-  array slots and so on. Finally, the leaves of the binary tree are stored at
-  the end of the array. The binary tree is stored in the array sequentially
-  level by level starting from the root down to the leaves. Missing nodes in the
-  binary tree are represented by the default values in the corresponding array
-  slots. The children of a node in the position =i= are at the ~2i + 1~ odd left
-  and the ~2i + 2~ even right positions. The parent for the odd left child in
-  the position =i= is at the ~(i - 1) / 2~ position. The parent for the even
-  right child in the position =i= is at the ~(i - 2) / 2~ position. The benefit
-  of the array representation of a binary tree is the *compact representation of
-  the binary* tree without the overhead of the node links required in the
-  node-based linked representation of the binary tree. Another benefit of the
-  array representation is the *fast random access to nodes* of the binary tree
-  through the indexing of the array, instead of sequential node-to-node
-  following of links linked representation. The next benefit of the array
-  representation is the *natural applicability of iterative algorithms* that
-  does not consume the call stack, instead of the recursive algorithms that
-  consume the call stack in the case of the linked representation. This
-  implementation of the Merkle tree uses the array representation of the Merkle
-  tree
+  tree uses the linear data structure, the array, to store node values for a
+  binary tree. The root of the binary tree is stored in the first position of
+  the array. The two children of the root are stored in the second and the third
+  positions of the array. Next, the children of the first root child are stored
+  in the consecutive array positions and so on. Finally, the leaves of the
+  binary tree are stored at the end of the array, specifically, at starting from
+  the second half of the array. The binary tree is stored in the array
+  sequentially level by level starting from the root down to the leaves. Missing
+  nodes in the binary tree are represented by the default values in the
+  corresponding array positions. The children of a node in the position =i= are
+  located at the ~2i + 1~ odd left and the ~2i + 2~ even right positions. The
+  parent for the odd left child in the position =i= is located at the ~(i - 1) /
+  2~ position. The parent for the even right child in the position =i= is
+  located at the ~(i - 2) / 2~ position. The benefit of the array representation
+  of a binary tree is the *compact representation of the binary tree* without
+  the overhead of the node links required in the node-based linked
+  representation of the binary tree. Another benefit of the array representation
+  is the *fast random access to nodes* of the binary tree through the indexing
+  of the array, instead of sequential node-to-node following of links in the
+  linked representation. The next benefit of the array representation is the
+  *natural applicability of iterative algorithms* that does not consume the call
+  stack, instead of the recursive algorithms that consume the call stack in the
+  case of the linked representation. This implementation of the Merkle tree uses
+  the array representation of the Merkle tree
 - Merkle hash algorithm :: The Merkle hash algorithm constructs the Merkle tree
-  from a list of transactions. The Merkle hash algorithm takes the list of
-  transaction, the ~typeHash(T) H~ function to hash a transaction and the
+  from the list of transactions. The Merkle hash algorithm takes the list of
+  transactions, the ~typeHash(T) H~ function to hash a transaction and the
   ~pairHash(H, H) H~ function to combine two hashes of node children in order to
   produce a parent hash. The Merkle hash algorithm returns the array
   representation of the constructed Merkle tree as a slice of hashes conforming
-  to the rules of the array representation. The Merkle root in the first element
-  of the array representation of the Merkle tree. The Merkle hash algorithm is
-  generic. The generic parameters are the *type of transactions* or set elements
-  and the *type of hash values* e.g. Keccak256, SHA256 that must be comparable.
-  This design allow to apply the Merkle hash algorithm to different types of
-  transactions and different types of hash functions. Specifically this
+  to the rules of the array representation. The Merkle root is in the first
+  position of the array representation of the Merkle tree. The Merkle hash
+  algorithm is generic. The generic parameters are the type of transactions and
+  the type of hash values e.g. Keccak256, SHA256 that must be comparable. This
+  design allows to apply the Merkle hash algorithm to different types of
+  transactions, and different types of hash functions. Specifically this
   implementation uses two different hash functions. One hash function is the
-  easy to visualize and debug simple string concatenation for learning purposes
-  and testing. The other hash function is the Keccak256 hash function that is
-  used everywhere in the proposed blockchain, but is much challenging to debug.
-  The Merkle hash algorithm first checks that the provided list of transactions
-  is not empty. Then the list of transaction hashes is created by applying the
-  type hash function to each transaction in the input list. Next the length of
-  the array representation of the Merkle tree is calculated, and the Merkle tree
-  array is created. Then the list of transaction hashes if copied into the end
-  of the Merkle tree array. Next the hashes of transactions are combined in
-  pairs to produce the next level of nodes of the Merkle tree. These nodes are
-  stored just before the list of transaction hashes in the Merkle tree array.
-  The same process iteratively computes hashes of every successive level of
-  parent nodes and stores them just before the nodes of the previous level of
-  the Merkle tree up until producing the Merkle root in the first slot of the
-  Merkle tree array. Hashes of the previous level are needed to construct the
-  next level of nodes in the Merkle tree using the pair hash function. The
-  Merkle hash algorithm
+  easy to visualize and debug simple string representation of the hashed value
+  used for learning purposes and testing. The other hash function is the
+  Keccak256 hash function that is used in the implementation of this blockchain,
+  but is much more challenging to debug. The Merkle hash algorithm first checks
+  that the provided list of transactions is not empty. Then the list of
+  transaction hashes is created by applying the type hash function to each
+  transaction in the input list of transactions. Next the length of the array
+  representation of the Merkle tree is calculated, and the Merkle tree array is
+  created. Then the list of transaction hashes if copied into the second half of
+  the Merkle tree array. Next the hashes of transactions are combined in pairs
+  to produce the next level of nodes of the Merkle tree. These nodes are stored
+  just before the list of transaction hashes in the Merkle tree array. The same
+  process iteratively computes hashes of every successive level of parent nodes
+  and stores them just before the nodes of the previous level of the Merkle
+  tree, up until producing the Merkle root in the first position of the Merkle
+  tree array. Hashes of the previous level are needed to construct the next
+  level of nodes in the Merkle tree using the pair hash function. The Merkle
+  hash algorithm
   - Check that the input list of transaction is not empty
   - Produce the list of transaction hashes by applying the type hash function to
     the input list of transactions
   - Compute the length of the array representation of the Merkle tree
   - Create the array to represent the Merkle tree and initialize the array with
     default values
-  - Copy the list of transaction hashes into the end of the Merkle tree array
+  - Copy the list of transaction hashes into the second half of the Merkle tree
+    array
   - Iteratively compute each successive level of nodes by combining pair of
     hashes from the previous level applying the pair hash function
   - Each next level of nodes is stored in the Merkle tree array just before the
     previous level of nodes
   - The process of combining pair of hashes continues up until producing the
-    Merkle root in the first slot of the Merkle tree array
+    Merkle root in the first position of the Merkle tree array
   #+BEGIN_SRC go
 func MerkleHash[T any, H comparable](
   txs []T, typeHash func(T) H, pairHash func(H, H) H,
@@ -217,11 +220,11 @@ func MerkleHash[T any, H comparable](
 - Transaction hash function :: The transaction hash function takes a transaction
   and returns a hash of the transaction. This implementation uses two different
   transaction hash functions. One transaction hash function returns the simple
-  string representation of the input type. This transaction hash function is
+  string representation of the input value. This transaction hash function is
   used for learning purposes, testing, debugging, and visual understanding of
-  the internal workings of the Merkle hash, prove, and verify algorithms. The
-  other transaction hash function is the Keccak256 hash function that is used in
-  the implementation of this blockchain
+  the internal workings of the Merkle hash, the Merkle prove, and the Merkle
+  verify algorithms. The other transaction hash function is the Keccak256 hash
+  function that is used in the implementation of this blockchain
   #+BEGIN_SRC go
 // String hash for learning purposes
 func typeHashStr(s string) string {
@@ -244,13 +247,14 @@ func TxHash(tx SigTx) Hash {
   different pair hash functions. One pair hash function is a simple string
   concatenation of the input hashes. This pair hash function is used for
   learning purposes, testing, debugging, and visual understanding of the
-  internal workings of the Merkle hash, prove, and verify algorithms. The
-  combination of input hashes is performed through the concatenation of the
-  string representation of the input hashes. If the hash of the right child has
-  the default value, the hash of the left child is returned. The other hash
-  function is the Keccak256 hash function that is used in the implementation of
-  this blockchain. If the hash of the right child has the default value, the
-  hash of the left child is returned
+  internal workings of the Merkle hash, the Merkle prove, and the Merkle verify
+  algorithms. The combination of input hashes is performed through the
+  concatenation of the string representations of the input hashes. If the hash
+  of the right child is not set and has the default value, the hash of the left
+  child is returned. The other hash function is the Keccak256 hash function that
+  is used in the implementation of this blockchain. If the hash of the right
+  child is not set and has the default value, the hash of the left child is
+  returned
   #+BEGIN_SRC go
 // String concatenation hash for learning purposes
 func pairHashStr(l, r string) string {
@@ -269,9 +273,9 @@ func TxPairHash(l, r Hash) Hash {
 }
   #+END_SRC
 
-Examples of array representation of Merkle trees for different input lists of
-elements using the string hash function and the string concatenation pair hash
-function
+Examples of the array representations of the Merkle trees for different input
+lists of elements using the string hash function and the string concatenation
+pair hash function
 | Input list of elements | Array representation of Merkle tree                |
 | =[1 2 3]=              | =[123 12 3 1 2 3 _]=                               |
 | =[1 2 3 4]=            | =[1234 12 34 1 2 3 4]=                             |
@@ -282,21 +286,21 @@ function
 
 *** Merkle prove and derivation of Merkle proof
 
-- Merkle proof type :: The Merkle proof is a sequence of proof steps starting
-  from the leaf hash of the specific element, following the missing hashes of
-  sibling nodes on the path of the reverse binary search up until, but not
-  including the Merkle root. All Merkle proofs start from the hash of the
-  specific element and lead but do not include the Merkle root. The =Proof= type
-  represents a step in the Merkle proof of inclusion of the specific element
-  into the list of elements. The proof step contains either a hash of the
-  specific element in the leaf position or a hash of the combination of hashes
-  of two node children along with the left or right position of the hash in the
-  Merkle tree. The hash is required to verify the Merkle proof. The position is
-  required to correctly combine hashes of proof steps during the verification of
-  the Merkle proof. The proof type is generic. The type of the hash value is
-  parameterized. This design allows to use the same Merkle prove algorithm for
-  derivation of Merkle proofs from Merkle trees constructed using different hash
-  functions e.g. Keccak256, SHA256
+- Merkle proof type :: The Merkle proof is a sequence of the proof steps
+  starting from the leaf hash of the specific element, following the missing
+  hashes of sibling nodes on the path of the reverse binary search up until, but
+  not including, the Merkle root. All Merkle proofs start from the hash of the
+  specific element, and end, but do not include, the Merkle root. The =Proof=
+  type represents a proof step in the Merkle proof of inclusion of the specific
+  element into the list of elements. The proof step contains either a hash of
+  the specific element in the leaf position, or a hash of the combination of
+  hashes of two node children along with the left or right position label of the
+  hash in the Merkle tree. The hash is required to verify the Merkle proof. The
+  position is required to correctly combine hashes of proof steps in the right
+  order during the verification of the Merkle proof. The proof type is generic.
+  The type of the hash value is parameterized. This design allows to use the
+  same Merkle prove algorithm for derivation of Merkle proofs from Merkle trees
+  constructed using different hash functions e.g. Keccak256, SHA256
   #+BEGIN_SRC go
 type position int
 
@@ -314,57 +318,59 @@ func newProof[H comparable](hash H, pos position) Proof[H] {
   return Proof[H]{Hash: hash, Pos: pos}
 }
   #+END_SRC
-- Merkle prove algorithm :: The Merkle prove algorithm derives a Merkle proof
-  from the hash of a transaction whose inclusion into a list of transaction has
-  to be proven, and the Merkle tree constructed from the list of transactions.
-  The derived Merkle proof allows a verifying party to securely verify that the
-  requested transaction has been included into the list of transaction of a
-  block if the computed Merkle root from the provided Merkle hash equals to the
-  received Merkle root from a trusted source. The Merkle proof guides the
-  re-construction of the Merkle root from the transaction hash by providing the
-  missing hashes of the sibling nodes on the path of the reversed binary search
-  starting from the hash of the transaction in the leaf position and ending, but
-  not including the Merkle root. The Merkle prove algorithm is generic. The type
-  of the hash value is parameterized. This design allows the Merkle prove
-  algorithm to work without modifications with different Merkle trees produced
-  using different hash functions e.g. Keccak256, SHA256. The derived Merkle
-  proof is also parameterized by the type of the hash value. The Merkle prove
-  algorithm first checks if the input Merkle tree is not empty. Then the
-  algorithm checks that the hash of the requested transaction is in the second
-  half of the array representation of the provided Merkle tree. If the hash of
-  the transaction is not in the Merkle tree the Merkle proof cannot be derived.
-  Next the edge cases of the list with one and two transactions (three nodes in
-  the Merkle tree) are handled. Then the first two steps of the Merkle proof are
-  handled separately because they operate on the same level of the Merkle tree,
-  while all other steps always move one level up until reaching the Merkle root.
-  If the hash of the requested transaction is in the even right position in the
-  Merkle tree, then the left sibling hash and then the transaction hash are
-  included into the Merkle proof. If the hash of the requested transaction is in
-  the odd left position, then the transaction hash and the right sibling hash,
-  if present, are included into the Merkle proof. Next the parent position for
-  the current hash is calculated depending whether the current hash position is
-  even right or odd left following the rules of array representation of the
-  binary tree. When the resulting parent position is even right, the sibling
-  parent position will be odd left in the previous array slot. When the
-  resulting parent position is odd left, the sibling parent position will be the
-  even right in the next array slot. Finally the sibling parent hash, if
-  present, is included into the Merkle proof with the correct position label.
-  Specifically, even positions are right, and odd positions are left. The
-  reverse binary search process ends when either the odd left child with index 1
-  or the even right child with index 2 of the Merkle root with index 0 is
-  reached. The Merkle prove algorithm
+- Merkle prove algorithm :: The Merkle prove algorithm derives the Merkle proof
+  from the hash of the transaction whose inclusion into the list of transaction
+  has to be proven, and the Merkle tree constructed from the list of
+  transactions. The derived Merkle proof allows a verifying party to securely
+  verify that the requested transaction has been included into the list of
+  transaction of a block, if the computed Merkle root from the provided Merkle
+  proof equals to the Merkle root received from a trusted source. The Merkle
+  proof guides the re-construction of the Merkle root from the hash of the
+  requested transaction by providing the missing hashes of the sibling nodes on
+  the path of the reversed binary search starting from the hash of the
+  transaction in the leaf position and ending, but not including, the Merkle
+  root. The Merkle prove algorithm is generic. The type of the hash value is
+  parameterized. This design allows the Merkle prove algorithm to work without
+  modifications with different Merkle trees produced using different hash
+  functions e.g. Keccak256, SHA256. The derived Merkle proof is also
+  parameterized by the type of the hash value. The Merkle prove algorithm first
+  checks if the input Merkle tree is not empty. Then, the algorithm checks that
+  the hash of the requested transaction is in the second half of the array
+  representation of the provided Merkle tree. If the hash of the transaction is
+  not in the Merkle tree the Merkle proof cannot be derived. Next, the edge
+  cases of the list with one and two transactions (three nodes in the Merkle
+  tree) are handled. Then, the first two steps of the Merkle proof are handled
+  separately because they operate on the same level of the Merkle tree, while
+  all other steps always move one level up until reaching the Merkle root. If
+  the hash of the requested transaction is in the even right position in the
+  Merkle tree, then the odd left sibling hash followed by the transaction hash
+  are included into the Merkle proof. If the hash of the requested transaction
+  is in the odd left position, then the transaction hash followed by the even
+  right sibling hash, if present, are included into the Merkle proof. Next the
+  parent position for the current hash is calculated depending whether the
+  current hash position is even right or odd left following the rules of array
+  representation of the binary tree. When the resulting parent position is even
+  right, the sibling parent position will be odd left in the previous array
+  position. When the resulting parent position is odd left, the sibling parent
+  position will be the even right in the next array position. Finally the
+  sibling parent hash, if present, is included into the Merkle proof with the
+  corresponding position label. Specifically, all even positions are right, and
+  all odd positions are left. The reverse binary search process ends when either
+  the odd left child with the index 1 or the even right child with the index 2
+  of the Merkle root with the index 0 is reached. The Merkle prove algorithm
   - Check that the provided Merkle tree is not empty
   - Check that the hash of the requested transaction is in the second half of
     the array representation of the provided Merkle tree
-  - Handle the edge cases of the list of one or two transactions
+  - Handle the edge cases of the list of one and two transactions
   - Include into the Merkle proof the first two (sometimes one) sibling hashes
     from the same level of the Merkle tree. One of these hashes will always be
-    the hash of the requested transaction
+    the hash of the requested transaction. The other hash may not be present if
+    the input list of transactions did not have a transaction in this position
   - Calculate the position of the parent hash for the current hash
   - Move to the hash of the sibling parent
   - Include the hash of the sibling parent into the Merkle proof with the
-    correct position label
-  - Stop the process when either the two children of the Merkle root is reached
+    corresponding position label
+  - Stop the process when any of the two children of the Merkle root is reached
   #+BEGIN_SRC go
 func MerkleProve[H comparable](txh H, merkleTree []H) ([]Proof[H], error) {
   if len(merkleTree) == 0 {
@@ -425,10 +431,10 @@ func MerkleProve[H comparable](txh H, merkleTree []H) ([]Proof[H], error) {
 }
   #+END_SRC
 
-Examples of correct Merkle proofs for each element of different input lists of
-elements using the string hash function and the string concatenation pair hash
-function. Each Merkle proof is a sequence of hashes labeled with the left (L) or
-the right (R) position needed for the verification of the Merkle proof
+Examples of the correct Merkle proofs for each element of different input lists
+of elements using the string hash function and the string concatenation pair
+hash function. Each Merkle proof is a sequence of hashes labeled with the left
+(L) or the right (R) position needed for the verification of the Merkle proof
 #+BEGIN_SRC go
 Tree (1) [1]
 Proof 1 [1-L] valid
@@ -510,18 +516,19 @@ Proof 9 [9-L 12345678-L] valid
   verification fails. Next the first proof step, which will always be in the
   left position is taken as the initial hash. Then each successive proof step
   starting from the second is iteratively applied to the last computed hash in
-  the correct order indicated by the left or right position of the proof step
-  until consuming all proof steps. The resulting final hash is the computed
-  Merkle root. The computed Merkle root is compared with the Merkle root
-  received from a trusted source. If the computed Merkle root equals to the
-  received Merkle root from a trusted source, that the verification of the
-  Merkle proof is successful the the requested transaction is included into the
-  list of transactions of a block. The Merkle verify algorithm
+  the correct order indicated by the left or right position labels of the proof
+  step until consuming all proof steps from the Merkle proof. The resulting
+  final hash is the computed Merkle root. The computed Merkle root is compared
+  with the Merkle root received from a trusted source. If the computed Merkle
+  root equals to the Merkle root received from a trusted source, that the
+  verification of the Merkle proof is successful, the requested transaction
+  is included into the list of transactions of a block. The Merkle verify
+  algorithm
   - Check that the hash of the requested transaction is in the Merkle proof
   - Start computing the Merkle root from the first hash of the Merkle proof
   - Iteratively apply each successive hash in the correct order indicated by the
-    position of the proof step to the last computed hash until consuming all
-    proof steps and finally producing the computed Merkle hash
+    position label of the proof step to the last computed hash until consuming
+    all proof steps, and, finally, producing the computed Merkle hash
   - If the computed Merkle hash is equal to the Merkle hash received from a
     trusted source, then the verification is successful, and the transaction is
     included in the list of transactions of a block
@@ -548,8 +555,6 @@ func MerkleVerify[H comparable](
 }
   #+END_SRC
 
-  #+RESULTS:
-
 *** gRPC =TxProve= method
 
 The gRPC =Tx= service provides the =TxProve= method to derive the Merkle proof
@@ -573,7 +578,7 @@ The implementation of the =TxProve= method
 - Defer closing the iterator
 - Iterate over each block in the local block store in order. For each block
   - Iterate over each transaction of the confirmed block. For each transaction
-    - If the list of transactions of the current block contains a transaction
+    - If the list of transactions of the current block contains the transaction
       with the requested transaction hash, derive the Merkle proof for the
       requested transaction hash
       - Create the Merkle tree for the list of transactions of the current block
@@ -626,9 +631,9 @@ func (s *TxSrv) TxProve(
 *** gRPC =TxVerify= method
 
 The gRPC =Tx= service provides the =TxVerify= method to verify the provided
-Merkle proof against the Merkle root received from a trusted source, and check
-whether the requested transaction is included into the list of transactions of a
-block. The interface of the service
+Merkle proof for the hash of the requested transaction against the Merkle root
+received from a trusted source, and check whether the requested transaction is
+included into the list of transactions of a block. The interface of the service
 #+BEGIN_SRC protobuf
 message TxVerifyReq {
   string Hash = 1;
@@ -678,7 +683,6 @@ func (s *TxSrv) TxVerify(
 
 *** Testing Merkle hash, prove, and verify
 
-
 The =TestMerkleHashProveVerify= testing process
 - Generate lists of transactions starting from ["1"] to ["1".."9"] inclusive.
   For each list of transactions
@@ -711,16 +715,16 @@ The =TestTxProveVerify= testing process
 - Verify that all transactions are found
 - Correct Merkle proofs
   - Call the =TxProve= method to derive the Merkle proof for the requested
-    transaction
+    transaction hash
   - Call the =TxVerify= method to verify the derived Merkle proof for the
     requested transaction hash and the provided Merkle root
   - Verify that Merkle proofs for all found transactions are correct
 - Incorrect Merkle proofs
   - Call the =TxProve= method to derive the Merkle proof for the requested
-    transaction
+    transaction hash
   - Call the =TxVerify= method to verify the derived Merkle proof for the
     requested transaction hash and the provided Merkle root
-  - Verify that Merkle proofs for invalid Merkle root are incorrect
+  - Verify that Merkle proofs for the invalid Merkle root are incorrect
 #+BEGIN_SRC fish
 go test -v -cover -coverprofile=coverage.cov ./... -run TxProveVerify
 #+END_SRC
@@ -728,10 +732,10 @@ go test -v -cover -coverprofile=coverage.cov ./... -run TxProveVerify
 *** Using =tx prove= and =tx verify= commands
 
 The gRPC =TxProve= and the =TxVerify= methods are exposed through the CLI. Sign
-and send transactions to the bootstrap node. Search the confirmed transactions.
-Request the Merkle poofs for the found transactions and verify the Merkle proofs
-of found transactions. Confirm the inclusion of the found transactions into the
-list of transaction of corresponding blocks block
+and send transactions to the bootstrap node. Search the confirmed transactions
+at the bootstrap node. Request the Merkle poofs for the found transactions, and
+verify the Merkle proofs for all found transactions. Confirm the inclusion of
+all found transactions into the list of transactions of the corresponding blocks
 - Initialize the blockchain by starting the bootstrap node with parameters for
   the blockchain initial configuration
   #+BEGIN_SRC fish
@@ -786,28 +790,37 @@ txSignAndSend $boot $acc2 $acc1 1 $ownerpass
   transaction hash and verify the Merkle proof which, in turn, confirms the
   inclusion of the transaction into the list of transactions of a block
   #+BEGIN_SRC fish
-function txProveAndVerify -a node hash mrkroot
-  set mrkproof (./bcn tx prove --node $node --hash $hash)
+function txProveAndVerify -a prover verifier hash mrkroot
+  set mrkproof (./bcn tx prove --node $prover --hash $hash)
   echo MerkleProof $mrkproof
   echo MerkleRoot $mrkroot
-  ./bcn tx verify --node $node --hash $hash \
+  ./bcn tx verify --node $verifier --hash $hash \
     --mrkproof $mrkproof --mrkroot $mrkroot
 end
   #+END_SRC
-- Request the Merkle proof and verify the Merkle proof for found transactions.
-  Confirm the inclusion of found transactions in the list of transactions of the
-  corresponding blocks
+- Request the Merkle proof and verify the Merkle proof for all found
+  transactions. Confirm the inclusion of all found transactions in the list of
+  transactions of the corresponding blocks
   #+BEGIN_SRC fish
 set tx1 4312eb8f506a00c4f4f111ea8b318a871615115e5b1a49f14784c5f90a04baeb
 set mrk1 c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394
 set tx2 bd849704122be82ee588c2abfacb8e12fb5bac0916356babcdb2b1683bbc684e
 set mrk2 c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394
-txProveAndVerify $boot $tx1 $mrk1
+txProveAndVerify $boot $boot $tx1 $mrk1
 # MerkleProof [{"hash":"4312eb8f506a00c4f4f111ea8b318a871615115e5b1a49f14784c5f90a04baeb","pos":1},{"hash":"bd849704122be82ee588c2abfacb8e12fb5bac0916356babcdb2b1683bbc684e","pos":2}]
 # MerkleRoot c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394
 # tx 4312eb8f506a00c4f4f111ea8b318a871615115e5b1a49f14784c5f90a04baeb valid
-txProveAndVerify $boot $tx2 $mrk2
+txProveAndVerify $boot $boot $tx2 $mrk2
 # MerkleProof [{"hash":"4312eb8f506a00c4f4f111ea8b318a871615115e5b1a49f14784c5f90a04baeb","pos":1},{"hash":"bd849704122be82ee588c2abfacb8e12fb5bac0916356babcdb2b1683bbc684e","pos":2}]
 # MerkleRoot c39f7787a0e1ad825964226031d1ede60f4a8546ce4a5f724321b22ffc3c7394
 # tx bd849704122be82ee588c2abfacb8e12fb5bac0916356babcdb2b1683bbc684e valid
+  #+END_SRC
+- Confirm that the Merkle proof for a transaction with an invalid Merkle root is
+  incorrect
+  #+BEGIN_SRC fish
+set invalidMrk 6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1
+txProveAndVerify $boot $boot $tx1 $invalidMrk
+# MerkleProof [{"hash":"4312eb8f506a00c4f4f111ea8b318a871615115e5b1a49f14784c5f90a04baeb","pos":1},{"hash":"bd849704122be82ee588c2abfacb8e12fb5bac0916356babcdb2b1683bbc684e","pos":2}]
+# MerkleRoot 6040ff5315af566ed974a737dbf460f04e73c9a713ef494e9baacfe7dd5dc8f1
+# tx 4312eb8f506a00c4f4f111ea8b318a871615115e5b1a49f14784c5f90a04baeb INVALID
   #+END_SRC

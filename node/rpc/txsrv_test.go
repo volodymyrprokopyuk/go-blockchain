@@ -58,7 +58,7 @@ func verifyTx(
   merkleRoot string,
 ) bool {
   // Call the TxProve method to derive the Merkle proof for the requested
-  // transaction
+  // transaction hash
   txh := tx.Hash().String()
   preq := &rpc.TxProveReq{Hash: txh}
   pres, err := cln.TxProve(ctx, preq)
@@ -390,7 +390,7 @@ func TestTxProveVerify(t *testing.T) {
     }
   })
   t.Run("incorrect Merkle proofs", func(t *testing.T){
-    // Verify that Merkle proofs for invalid Merkle root are incorrect
+    // Verify that Merkle proofs for the invalid Merkle root are incorrect
     for _, tx := range txs {
       merkleRoot := chain.NewHash("invalid Merkle root")
       valid := verifyTx(t, ctx, cln, tx.SigTx, merkleRoot.String())
