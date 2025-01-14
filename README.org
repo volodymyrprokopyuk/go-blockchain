@@ -36,6 +36,12 @@ implementation* to the *practical testing and usage* of the proposed blockchain
   naturally fill the gaps in the knowledge acquired through practical
   experiments
 
+** Related
+
+- [[https://github.com/volodymyrprokopyuk/go-wallet][BIP-32 HD wallet in Go]] \\
+  /A guided design and implementation of a BIP-32 HD wallet in Go with a
+  convenient CLI for easy experimentation using Nushell/
+
 ** Contents
 
 *** Blockchain state
