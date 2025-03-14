@@ -38,7 +38,7 @@ func searchBlocks(
 ) []chain.SigBlock {
   // Create the gRPC block client
   cln := rpc.NewBlockClient(conn)
-  // Call the BlocksSearch method to get the gRPC server stream of blcoks that
+  // Call the BlocksSearch method to get the gRPC server stream of blocks that
   // match the search request
   stream, err := cln.BlockSearch(ctx, req)
   if err != nil {

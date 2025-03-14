@@ -194,7 +194,7 @@ func TestStateSync(t *testing.T) {
     t.Fatal(err)
   }
   // Verify that the last block number and the last block parent on the
-  // confirmed sates of the the new node and the bootstrap node are equal
+  // confirmed states of the the new node and the bootstrap node are equal
   gotLastBlock, expLastBlock := nodeState.LastBlock(), bootState.LastBlock()
   if gotLastBlock.Number != expLastBlock.Number {
     t.Errorf(
